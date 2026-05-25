@@ -141,6 +141,13 @@ def test_write_catalog_includes_gpt55_when_auth_present(tmp_path, auth_present):
     assert [model["slug"] for model in data["models"]] == ["gpt-5.5"]
 
 
+def test_managed_config_escapes_windows_catalog_path(monkeypatch):
+    monkeypatch.setattr(cli, "CATALOG_PATH", r"C:\Users\User\codex-shim\.codex-shim\custom_model_catalog.json")
+    top_block, _ = cli._managed_config_blocks("vendor\\model", 8765)
+    assert 'model = "vendor\\\\model"' in top_block
+    assert 'model_catalog_json = "C:\\\\Users\\\\User\\\\codex-shim\\\\.codex-shim\\\\custom_model_catalog.json"' in top_block
+
+
 class ModelSettingsFixture:
     @staticmethod
     def one():

@@ -11,10 +11,10 @@ Anthropic Messages, a generic OpenAI-shaped chat endpoint, or ChatGPT Codex
 passthrough), then translates streaming responses back into the shape Codex
 expects.
 
-> Tested on Codex Desktop **0.133.0-alpha.1** for macOS arm64. The shim itself
-> is plain Python and works anywhere Python/aiohttp can run. The macOS-specific
-> part is only the optional Desktop picker ASAR patch, needed when Codex hides
-> custom catalog entries.
+> Tested on Codex Desktop **0.133.0-alpha.1** for macOS arm64. The shim server
+> and routing layer are plain Python/aiohttp and work on Windows, macOS, Linux,
+> WSL, and Git Bash. The only macOS-specific piece is the optional Desktop picker
+> ASAR patch, needed when Codex hides custom catalog entries.
 
 ---
 
@@ -57,6 +57,8 @@ local:
   - a compatible JSON file passed with `--settings`;
   - `~/.codex/auth.json` containing `tokens.access_token` for ChatGPT/Codex
     passthrough-only use.
+- Windows: PowerShell/cmd works when installed via the Python package entry
+  point; WSL or Git Bash is needed only for the optional `bin/` shell wrappers.
 - macOS only: `npx` and `codesign` if you need the optional Desktop picker
   patch.
 
@@ -64,7 +66,8 @@ local:
 
 ## Install
 
-Recommended (installs the `codex-shim` entry point from `pyproject.toml`):
+Recommended on macOS/Linux/WSL/Git Bash (installs the `codex-shim` entry
+point from `pyproject.toml`):
 
 ```bash
 git clone https://github.com/0xSero/codex-shim ~/codex-shim
@@ -72,9 +75,17 @@ cd ~/codex-shim
 python3 -m pip install --user -e .
 ```
 
-That pulls in `aiohttp` and puts `codex-shim` on your `PATH`. The
-`codex-app` and `codex-model` shortcuts live in `bin/`; symlink them if you
-want them on `PATH` too:
+Recommended on native Windows PowerShell/cmd:
+
+```powershell
+git clone https://github.com/0xSero/codex-shim $HOME\codex-shim
+cd $HOME\codex-shim
+py -3.11 -m pip install --user -e .
+```
+
+That pulls in `aiohttp` and installs the portable Python console command
+`codex-shim`. On POSIX-like shells, the optional `codex-app` and `codex-model`
+shortcuts live in `bin/`; symlink them if you want them on `PATH` too:
 
 ```bash
 mkdir -p ~/.local/bin
@@ -82,7 +93,8 @@ ln -sf "$PWD/bin/codex-app" ~/.local/bin/codex-app
 ln -sf "$PWD/bin/codex-model" ~/.local/bin/codex-model
 ```
 
-Alternative (no install, run straight from the checkout):
+Alternative on macOS/Linux/WSL/Git Bash (no install, run straight from the
+checkout):
 
 ```bash
 git clone https://github.com/0xSero/codex-shim ~/codex-shim
@@ -100,14 +112,76 @@ For running the test suite:
 python3 -m pip install --user pytest pytest-asyncio
 ```
 
-If your shell cannot find the commands, make sure `~/.local/bin` is on `PATH`:
+If your POSIX shell cannot find the commands, make sure `~/.local/bin` is on
+`PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Windows users should run the shim from WSL or Git Bash. The Python package is
-portable, but the convenience wrappers in `bin/` are POSIX shell scripts.
+If PowerShell cannot find `codex-shim`, add your Python user Scripts directory
+to `Path`. For Python 3.11 installed from python.org, the usual path is:
+
+```powershell
+$env:APPDATA\Python\Python311\Scripts
+```
+
+You can also skip `PATH` entirely and run through Python:
+
+```powershell
+py -3.11 -m codex_shim.cli status
+```
+
+---
+
+## Windows support
+
+Yes, the shim works on Windows. The core shim is Python/aiohttp, binds to
+`127.0.0.1`, and writes the same Codex provider config that macOS/Linux use.
+Use one of these setups:
+
+| Setup | Status | Notes |
+|---|---|---|
+| Native Windows PowerShell/cmd | Supported | Install with `py -3.11 -m pip install --user -e .` and run `codex-shim ...`. |
+| WSL | Supported | Works like Linux. Best when Codex CLI/Desktop is also being driven from WSL. |
+| Git Bash | Supported | Works with the POSIX `bin/` wrappers if Python/Codex are on `PATH`. |
+| `bin/codex-app`, `bin/codex-model` in PowerShell/cmd | Not native | These are shell scripts. Use `codex-shim app ...` and `codex-shim model ...` instead. |
+| `patch-app` / `restore-app` | macOS only | They target `/Applications/Codex.app` and Electron ASAR signing on macOS. |
+
+Native Windows quick check:
+
+```powershell
+py -3.11 -m pip install --user -e .
+codex-shim generate
+codex-shim start
+codex-shim status
+codex-shim list
+```
+
+If `codex-shim` is not on `Path`, use the module form:
+
+```powershell
+py -3.11 -m codex_shim.cli generate
+py -3.11 -m codex_shim.cli start
+py -3.11 -m codex_shim.cli status
+```
+
+Path behavior is intentionally ordinary:
+
+- In native Windows, `~/.codex-shim/models.json` means
+  `%USERPROFILE%\.codex-shim\models.json` and Codex config lives under
+  `%USERPROFILE%\.codex\config.toml`.
+- In WSL, `~/.codex-shim/models.json` and `~/.codex/config.toml` are inside the
+  Linux home directory unless you explicitly point `--settings` at a Windows
+  path under `/mnt/c/...`.
+- Do not mix a WSL-generated `~/.codex/config.toml` with native Windows Codex
+  and expect both to share files automatically. If Codex is native Windows, run
+  the native Windows install path or manually keep the Windows config in sync.
+- The local provider URL is still `http://127.0.0.1:8765/v1`.
+
+The optional macOS picker patch is not required for the shim server to work. On
+Windows, if Codex can read the generated catalog/provider config, requests route
+through the same local endpoint as every other platform.
 
 ---
 
@@ -606,8 +680,8 @@ use `--settings`.
   it cannot make an upstream model reliably emit valid tool-call JSON.
 - Hosted Responses-only tools are highest fidelity on the ChatGPT passthrough
   path. BYOK routes get normal function-tool translation.
-- Windows native shells are not the primary target for the `bin/` wrappers. Use
-  WSL/Git Bash or install the package entry point with your Python environment.
+- The `bin/codex-app` and `bin/codex-model` shortcuts are POSIX shell scripts.
+  In native Windows shells, use the installed `codex-shim` command instead.
 
 ---
 

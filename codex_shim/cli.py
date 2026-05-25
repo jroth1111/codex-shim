@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import ctypes
 import signal
 import subprocess
 import sys
@@ -11,7 +12,7 @@ import hashlib
 import json
 from urllib.request import urlopen
 
-from .catalog import codex_config_overrides, write_catalog, write_config
+from .catalog import _toml_escape, codex_config_overrides, write_catalog, write_config
 from .settings import (
     DEFAULT_SETTINGS,
     DEFAULT_HOST,
@@ -33,6 +34,9 @@ CODEX_CONFIG_PATH = Path.home() / ".codex" / "config.toml"
 CODEX_CONFIG_BACKUP_PATH = RUNTIME_DIR / "config.toml.before-codex-shim"
 MANAGED_BEGIN = "# >>> codex-shim managed >>>"
 MANAGED_END = "# <<< codex-shim managed <<<"
+WINDOWS_PROCESS_TERMINATE = 0x0001
+WINDOWS_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+WINDOWS_STILL_ACTIVE = 259
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -191,7 +195,7 @@ def start(settings_path: Path, port: int) -> int:
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PROJECT_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-    process = subprocess.Popen(cmd, cwd=str(PROJECT_ROOT), env=env, stdout=log, stderr=log, start_new_session=True)
+    process = _popen_daemon(cmd, log, env)
     PID_PATH.write_text(str(process.pid))
     for _ in range(50):
         if _healthy(port):
@@ -212,7 +216,7 @@ def stop() -> int:
         print("Shim is not running.")
         PID_PATH.unlink(missing_ok=True)
         return 0
-    os.kill(pid, signal.SIGTERM)
+    _terminate_pid(pid)
     for _ in range(50):
         if not _pid_running(pid):
             PID_PATH.unlink(missing_ok=True)
@@ -265,6 +269,8 @@ def exec_codex(settings_path: Path, port: int, codex_args: list[str]) -> None:
     if codex_args[:1] == ["--"]:
         codex_args = codex_args[1:]
     args = ["codex", *overrides, *codex_args]
+    if os.name == "nt":
+        raise SystemExit(subprocess.call(args))
     os.execvp("codex", args)
 
 
@@ -417,9 +423,9 @@ end tell
 
 def _managed_config_blocks(default_slug: str, port: int) -> tuple[str, str]:
     top_block = f'''{MANAGED_BEGIN}
-model = "{default_slug}"
+model = "{_toml_escape(default_slug)}"
 model_provider = "{PROVIDER_NAME}"
-model_catalog_json = "{CATALOG_PATH}"
+model_catalog_json = "{_toml_escape(str(CATALOG_PATH))}"
 {MANAGED_END}
 '''
 
@@ -476,6 +482,26 @@ def _remove_section(text: str, section: str) -> str:
         if not skipping:
             output.append(line)
     return "\n".join(output) + ("\n" if text.endswith("\n") else "")
+
+
+def _popen_daemon(cmd: list[str], log, env: dict[str, str]) -> subprocess.Popen:
+    kwargs = {"cwd": str(PROJECT_ROOT), "env": env, "stdout": log, "stderr": log}
+    if os.name == "nt":
+        creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+        return subprocess.Popen(cmd, creationflags=creationflags, **kwargs)
+    return subprocess.Popen(cmd, start_new_session=True, **kwargs)
+
+
+def _terminate_pid(pid: int) -> None:
+    if os.name == "nt":
+        handle = ctypes.windll.kernel32.OpenProcess(WINDOWS_PROCESS_TERMINATE, False, pid)
+        if handle:
+            try:
+                ctypes.windll.kernel32.TerminateProcess(handle, 0)
+            finally:
+                ctypes.windll.kernel32.CloseHandle(handle)
+        return
+    os.kill(pid, signal.SIGTERM)
 
 
 def _override_args(settings_path: Path, port: int) -> list[str]:
@@ -548,6 +574,17 @@ def _read_pid() -> int | None:
 def _pid_running(pid: int | None) -> bool:
     if not pid:
         return False
+    if os.name == "nt":
+        handle = ctypes.windll.kernel32.OpenProcess(WINDOWS_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return False
+        try:
+            exit_code = ctypes.c_ulong()
+            if not ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                return False
+            return exit_code.value == WINDOWS_STILL_ACTIVE
+        finally:
+            ctypes.windll.kernel32.CloseHandle(handle)
     try:
         os.kill(pid, 0)
         return True
