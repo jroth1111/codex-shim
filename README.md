@@ -297,7 +297,7 @@ Recommended schema:
       "model": "gpt-5.5",
       "provider": "openai",
       "base_url": "https://api.openai.com/v1",
-      "api_key": "sk-…",
+      "api_key": "<openai-api-key>",
       "display_name": "OpenAI GPT-5.5",
       "max_context_limit": 400000
     },
@@ -305,7 +305,7 @@ Recommended schema:
       "model": "claude-opus-4-7-20251109",
       "provider": "anthropic",
       "base_url": "https://api.anthropic.com/v1",
-      "api_key": "sk-ant-…",
+      "api_key": "<anthropic-api-key>",
       "display_name": "Claude Opus 4.7"
     },
     {

@@ -2555,7 +2555,7 @@ async def test_byok_anthropic_upstream_529_normalizes_to_error_envelope(tmp_path
                         "model": "real-claude",
                         "displayName": "Real Claude",
                         "provider": "anthropic",
-                        "apiKey": "sk-test-123",
+                        "apiKey": "stub-test-key-123",
                         "baseUrl": str(upstream_client.make_url("")),
                     }
                 ]
@@ -2793,7 +2793,7 @@ async def test_byok_upstream_401_normalizes_error_envelope(tmp_path):
     upstream_client = TestClient(TestServer(upstream))
     await upstream_client.start_server()
 
-    secret_key = "sk-secret-key-401"
+    secret_key = "stub-secret-key-401"
     settings = tmp_path / "settings.json"
     settings.write_text(
         json.dumps(
@@ -2842,7 +2842,7 @@ async def test_access_log_never_contains_secrets(tmp_path, capsys):
     upstream_client = TestClient(TestServer(upstream))
     await upstream_client.start_server()
 
-    secret_key = "sk-secret-access-log-key"
+    secret_key = "stub-secret-access-log-key"
     settings = tmp_path / "settings.json"
     settings.write_text(
         json.dumps(

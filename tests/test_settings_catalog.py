@@ -483,7 +483,7 @@ def test_export_config_redacts_secrets_by_default(tmp_path):
                         "display_name": "Secret Model",
                         "provider": "openai",
                         "base_url": "http://x/v1",
-                        "apiKey": "sk-live",
+                        "apiKey": "stub-live-key",
                         "extra_headers": {"Authorization": "Bearer hidden", "x-api-key": "hidden-too"},
                     }
                 ]

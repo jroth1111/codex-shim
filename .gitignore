@@ -3,6 +3,16 @@
 *.log
 *.pid
 
+# Local secrets and credentials
+.env
+.env.*
+secrets/
+auth.json
+*.key
+*.pem
+*.p12
+*.pfx
+
 # Local Codex inspection artifacts (don't ship)
 codedb.snapshot
 *.asar
@@ -38,6 +48,7 @@ dist/
 .beads/
 
 # Dependency installs and package-manager state
+uv.lock
 node_modules/
 bower_components/
 jspm_packages/
