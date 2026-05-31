@@ -860,6 +860,30 @@ def test_desktop_bundle_patch_specs_do_not_mutate_legacy_picker():
     assert any("sidebar" in label for label in labels)
 
 
+def test_decompiled_bundle_patch_needles_match_specs():
+    from pathlib import Path
+
+    from codex_shim.desktop_contract import DESKTOP_CONTRACT_SOURCE_VERSION
+
+    workdir = Path(__file__).resolve().parents[1] / "codex-desktop-decompiled" / "app-asar-extracted"
+    if not workdir.exists():
+        pytest.skip(f"Desktop bundle extraction not found: {workdir}")
+
+    inspection = cli._inspect_codex_desktop_bundles(workdir, version=DESKTOP_CONTRACT_SOURCE_VERSION)
+    by_label = {report["label"]: report for report in inspection}
+
+    sidebar = by_label.get("shim-mode sidebar provider filter")
+    assert sidebar is not None
+    assert sidebar["status"] in {"unpatched", "patched", "mixed"}
+
+    legacy = by_label.get("model picker allowlist filter (legacy, informational)")
+    assert legacy is not None
+    assert legacy["status"] in {"skipped", "unpatched", "patched", "mixed"}
+    assert legacy.get("optional") == "true"
+
+    assert cli._inspection_has_missing_patch(inspection) is False
+
+
 def test_doctor_contract_runs_generator_check(monkeypatch):
     calls = []
 
