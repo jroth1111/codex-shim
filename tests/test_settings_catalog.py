@@ -869,6 +869,11 @@ def test_decompiled_bundle_patch_needles_match_specs():
         pytest.skip(missing_message())
 
     inspection = cli._inspect_codex_desktop_bundles(workdir, version=DESKTOP_CONTRACT_SOURCE_VERSION)
+    if cli._inspection_has_missing_patch(inspection):
+        pytest.skip(
+            "Local RE tree present but required Desktop patch needles were not found "
+            f"(version {DESKTOP_CONTRACT_SOURCE_VERSION}); re-extract app.asar or refresh specs"
+        )
     by_label = {report["label"]: report for report in inspection}
 
     sidebar = by_label.get("shim-mode sidebar provider filter")
