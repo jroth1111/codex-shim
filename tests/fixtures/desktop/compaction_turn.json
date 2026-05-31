@@ -1,0 +1,14 @@
+{
+  "input": [
+    {
+      "type": "context_compaction",
+      "id": "cmp_1",
+      "status": "completed",
+      "summary": [{"type": "summary_text", "text": "User asked to refactor translate.py."}]
+    },
+    {
+      "role": "user",
+      "content": [{"type": "input_text", "text": "Continue the refactor."}]
+    }
+  ]
+}

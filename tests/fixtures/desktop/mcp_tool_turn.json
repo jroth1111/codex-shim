@@ -1,0 +1,11 @@
+{
+  "input": [
+    {
+      "type": "mcp_tool_call",
+      "call_id": "call_mcp_probe",
+      "tool_name": "list_files",
+      "arguments": "{\"path\":\".\"}"
+    },
+    {"type": "mcp_tool_call_output", "call_id": "call_mcp_probe", "output": "[\"README.md\"]"}
+  ]
+}

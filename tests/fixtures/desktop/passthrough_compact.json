@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "output": [
+    {
+      "type": "context_compaction",
+      "status": "completed",
+      "summary": [{"type": "summary_text", "text": "Native compact summary from ChatGPT."}]
+    }
+  ]
+}

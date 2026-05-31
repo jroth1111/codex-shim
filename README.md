@@ -7,9 +7,9 @@ subscription's Codex model** — without rebuilding Codex.
 The shim is a local Python/aiohttp server that exposes an OpenAI
 Responses-compatible endpoint on loopback. Codex points at the shim; the shim
 routes each request to the matching upstream (OpenAI chat completions,
-Anthropic Messages, a generic OpenAI-shaped chat endpoint, or ChatGPT Codex
-passthrough), then translates streaming responses back into the shape Codex
-expects.
+Anthropic Messages, a generic OpenAI-shaped chat endpoint, Cursor Agent CLI/ACP,
+or ChatGPT Codex passthrough), then translates streaming responses back into
+the shape Codex expects.
 
 > Tested on Codex Desktop **0.133.0-alpha.1** for macOS arm64. The shim server
 > and routing layer are plain Python/aiohttp and work on Windows, macOS, Linux,
@@ -244,9 +244,12 @@ block can be removed with:
 codex-shim disable
 ```
 
-After this, Codex Desktop sees every entry from `~/.codex-shim/models.json`,
-plus the `GPT-5.5` ChatGPT passthrough slug if (and only if) `~/.codex/auth.json`
-holds a valid `tokens.access_token`.
+After this, Codex Desktop sees every configured/usable entry from
+`~/.codex-shim/models.json`, plus the `GPT-5.5` ChatGPT passthrough slug if
+(and only if) `~/.codex/auth.json` holds a valid `tokens.access_token`.
+Disabled rows, rows missing required credentials, and Cursor rows whose command
+cannot be found are omitted from the generated catalog and rejected by the shim
+router. Run `codex-shim doctor` to see why a row is hidden.
 
 If your Codex Desktop's model picker only shows `default` and refuses to render
 the catalog entries, apply the macOS picker patch below.
@@ -312,18 +315,82 @@ Recommended schema:
       "api_key": "…",
       "display_name": "DeepSeek V4 Pro",
       "no_image_support": true
+    },
+    {
+      "model": "auto",
+      "provider": "cursor-agent",
+      "display_name": "Cursor Agent Auto",
+      "command": "cursor",
+      "args": ["agent", "--print", "--trust", "--yolo", "--model", "auto"]
+    },
+    {
+      "id": "zai-glm-5-1",
+      "model": "glm-5.1",
+      "provider": "zai",
+      "display_name": "Z.AI GLM-5.1",
+      "api_key_env": "ZAI_API_KEY"
+    },
+    {
+      "id": "nim-glm-5-1",
+      "model": "z-ai/glm-5.1",
+      "provider": "nvidia-nim",
+      "display_name": "GLM-5.1 (NVIDIA NIM)",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key_env": "NVIDIA_API_KEY"
     }
   ]
 }
 ```
 
 The loader also accepts camelCase aliases (`baseUrl`, `apiKey`, `displayName`,
-`maxContextLimit`, `maxOutputTokens`, `noImageSupport`, `extraHeaders`) and a
-legacy top-level `customModels` array, so existing model config exports can be
-used directly.
+`apiKeyEnv`, `apiKeyFile`, `chatCompletionsUrl`, `maxContextLimit`,
+`maxOutputTokens`, `noImageSupport`, `extraHeaders`) and a legacy top-level
+`customModels` array, so existing model config exports can be used directly.
+Rows are parsed permissively, normalized into one internal routing shape, and
+then filtered before Codex Desktop sees them.
 
 The shim **never copies your API keys** into the generated catalog. Keys stay
 in your settings file and are read fresh on every request.
+
+Config helpers:
+
+```bash
+codex-shim configure cursor
+codex-shim configure zai
+codex-shim configure zai --coding-plan
+codex-shim configure nim --model z-ai/glm-5.1
+codex-shim doctor
+codex-shim test cursor-agent
+codex-shim config export ./models.redacted.json
+codex-shim config export --include-secrets ./models.full.json
+codex-shim config import ./models.json
+codex-shim import-vibeproxy http://127.0.0.1:8318 --provider-base-url http://127.0.0.1:8318/v1
+codex-shim import-vibeproxy http://127.0.0.1:8318 --provider-base-url http://127.0.0.1:8318/v1 --direct
+```
+
+`configure` adds or updates common provider rows without writing secrets into
+the generated Codex catalog. By default it references `ZAI_API_KEY` for Z.AI and
+`NVIDIA_API_KEY` for NVIDIA NIM; use `--api-key-file` or `--api-key` when you
+need a different source. `doctor` reports the visible set and hidden rows with
+their exact reason, such as a missing key, disabled row, invalid endpoint, or
+missing Cursor command.
+
+`test <target>` resolves a slug, provider, upstream model id, or display name,
+prints whether the row is visible or hidden, then sends a real non-streaming
+smoke request through that route. It supports Cursor CLI/ACP, OpenAI-compatible
+chat providers, Anthropic, Z.AI, NVIDIA NIM, and ChatGPT passthrough. Failures
+are classified as hidden/misconfigured, ambiguous target, missing command, auth
+failure, bad URL/connection, timeout, unsupported route, or upstream error.
+
+`config export` redacts API keys, bearer tokens, authorization headers, and
+other token/secret-looking fields by default. `config import` validates the
+input as shim model settings and writes a `.before-import` backup next to the
+destination settings file. `import-vibeproxy` reads a VibeProxy-compatible
+`/v1/models` endpoint, filters non-chat models, title-cases display names, and
+writes regular shim `models` rows. Add `--direct` only when VibeProxy itself
+already speaks the Responses API; this writes a direct catalog/config pair that
+points Codex at VibeProxy and does not require the shim server. Direct mode is
+not for Cursor, Z.AI, NIM, or chat-completions-only upstreams.
 
 Supported `provider` values:
 
@@ -332,6 +399,11 @@ Supported `provider` values:
 | `openai` | OpenAI `/v1/chat/completions` |
 | `generic-chat-completion-api` | OpenAI-shaped chat completions |
 | `anthropic` | Anthropic `/v1/messages` |
+| `cursor-agent` / `cursor-agent-cli` / `cursor-cli` | Headless Cursor Agent CLI, defaulting to `cursor agent --print --trust --yolo --model auto` and using `stream-json` partial output for streamed requests |
+| `cursor-acp` / `cursor-agent-acp` | Local ACP subprocess, defaulting to `cursor-agent acp` |
+| `zai` | Z.AI Open Platform chat completions at `/api/paas/v4/chat/completions` |
+| `zai-coding-plan` | Z.AI Coding Plan chat completions at `/api/coding/paas/v4/chat/completions` |
+| `nvidia-nim` / `nim` | NVIDIA NIM OpenAI-compatible `/v1/chat/completions` |
 
 Useful model fields:
 
@@ -342,6 +414,75 @@ Useful model fields:
 | `max_output_tokens` | Default max output when translating to Anthropic. |
 | `no_image_support` | When true, catalog advertises text-only input. |
 | `extra_headers` | Optional upstream headers merged into requests. |
+| `enabled` | Set `false` to keep a row in config while hiding it from Codex Desktop and routing. |
+| `api_key_env` / `apiKeyEnv` | Environment variable containing the provider API key. |
+| `api_key_file` / `apiKeyFile` | File containing the provider API key. |
+| `chat_completions_url` / `chatCompletionsUrl` | Exact chat-completions URL. Use this for providers that are OpenAI-shaped but do not live under `/v1`. |
+| `base_url_append_v1` / `baseUrlAppendV1` | For generic OpenAI-shaped providers, set `false` to derive `<base_url>/chat/completions` instead of `<base_url>/v1/chat/completions`. |
+| `thinking_behavior` / `thinkingBehavior` | Provider policy for chat-completions thinking fields: `pass`, `drop`, `force_enabled`, `force_disabled`, or `keep_all`. DeepSeek defaults to `pass`; set `force_disabled` for DeepSeek safe mode. Z.AI passes thinking fields; Moonshot drops them except Kimi models, which use `keep_all`. |
+| `supports_compact` / `supportsCompact` | Set `false` to make `/v1/responses/compact` return a clear 501 for that model instead of sending an emulated compaction prompt upstream. |
+| `command` / `args` | Cursor command and argv before the prompt. For `cursor-agent`, defaults to `cursor` + `["agent", "--print", "--trust", "--yolo", "--model", "auto"]`; the shim adds `--output-format json` for non-streaming calls and `--output-format stream-json --stream-partial-output` for streaming calls when no output format is already configured. For `cursor-acp`, defaults to `cursor-agent` + `["acp"]`. |
+| `mode` | Cursor ACP mode for `cursor-acp` routes. Defaults to `agent`. |
+| `cursor_model` / `cursorModel` | Cursor CLI model (`auto` by default) or Cursor ACP model config value (`default[]` by default). |
+| `cwd` | Working directory for the Cursor subprocess. Defaults to the shim process cwd. |
+| `timeoutSeconds` | Prompt timeout for Cursor subprocess requests. Defaults to 600 seconds. |
+
+### Cursor Agent CLI
+
+Use `provider: "cursor-agent"` when you want Codex Desktop's `/v1/responses`
+traffic translated through Cursor Agent's tested headless CLI path. This route
+does not need `base_url` or an API key in `models.json`; authentication remains
+whatever `cursor agent` already uses.
+
+```json
+{
+  "models": [
+    {
+      "model": "auto",
+      "display_name": "Cursor Agent Auto",
+      "provider": "cursor-agent"
+    }
+  ]
+}
+```
+
+For non-streaming Codex requests, the shim starts:
+
+```bash
+cursor agent --print --trust --yolo --model auto --output-format json "<translated Codex prompt>"
+```
+
+For streaming Codex requests, the shim starts:
+
+```bash
+cursor agent --print --trust --yolo --model auto --output-format stream-json --stream-partial-output "<translated Codex prompt>"
+```
+
+and maps Cursor's JSONL `assistant` text deltas back to Responses SSE output.
+This mirrors the Fork & Flag batch-worker pattern for launch and uses Cursor
+Agent's native headless streaming output for `stream: true`.
+
+If you explicitly want the ACP experiment instead, use `provider: "cursor-acp"`:
+
+```json
+{
+  "models": [
+    {
+      "model": "default[]",
+      "display_name": "Cursor ACP Auto",
+      "provider": "cursor-acp",
+      "cursor_model": "default[]",
+      "mode": "agent"
+    }
+  ]
+}
+```
+
+The ACP route starts `cursor-agent acp`, performs `initialize`, `session/new`,
+and `session/prompt`, then maps `agent_message_chunk` updates back to Responses
+SSE deltas. On this machine, the ACP prompt path reached Cursor but returned
+`Upgrade your plan to continue`; the direct CLI path returned the expected
+smoke-test text.
 
 ### Ollama / local OpenAI-compatible chat endpoints
 
@@ -469,11 +610,17 @@ matching ASAR integrity metadata:
 
 ```bash
 codex-shim patch-app
+codex-shim patch-status
 codex-shim restore-app
 ```
 
 If Codex still crashes after `patch-app`, restore with `codex-shim restore-app`
 and re-check the manual patch needles against the installed Desktop build.
+`patch-status` reports whether the installed ASAR appears patched, unpatched,
+or incompatible with the known bundle needles; it also reports missing `npx` or
+`codesign`, backup state, versioned backup hashes, and stale/no-op restore
+conditions. `patch-app` refuses to create the original restore backup from an
+already-patched bundle when that backup is missing.
 
 ---
 
@@ -491,12 +638,17 @@ and the generated `custom_model_catalog.json` while that token is present. Once
 you `codex logout` or the file is missing, the slug stops appearing — so the
 picker never shows an option that would 401 on first use. Run `codex login` to
 mint a new token and the entry comes back automatically on the next
-`codex-shim generate`.
+`codex-shim generate`. Internally this passthrough is treated as the same kind
+of normalized Desktop model as configured BYOK rows, so catalog generation,
+picker state, health, and routing all see one filtered Desktop model set.
 
 The passthrough keeps Codex's native `/v1/responses` payload intact, changes the
 model to `gpt-5.5`, and sends your Codex access token as `Authorization: Bearer
 <access_token>` with the ChatGPT account id from `auth.json` when present. It
 bypasses configured BYOK routes entirely and uses your ChatGPT subscription quota.
+Image-generation requests only use this path when the selected Desktop model is
+`gpt-5.5`; the shim does not silently reroute image-generation prompts away from
+the BYOK model selected in Desktop.
 
 It is already in `.codex-shim/custom_model_catalog.json` after `codex-shim
 generate`. Select `GPT-5.5` in the picker, or run:
@@ -523,15 +675,57 @@ Codex Desktop ── /v1/responses ──▶ codex-shim (127.0.0.1:8765)
                                      │       └─▶ baseUrl/chat/completions
                                      │           (Authorization: Bearer apiKey)
                                      │
-                                     └── provider "anthropic"
-                                             └─▶ baseUrl/messages
-                                                 (x-api-key: apiKey, anthropic-version: …)
+                                     ├── provider "anthropic"
+                                     │       └─▶ baseUrl/messages
+                                     │           (x-api-key: apiKey, anthropic-version: …)
+                                     │
+                                     └── provider "cursor-agent"
+                                             └─▶ cursor agent --print --trust --yolo --model auto
+                                                 (headless Cursor Agent CLI)
 ```
 
 The shim translates Codex's Responses-API request into the upstream's shape
-(chat completions or Anthropic Messages) and translates the streamed reply back.
-Extended-thinking blocks from Anthropic-shaped upstreams (Claude, DeepSeek,
-GLM, etc.) round-trip through `reasoning.encrypted_content` items.
+(chat completions, Anthropic Messages, Cursor CLI prompts, or ACP prompt
+messages) and translates the streamed reply back. Extended-thinking blocks from
+Anthropic-shaped upstreams (Claude, DeepSeek, GLM, etc.) round-trip through
+`reasoning.encrypted_content` items.
+
+---
+
+## Fidelity tiers
+
+Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
+
+| Tier | Route | What you get |
+|---|---|---|
+| **Tier A — Native** | ChatGPT passthrough (`gpt-5.5`) | Full parity: hosted tools, native compaction v2, encrypted reasoning, native Response item types |
+| **Tier B — Agent loop** | OpenAI chat / Anthropic / Cursor BYOK | Tool loops via function-tool fallbacks; inbound/outbound native hosted-tool item shapes where possible; emulated compaction (`context_compaction` items); shim-encoded reasoning for round-trip |
+| **Tier C — Degraded** | Same BYOK routes | No true OpenAI encrypted reasoning blobs; image generation gated unless model declares support; opaque native compaction v2 blobs not synthesized on BYOK |
+
+**Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
+
+**Native tool wire shapes:** `local_shell_call`, `web_search_call`, `tool_search_call`, and `image_generation_call` can be emitted on BYOK streams when the upstream used the matching function-tool fallback. `apply_patch` and `computer_use` remain `function_call` items (Desktop executes from tool calls; decompiled `ResponseItem` has no separate `apply_patch_call` type).
+
+**Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
+
+**Conversation store:** `previous_response_id` history is persisted in `.codex-shim/response_store.sqlite` (override with `CODEX_SHIM_RESPONSE_STORE`). LRU cap defaults to 256 (`CODEX_SHIM_RESPONSE_STORE_MAX`). Set `CODEX_SHIM_RESPONSE_STORE_SCOPE=session` to key history by Desktop `session_id` header.
+
+**Compaction probe:** With the daemon running, validate BYOK compact output shape:
+
+```bash
+codex-shim probe all          # offline fidelity + live checks when daemon/auth available
+codex-shim probe fidelity     # offline translation fixtures only
+codex-shim probe compact
+codex-shim probe compact --slug your-byok-slug
+codex-shim probe history      # hosted tools + previous_response_id + compact w/ trigger
+codex-shim probe streaming-history
+codex-shim probe passthrough --live        # Tier A; requires ~/.codex/auth.json
+codex-shim probe passthrough-compact --live
+```
+
+Recommended dev loop: `codex-shim enable` → `codex-shim probe all` → `codex-shim test <slug>`.
+
+For Desktop integration notes from local reverse-engineering, see [`codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md`](codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md).
 
 ---
 
@@ -584,6 +778,32 @@ Known edge cases:
 
 ---
 
+## Conversation state and validation
+
+For BYOK routes, successful `/v1/responses` turns are kept in a process-local
+response store. A later request with `previous_response_id` is expanded into the
+stored input/output window before translation, so chat-completions, Anthropic,
+Cursor CLI, and Cursor ACP providers receive the prior context even though they
+do not implement OpenAI's Responses store.
+
+The store persists in SQLite (`.codex-shim/response_store.sqlite` by default). Restarting the shim keeps prior windows unless the store file is removed. An
+unknown `previous_response_id` returns a 404 instead of silently dropping prior
+context.
+
+The translator rejects Responses content it cannot faithfully send upstream:
+unknown content part types, unsupported audio formats/media types, mismatched
+audio data URL formats, and inline media payloads larger than 50 MiB return a
+400 before any upstream request is made.
+
+Every provider call also emits a structured `[access]` JSON log line with
+`trace_id`, `model_route`, route/model, provider model, status, stream flag,
+`provider_ms`, `total_ms`, and token counts when the upstream reports usage.
+Trace ids are resolved in this order: `metadata.trace_id`, `trace_id`,
+`metadata.request_id`, `request_id`, `x-request-id`, then a generated id. Token
+stats include input, output, total, cached, and reasoning counts when observed.
+
+---
+
 ## Compaction
 
 Codex can compact long sessions through `POST /v1/responses/compact`.
@@ -591,8 +811,10 @@ Codex can compact long sessions through `POST /v1/responses/compact`.
 | route | behavior |
 |---|---|
 | ChatGPT passthrough (`gpt-5.5` / `openai-gpt-5-5*`) | Forwards to ChatGPT's native `/backend-api/codex/responses/compact` endpoint and rewrites returned model metadata back to the requested shim slug. |
-| BYOK OpenAI/chat-completions providers | Sends a non-streaming summarization request through `/chat/completions`, then returns a Responses-shaped compacted window whose `output` can be used as the next `input`. |
+| BYOK OpenAI/chat-completions providers | Sends a non-streaming summarization request through `/chat/completions`, then returns a Responses-shaped compacted window whose `output` contains one `context_compaction` item. |
 | BYOK Anthropic providers | Sends a non-streaming compact request through `/messages`, then returns the same Responses-shaped compacted window. |
+| Cursor Agent CLI providers | Sends a non-streaming compact prompt through `cursor agent --print --trust --yolo --model auto`, then returns the same Responses-shaped compacted window. |
+| Cursor Agent ACP providers | Sends a non-streaming compact prompt through `cursor-agent acp`, then returns the same Responses-shaped compacted window. |
 
 The BYOK path intentionally strips provider-hostile fields such as `stream` and
 `service_tier` before forwarding. It preserves the practical Codex behavior — a
@@ -749,6 +971,9 @@ codex-shim generate          regenerate catalog/config without starting daemon
 codex-shim start             regenerate catalog and start local shim daemon
 codex-shim enable            start daemon and write managed ~/.codex/config.toml block
 codex-shim status            health check + model count
+codex-shim doctor            explain visible and hidden configured models
+codex-shim test <target>     smoke-test a visible route by slug/provider/model/name
+codex-shim probe compact     validate BYOK /v1/responses/compact output against running shim
 codex-shim stop              stop daemon
 codex-shim disable           remove managed config block and stop daemon
 codex-shim restart           stop, regenerate, and start daemon
@@ -758,7 +983,14 @@ codex-shim model use <slug>  set the Desktop default model in managed config
 codex-shim codex -- <args>   exec `codex` CLI through inline shim overrides
 codex-shim app [path]        launch Codex Desktop through managed shim config
 codex-shim patch-app         patch macOS Codex Desktop picker allowlist
+codex-shim patch-status      inspect macOS patch/backups/tooling
 codex-shim restore-app       restore macOS app.asar from patch backup
+codex-shim configure cursor  add/update Cursor Agent model settings
+codex-shim configure zai     add/update Z.AI model settings
+codex-shim configure nim     add/update NVIDIA NIM model settings
+codex-shim import-vibeproxy  import VibeProxy /v1/models into models.json
+codex-shim config export     export model settings, redacted by default
+codex-shim config import     import model settings with a before-import backup
 
 codex-app [path]             shortcut for `codex-shim app`
 codex-model [list|<slug>]    shortcut for `codex-shim model …`
@@ -823,7 +1055,8 @@ the shim, so a visited web page cannot drive them via DNS rebinding.
 - BYOK providers vary wildly in tool-call quality. The shim translates shapes;
   it cannot make an upstream model reliably emit valid tool-call JSON.
 - Hosted Responses-only tools are highest fidelity on the ChatGPT passthrough
-  path. BYOK routes get normal function-tool translation.
+  path. BYOK routes get function-tool translation (`web_search`, `computer_use`,
+  `apply_patch`, `local_shell`, `tool_search`, `custom_tool_call`).
 - The `bin/codex-app` and `bin/codex-model` shortcuts are POSIX shell scripts.
   In native Windows shells, use the installed `codex-shim` command instead.
 

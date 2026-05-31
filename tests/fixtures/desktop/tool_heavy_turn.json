@@ -1,0 +1,26 @@
+{
+  "input": [
+    {
+      "type": "local_shell_call",
+      "call_id": "call_shell_1",
+      "status": "completed",
+      "action": {"command": "echo hello", "working_directory": "/tmp"}
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_shell_1",
+      "output": "hello\n"
+    },
+    {
+      "type": "web_search_call",
+      "call_id": "call_search_1",
+      "status": "completed",
+      "action": {"type": "search", "query": "codex shim"}
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_search_1",
+      "output": "3 results"
+    }
+  ]
+}

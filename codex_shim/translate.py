@@ -4,11 +4,45 @@ import json
 import re
 from typing import Any
 
+from .settings import (
+    THINKING_DROP,
+    THINKING_FORCE_DISABLED,
+    THINKING_FORCE_ENABLED,
+    THINKING_KEEP_ALL,
+    THINKING_PASS,
+    provider_thinking_behavior,
+    provider_thinking_options,
+)
+
 
 THINK_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 
 SHIM_ENCRYPTED_CONTENT_PREFIX = "anthropic-thinking-v1:"
 _THINKING_MAGIC = SHIM_ENCRYPTED_CONTENT_PREFIX
+MAX_INLINE_MEDIA_BYTES = 50 * 1024 * 1024
+SUPPORTED_AUDIO_FORMATS = {"mp3", "wav", "webm", "ogg", "flac", "mp4", "m4a"}
+SUPPORTED_AUDIO_MIME_FORMATS = {
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/flac": "flac",
+    "audio/mp4": "mp4",
+    "audio/m4a": "m4a",
+}
+
+
+class ResponsesInputError(ValueError):
+    """Raised when a Responses request contains content this shim cannot translate."""
+
+
+def _encode_thinking_blob(payload: dict[str, Any]) -> str:
+    import base64
+
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    return _THINKING_MAGIC + base64.urlsafe_b64encode(raw).decode("ascii")
 
 
 def _decode_thinking_blob(encoded: Any) -> dict[str, Any] | None:
@@ -27,23 +61,39 @@ def _decode_thinking_blob(encoded: Any) -> dict[str, Any] | None:
     return data
 
 
-def responses_to_chat(body: dict[str, Any], upstream_model: str) -> dict[str, Any]:
+def responses_to_chat(
+    body: dict[str, Any],
+    upstream_model: str,
+    provider: str = "generic-chat-completion-api",
+    thinking_behavior: str | None = None,
+) -> dict[str, Any]:
     messages = []
     instructions = body.get("instructions")
     if instructions:
         messages.append({"role": "system", "content": _content_to_text(instructions)})
-    pending_reasoning: str | None = None
+    has_reasoning_content = False
+    pending_reasoning: list[str] = []
     for m in _responses_input_to_messages(body.get("input")):
         if m.get("_reasoning_only"):
-            summary = m.get("summary") or []
-            text = " ".join(item.get("text", "") for item in summary if isinstance(item, dict))
+            text = str(m.get("reasoning_content") or "")
             if text:
-                pending_reasoning = text
+                pending_reasoning.append(text)
+                has_reasoning_content = True
             continue
         if pending_reasoning and m.get("role") == "assistant":
-            m["reasoning_content"] = pending_reasoning
-            pending_reasoning = None
+            existing = str(m.get("reasoning_content") or "")
+            pieces = [*pending_reasoning, existing] if existing else pending_reasoning
+            m["reasoning_content"] = "\n".join(piece for piece in pieces if piece)
+            pending_reasoning = []
+        elif pending_reasoning:
+            messages.append({"role": "assistant", "content": "", "reasoning_content": "\n".join(pending_reasoning)})
+            pending_reasoning = []
         messages.append(m)
+    if pending_reasoning:
+        messages.append({"role": "assistant", "content": "", "reasoning_content": "\n".join(pending_reasoning)})
+    behavior = _provider_thinking_behavior(provider.lower(), upstream_model, thinking_behavior)
+    if behavior in {THINKING_DROP, THINKING_FORCE_DISABLED}:
+        messages = _drop_reasoning_content(messages)
     messages = _sanitize_chat_messages(_merge_consecutive_messages(_normalize_chat_roles(messages)))
 
     chat: dict[str, Any] = {
@@ -57,6 +107,16 @@ def responses_to_chat(body: dict[str, Any], upstream_model: str) -> dict[str, An
     _copy_if_present(body, chat, "max_tokens")
     _copy_if_present(body, chat, "parallel_tool_calls")
     _copy_if_present(body, chat, "reasoning_effort")
+    thinking_raw = body.get("thinking")
+    if behavior == THINKING_FORCE_DISABLED:
+        chat["thinking"] = {"type": "disabled"}
+    elif behavior in {THINKING_PASS, THINKING_KEEP_ALL, THINKING_FORCE_ENABLED}:
+        if thinking_raw is True:
+            chat["thinking"] = _enabled_thinking_options(provider.lower(), upstream_model, behavior)
+        elif thinking_raw:
+            chat["thinking"] = thinking_raw
+        elif behavior == THINKING_FORCE_ENABLED or has_reasoning_content:
+            chat["thinking"] = _enabled_thinking_options(provider.lower(), upstream_model, behavior)
 
     tools = _responses_tools_to_chat_tools(body.get("tools"))
     if tools:
@@ -65,6 +125,54 @@ def responses_to_chat(body: dict[str, Any], upstream_model: str) -> dict[str, An
         if tool_choice is not None:
             chat["tool_choice"] = tool_choice
     return chat
+
+
+def validate_responses_input(body: dict[str, Any]) -> None:
+    _validate_responses_items(body.get("input"))
+    _responses_input_to_messages(body.get("input"))
+
+
+KNOWN_RESPONSE_INPUT_TYPES = {
+    "message",
+    "input_text",
+    "text",
+    "input_image",
+    "input_audio",
+    "computer_call_output",
+    "function_call",
+    "function_call_output",
+    "custom_tool_call",
+    "custom_tool_call_output",
+    "mcp_tool_call",
+    "mcp_tool_call_output",
+    "tool_search_call",
+    "tool_search_output",
+    "local_shell_call",
+    "web_search_call",
+    "image_generation_call",
+    "context_compaction",
+    "compaction",
+    "compaction_trigger",
+    "reasoning",
+    "other",
+}
+
+
+def _validate_responses_items(value: Any) -> None:
+    if value is None or isinstance(value, str):
+        return
+    if not isinstance(value, list):
+        return
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        item_type = item.get("type")
+        if item_type is None and "role" in item:
+            continue
+        if item_type is None:
+            continue
+        if str(item_type) not in KNOWN_RESPONSE_INPUT_TYPES:
+            raise ResponsesInputError(f"Unsupported Responses input item type: {item_type}")
 
 
 def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens: int | None) -> dict[str, Any]:
@@ -223,14 +331,18 @@ def chat_completion_to_response(payload: dict[str, Any], requested_model: str) -
     choice = (payload.get("choices") or [{}])[0]
     message = choice.get("message") or {}
     output: list[dict[str, Any]] = []
-    reasoning = message.get("reasoning_content")
+    reasoning = message.get("reasoning_content") or message.get("reasoning") or _minimax_reasoning(message)
     if reasoning:
+        reasoning_text = str(reasoning)
         output.append(
             {
-                "id": "reasoning_0",
+                "id": "rs_0",
                 "type": "reasoning",
                 "status": "completed",
-                "summary": [{"type": "summary_text", "text": reasoning}],
+                "summary": [{"type": "summary_text", "text": reasoning_text}],
+                "encrypted_content": _encode_thinking_blob(
+                    {"type": "thinking", "thinking": reasoning_text, "signature": ""}
+                ),
             }
         )
     text = strip_think(message.get("content") or "")
@@ -245,17 +357,7 @@ def chat_completion_to_response(payload: dict[str, Any], requested_model: str) -
             }
         )
     for call in message.get("tool_calls") or []:
-        fn = call.get("function") or {}
-        output.append(
-            {
-                "id": call.get("id", "call_0"),
-                "type": "function_call",
-                "status": "completed",
-                "call_id": call.get("id", "call_0"),
-                "name": fn.get("name", ""),
-                "arguments": fn.get("arguments", ""),
-            }
-        )
+        output.append(tool_call_to_response_item(call, status="completed"))
     return {
         "id": payload.get("id", "resp_chat"),
         "object": "response",
@@ -268,11 +370,265 @@ def chat_completion_to_response(payload: dict[str, Any], requested_model: str) -
 
 
 def anthropic_to_response(payload: dict[str, Any], requested_model: str) -> dict[str, Any]:
-    return chat_completion_to_response(anthropic_to_chat_response(payload, requested_model), requested_model)
+    output: list[dict[str, Any]] = []
+    text_chunks: list[str] = []
+
+    def flush_text() -> None:
+        if not text_chunks:
+            return
+        text = strip_think("".join(text_chunks))
+        text_chunks.clear()
+        if not text:
+            return
+        output.append(
+            {
+                "id": f"msg_{len(output)}",
+                "type": "message",
+                "status": "completed",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": text, "annotations": []}],
+            }
+        )
+
+    for block in payload.get("content", []):
+        if not isinstance(block, dict):
+            continue
+        block_type = block.get("type")
+        if block_type == "text":
+            text_chunks.append(str(block.get("text") or ""))
+            continue
+        flush_text()
+        if block_type == "thinking":
+            thinking = str(block.get("thinking") or "")
+            output.append(
+                {
+                    "id": f"rs_{len(output)}",
+                    "type": "reasoning",
+                    "status": "completed",
+                    "summary": [{"type": "summary_text", "text": thinking}] if thinking else [],
+                    "encrypted_content": _encode_thinking_blob(
+                        {
+                            "type": "thinking",
+                            "thinking": thinking,
+                            "signature": str(block.get("signature") or ""),
+                        }
+                    ),
+                }
+            )
+        elif block_type == "redacted_thinking":
+            output.append(
+                {
+                    "id": f"rs_{len(output)}",
+                    "type": "reasoning",
+                    "status": "completed",
+                    "summary": [],
+                    "encrypted_content": _encode_thinking_blob(
+                        {"type": "redacted_thinking", "data": str(block.get("data") or "")}
+                    ),
+                }
+            )
+        elif block_type == "tool_use":
+            call_id = block.get("id") or f"call_{len(output)}"
+            output.append(
+                tool_call_to_response_item(
+                    {
+                        "id": call_id,
+                        "function": {
+                            "name": block.get("name") or "",
+                            "arguments": _jsonish(block.get("input", {})),
+                        },
+                    },
+                    status="completed",
+                )
+            )
+    flush_text()
+    return {
+        "id": payload.get("id", "resp_anthropic"),
+        "object": "response",
+        "created_at": payload.get("created_at", 0),
+        "status": "completed",
+        "model": requested_model,
+        "output": output,
+        "usage": payload.get("usage"),
+    }
 
 
 def strip_think(text: str) -> str:
     return THINK_RE.sub("", text or "")
+
+
+def _minimax_reasoning(message: dict[str, Any]) -> str:
+    details = message.get("reasoning_details")
+    if not isinstance(details, list):
+        return ""
+    chunks: list[str] = []
+    for item in details:
+        if not isinstance(item, dict):
+            continue
+        text = item.get("text") or item.get("reasoning_content") or item.get("content")
+        if text:
+            chunks.append(str(text))
+    return "\n".join(chunks)
+
+
+def _provider_thinking_behavior(provider: str, upstream_model: str, override: str | None = None) -> str:
+    if override:
+        return str(override).strip().lower().replace("-", "_").replace(" ", "_")
+    return provider_thinking_behavior(provider, upstream_model)
+
+
+def _enabled_thinking_options(provider: str, upstream_model: str, behavior: str | None = None) -> dict[str, Any]:
+    if behavior == THINKING_KEEP_ALL:
+        return {"type": "enabled", "keep": "all"}
+    return provider_thinking_options(provider, upstream_model)
+
+
+def _drop_reasoning_content(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cleaned: list[dict[str, Any]] = []
+    for message in messages:
+        if message.get("_reasoning_only"):
+            continue
+        item = dict(message)
+        item.pop("reasoning_content", None)
+        item.pop("reasoning", None)
+        cleaned.append(item)
+    return cleaned
+
+
+NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME = {
+    "web_search": "web_search_call",
+    "local_shell": "local_shell_call",
+    "tool_search": "tool_search_call",
+    "image_generation": "image_generation_call",
+}
+
+HOSTED_CALL_FALLBACK_NAMES = {
+    "local_shell_call": "local_shell",
+    "web_search_call": "web_search",
+    "image_generation_call": "image_generation",
+    "tool_search_call": "tool_search",
+}
+
+
+def _hosted_tool_arguments(item: dict[str, Any]) -> str:
+    raw = item.get("arguments") or item.get("input")
+    if isinstance(raw, str):
+        return raw
+    if raw is not None:
+        return _jsonish(raw)
+    action = item.get("action")
+    if action is not None:
+        return action if isinstance(action, str) else _jsonish(action)
+    extras = {key: item[key] for key in ("command", "query", "prompt") if item.get(key)}
+    if extras:
+        return _jsonish(extras)
+    return "{}"
+
+
+def _hosted_call_to_function_tool(item: dict[str, Any]) -> dict[str, Any] | None:
+    item_type = str(item.get("type") or "")
+    fallback_name = HOSTED_CALL_FALLBACK_NAMES.get(item_type)
+    if not fallback_name:
+        return None
+    call_id = item.get("call_id") or item.get("id") or "call_0"
+    return {
+        "id": call_id,
+        "type": "function",
+        "function": {
+            "name": fallback_name,
+            "arguments": _hosted_tool_arguments(item),
+        },
+    }
+
+
+def _compaction_summary_text(item: dict[str, Any]) -> str:
+    summary = item.get("summary")
+    if isinstance(summary, list):
+        parts = []
+        for part in summary:
+            if isinstance(part, dict) and part.get("text"):
+                parts.append(str(part["text"]))
+            elif isinstance(part, str):
+                parts.append(part)
+        text = "\n".join(part for part in parts if part).strip()
+        if text:
+            return text
+    content = item.get("content")
+    if isinstance(content, list):
+        parts = [str(part.get("text") or "") for part in content if isinstance(part, dict)]
+        text = "\n".join(part for part in parts if part).strip()
+        if text:
+            return text
+    return str(item.get("text") or "").strip()
+
+
+def _compaction_to_system_message(item: dict[str, Any]) -> dict[str, Any] | None:
+    summary = _compaction_summary_text(item)
+    if not summary:
+        return None
+    return {"role": "system", "content": f"[Compacted conversation context]\n{summary}"}
+
+
+def _parse_json_object(raw: str) -> dict[str, Any] | None:
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def function_call_to_native_item(
+    name: str,
+    call_id: str,
+    arguments: str,
+    *,
+    status: str = "completed",
+) -> dict[str, Any] | None:
+    native_type = NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME.get(name)
+    if not native_type:
+        return None
+    parsed = _parse_json_object(arguments)
+    item: dict[str, Any] = {
+        "id": call_id,
+        "type": native_type,
+        "status": status,
+        "call_id": call_id,
+    }
+    if native_type == "web_search_call":
+        item["action"] = parsed if parsed else {"query": arguments}
+    elif native_type == "local_shell_call":
+        item["action"] = parsed if parsed else {"command": arguments}
+    elif native_type == "tool_search_call":
+        item["arguments"] = arguments or "{}"
+    elif native_type == "image_generation_call":
+        parsed_action = parsed if parsed else {}
+        if not parsed_action and arguments:
+            parsed_action = {"prompt": arguments}
+        item["action"] = parsed_action
+        revised = parsed_action.get("revised_prompt") or parsed_action.get("prompt")
+        if revised:
+            item["revised_prompt"] = str(revised)
+    return item
+
+
+def tool_call_to_response_item(call: dict[str, Any], *, status: str = "completed") -> dict[str, Any]:
+    fn = call.get("function") or {}
+    name = fn.get("name") or ""
+    call_id = call.get("id") or "call_0"
+    arguments = fn.get("arguments") or ""
+    native = function_call_to_native_item(name, call_id, arguments, status=status)
+    if native is not None:
+        return native
+    return {
+        "id": call_id,
+        "type": "function_call",
+        "status": status,
+        "call_id": call_id,
+        "name": name,
+        "arguments": arguments,
+    }
 
 
 def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
@@ -287,7 +643,15 @@ def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
 
     def flush_pending_assistant_tool_calls():
         if pending_tool_calls:
-            messages.append({"role": "assistant", "content": None, "tool_calls": list(pending_tool_calls)})
+            if (
+                messages
+                and messages[-1].get("role") == "assistant"
+                and not messages[-1].get("_reasoning_only")
+                and "tool_calls" not in messages[-1]
+            ):
+                messages[-1]["tool_calls"] = list(pending_tool_calls)
+            else:
+                messages.append({"role": "assistant", "content": None, "tool_calls": list(pending_tool_calls)})
             pending_tool_calls.clear()
 
     for item in value:
@@ -304,7 +668,7 @@ def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             if role == "developer":
                 role = "system"
             messages.append({"role": role, "content": _responses_content_to_chat_content(item.get("content", ""))})
-        elif item_type in {"input_text", "text", "input_image"}:
+        elif item_type in {"input_text", "text", "input_image", "input_audio"}:
             flush_pending_assistant_tool_calls()
             messages.append({"role": "user", "content": _responses_content_to_chat_content(item)})
         elif item_type == "computer_call_output":
@@ -331,16 +695,65 @@ def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             messages.append({"role": "tool", "tool_call_id": item.get("call_id"), "content": _content_to_text(output)})
             if _has_visual_content(output):
                 messages.append({"role": "user", "content": _visual_feedback_chat_content(output, item.get("call_id"))})
+        elif item_type in {"custom_tool_call", "mcp_tool_call"}:
+            call_id = item.get("call_id") or item.get("id") or "call_0"
+            default_name = "mcp_tool_call" if item_type == "mcp_tool_call" else "custom_tool_call"
+            pending_tool_calls.append(
+                {
+                    "id": call_id,
+                    "type": "function",
+                    "function": {
+                        "name": item.get("name") or item.get("tool_name") or default_name,
+                        "arguments": item.get("arguments") or item.get("input") or "",
+                    },
+                }
+            )
+        elif item_type in {"custom_tool_call_output", "mcp_tool_call_output", "tool_search_output"}:
+            flush_pending_assistant_tool_calls()
+            output = item.get("output", item.get("content", ""))
+            messages.append({"role": "tool", "tool_call_id": item.get("call_id"), "content": _content_to_text(output)})
+            if _has_visual_content(output):
+                messages.append({"role": "user", "content": _visual_feedback_chat_content(output, item.get("call_id"))})
+        elif item_type == "tool_search_call":
+            tool = _hosted_call_to_function_tool(item)
+            if tool:
+                pending_tool_calls.append(tool)
+        elif item_type in {"local_shell_call", "web_search_call", "image_generation_call"}:
+            tool = _hosted_call_to_function_tool(item)
+            if tool:
+                pending_tool_calls.append(tool)
+        elif item_type in {"context_compaction", "compaction"}:
+            flush_pending_assistant_tool_calls()
+            msg = _compaction_to_system_message(item)
+            if msg:
+                messages.append(msg)
+        elif item_type in {"compaction_trigger", "other"}:
+            flush_pending_assistant_tool_calls()
+            continue
         elif item_type == "reasoning":
             # For Chat-Completions upstreams reasoning is informational only.
             # We keep it as a marker so the Anthropic translator can reattach
             # encrypted_content as a `thinking` block on the assistant turn.
             flush_pending_assistant_tool_calls()
+            encrypted = item.get("encrypted_content")
+            decoded = _decode_thinking_blob(encrypted)
+            reasoning_content = ""
+            if decoded is not None and decoded.get("thinking"):
+                reasoning_content = str(decoded["thinking"])
+            else:
+                summary_chunks = []
+                for summary in item.get("summary") or []:
+                    if isinstance(summary, dict) and summary.get("text"):
+                        summary_chunks.append(str(summary["text"]))
+                    elif isinstance(summary, str):
+                        summary_chunks.append(summary)
+                reasoning_content = "\n".join(summary_chunks)
             messages.append(
                 {
                     "role": "assistant",
                     "_reasoning_only": True,
-                    "encrypted_content": item.get("encrypted_content"),
+                    "encrypted_content": encrypted,
+                    "reasoning_content": reasoning_content,
                     "summary": item.get("summary") or [],
                     "content": None,
                 }
@@ -353,7 +766,7 @@ def _responses_content_to_chat_content(content: Any) -> str | list[dict[str, Any
     parts = _chat_parts_from_content(content)
     if not parts:
         return ""
-    if any(part.get("type") == "image_url" for part in parts):
+    if any(part.get("type") != "text" for part in parts):
         return parts
     return "\n".join(str(part.get("text", "")) for part in parts if part.get("type") == "text")
 
@@ -389,6 +802,9 @@ def _chat_parts_from_content(content: Any) -> list[dict[str, Any]]:
         if content_type in {"input_text", "output_text", "text"}:
             text = str(content.get("text", ""))
             return [{"type": "text", "text": text}] if text else []
+        if content_type == "input_audio" or "input_audio" in content:
+            audio = _chat_audio_part(content)
+            return [audio] if audio else []
         if content_type in {"input_image", "image_url"} or "image_url" in content:
             image = _chat_image_part(content)
             return [image] if image else []
@@ -401,6 +817,8 @@ def _chat_parts_from_content(content: Any) -> list[dict[str, Any]]:
         if "text" in content:
             text = str(content.get("text", ""))
             return [{"type": "text", "text": text}] if text else []
+        if content_type:
+            raise ResponsesInputError(f"Unsupported Responses content part type: {content_type}")
     return []
 
 
@@ -415,15 +833,86 @@ def _chat_image_part(part: dict[str, Any]) -> dict[str, Any] | None:
     return {"type": "image_url", "image_url": image_url}
 
 
+def _chat_audio_part(part: dict[str, Any]) -> dict[str, Any] | None:
+    input_audio = part.get("input_audio")
+    if isinstance(input_audio, dict):
+        audio = dict(input_audio)
+        _normalize_audio_part(audio)
+        return {"type": "input_audio", "input_audio": audio}
+    if isinstance(input_audio, str):
+        audio: dict[str, Any] = {"data": input_audio}
+        if part.get("format"):
+            audio["format"] = part["format"]
+        _normalize_audio_part(audio)
+        return {"type": "input_audio", "input_audio": audio}
+    data = part.get("data")
+    if isinstance(data, str):
+        audio = {"data": data}
+        if part.get("format"):
+            audio["format"] = part["format"]
+        _normalize_audio_part(audio)
+        return {"type": "input_audio", "input_audio": audio}
+    return None
+
+
+def _normalize_audio_part(audio: dict[str, Any]) -> None:
+    data = audio.get("data")
+    if not isinstance(data, str) or not data:
+        raise ResponsesInputError("input_audio.data is required")
+    explicit_format = str(audio.get("format") or "").lower()
+    if explicit_format and explicit_format not in SUPPORTED_AUDIO_FORMATS:
+        raise ResponsesInputError(f"Unsupported input_audio format: {explicit_format}")
+    inferred_format = _infer_audio_format_from_data_url(data)
+    if inferred_format:
+        if explicit_format and explicit_format != inferred_format:
+            raise ResponsesInputError(
+                f"input_audio format {explicit_format} does not match data URL media type {inferred_format}"
+            )
+        audio["format"] = inferred_format
+    elif not explicit_format:
+        raise ResponsesInputError("input_audio.format is required when data is not an audio data URL")
+    _validate_inline_media_size(data, "input_audio.data")
+
+
+def _infer_audio_format_from_data_url(data: str) -> str:
+    if not data.startswith("data:"):
+        return ""
+    match = re.match(r"data:([^;,]+);base64,(.*)", data, re.DOTALL)
+    if not match:
+        raise ResponsesInputError("input_audio.data must be a base64 data URL when it starts with data:")
+    media_type = match.group(1).lower()
+    inferred = SUPPORTED_AUDIO_MIME_FORMATS.get(media_type)
+    if not inferred:
+        raise ResponsesInputError(f"Unsupported input_audio media type: {media_type}")
+    return inferred
+
+
+def _validate_inline_media_size(data: str, field_name: str) -> None:
+    if not data.startswith("data:"):
+        return
+    match = re.match(r"data:[^;,]+;base64,(.*)", data, re.DOTALL)
+    if not match:
+        return
+    payload = "".join(match.group(1).split())
+    padding = payload.count("=")
+    decoded_size = max(0, (len(payload) * 3 // 4) - padding)
+    if decoded_size > MAX_INLINE_MEDIA_BYTES:
+        raise ResponsesInputError(f"{field_name} exceeds {MAX_INLINE_MEDIA_BYTES} bytes")
+
+
 def _image_url_from_part(part: dict[str, Any]) -> str:
     image_url = part.get("image_url")
     if isinstance(image_url, str):
+        _validate_inline_media_size(image_url, "image_url")
         return image_url
     if isinstance(image_url, dict) and isinstance(image_url.get("url"), str):
-        return image_url["url"]
+        url = image_url["url"]
+        _validate_inline_media_size(url, "image_url")
+        return url
     for key in ("url", "file_url"):
         value = part.get(key)
         if isinstance(value, str):
+            _validate_inline_media_size(value, key)
             return value
     return ""
 
@@ -481,12 +970,16 @@ def _content_to_text(content: Any) -> str:
             elif isinstance(part, dict):
                 if part.get("type") in {"input_text", "output_text", "text"}:
                     parts.append(str(part.get("text", "")))
+                elif part.get("type") == "input_audio" or "input_audio" in part:
+                    parts.append("[audio]")
                 elif part.get("type") in {"input_image", "image_url"} or "image_url" in part:
                     parts.append("[image]")
                 elif "content" in part:
                     parts.append(_content_to_text(part["content"]))
         return "\n".join(p for p in parts if p)
     if isinstance(content, dict):
+        if content.get("type") == "input_audio" or "input_audio" in content:
+            return "[audio]"
         if content.get("type") in {"input_image", "image_url"} or "image_url" in content:
             return "[image]"
         if "output" in content:
@@ -541,6 +1034,8 @@ def _responses_tool_function_name(tool: dict[str, Any]) -> str:
         "apply_patch": "apply_patch",
         "local_shell": "local_shell",
         "shell": "local_shell",
+        "tool_search": "tool_search",
+        "tool_search_call": "tool_search",
     }
     if tool_type in aliases:
         return aliases[tool_type]
@@ -566,6 +1061,10 @@ def _native_tool_description(tool: dict[str, Any]) -> str:
         return "Run a local shell command through Codex."
     if tool_type.startswith("mcp"):
         return "Interact with Codex MCP resources."
+    if tool_type.startswith("tool_search"):
+        return "Search available tools using Codex's tool-search fallback."
+    if tool_type == "custom_tool_call":
+        return "Invoke a custom Codex tool through the shim function-tool fallback."
     return f"Codex tool fallback for Responses tool type {tool_type}."
 
 
@@ -604,6 +1103,25 @@ def _native_tool_parameters(tool: dict[str, Any]) -> dict[str, Any]:
             "type": "object",
             "properties": {"command": {"type": "string", "description": "Shell command to run"}},
             "required": ["command"],
+            "additionalProperties": True,
+        }
+    if tool_type.startswith("tool_search"):
+        return {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Tool search query"},
+                "namespace": {"type": "string", "description": "Optional tool namespace"},
+            },
+            "required": ["query"],
+            "additionalProperties": True,
+        }
+    if tool_type == "custom_tool_call":
+        return {
+            "type": "object",
+            "properties": {
+                "input": {"type": "string", "description": "Custom tool input payload"},
+                "arguments": {"type": "object", "description": "Custom tool arguments"},
+            },
             "additionalProperties": True,
         }
     return {"type": "object", "properties": {"input": {"type": "string"}}, "additionalProperties": True}

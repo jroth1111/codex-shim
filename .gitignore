@@ -6,6 +6,7 @@
 # Local Codex inspection artifacts (don't ship)
 *.asar
 app-asar-work/
+codex-desktop-decompiled/
 *-bsLDOISN.js
 hooks-settings-model-*.js
 model-queries-*.js

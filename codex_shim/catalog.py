@@ -1,19 +1,32 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
-from .settings import CHATGPT_MODEL_SLUG, PROVIDER_NAME, ShimModel, chatgpt_passthrough_available, default_model_slug
+from .settings import CHATGPT_MODEL_SLUG, PROVIDER_NAME, ShimModel, default_model_slug
 
 
 PLAN_TIERS = ["free", "plus", "pro", "team", "business", "enterprise"]
+REASONING_PROVIDERS = {"deepseek", "anthropic", "minimax", "dashscope", "volcengine"}
+
+
+def websockets_enabled() -> bool:
+    raw = os.environ.get("CODEX_SHIM_ENABLE_WEBSOCKETS", "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
 
 
 def catalog_entry(model: ShimModel) -> dict:
+    if model.is_chatgpt:
+        return chatgpt_passthrough_entry()
     context = model.max_context_limit or _default_context(model)
     compact = max(8_000, int(context * 0.8))
     truncation = min(64_000, max(8_000, int(context * 0.32)))
     reasoning = _reasoning_effort(model)
+    supports_reasoning = _supports_reasoning_summaries(model)
+    capabilities = getattr(model, "capabilities", None)
+    supports_images = not model.no_image_support and (capabilities.supports_images if capabilities is not None else True)
+    supports_parallel = capabilities.supports_parallel_tool_calls if capabilities is not None else True
     return {
         "slug": model.slug,
         "display_name": model.display_name,
@@ -29,18 +42,18 @@ def catalog_entry(model: ShimModel) -> dict:
             {"effort": "high", "description": "Deeper reasoning"},
             {"effort": "xhigh", "description": "Maximum reasoning where supported"},
         ],
-        "default_reasoning_summary": "none",
-        "reasoning_summary_format": "none",
-        "supports_reasoning_summaries": False,
+        "default_reasoning_summary": "auto" if supports_reasoning else "none",
+        "reasoning_summary_format": "experimental" if supports_reasoning else "none",
+        "supports_reasoning_summaries": supports_reasoning,
         "default_verbosity": "low",
         "support_verbosity": False,
         "apply_patch_tool_type": "freeform",
         "web_search_tool_type": "text_and_image",
         "supports_search_tool": False,
-        "supports_parallel_tool_calls": True,
+        "supports_parallel_tool_calls": supports_parallel,
         "experimental_supported_tools": [],
-        "input_modalities": ["text"] if model.no_image_support else ["text", "image"],
-        "supports_image_detail_original": not model.no_image_support,
+        "input_modalities": ["text", "image"] if supports_images else ["text"],
+        "supports_image_detail_original": supports_images,
         "shell_type": "shell_command",
         "visibility": "list",
         "minimal_client_version": "0.0.1",
@@ -48,8 +61,12 @@ def catalog_entry(model: ShimModel) -> dict:
         "availability_nux": None,
         "upgrade": None,
         "priority": max(1, 1000 - model.index),
-        "prefer_websockets": False,
+        "prefer_websockets": websockets_enabled(),
         "available_in_plans": PLAN_TIERS,
+        "service_tiers": [],
+        "additional_speed_tiers": [],
+        "default_service_tier": None,
+        "effective_context_window_percent": 100,
         "base_instructions": "You are a coding agent running in Codex through a local BYOK shim.",
         "model_messages": {
             "instructions_template": (
@@ -99,8 +116,18 @@ def chatgpt_passthrough_entry() -> dict:
         "upgrade": None,
         "isDefault": True,
         "priority": 10000,
-        "prefer_websockets": False,
+        "prefer_websockets": websockets_enabled(),
         "available_in_plans": PLAN_TIERS,
+        "service_tiers": [
+            {
+                "id": "priority",
+                "name": "Fast",
+                "description": "1.5x speed, increased usage",
+            }
+        ],
+        "additional_speed_tiers": ["fast"],
+        "default_service_tier": None,
+        "effective_context_window_percent": 100,
         "base_instructions": "You are Codex, a coding agent powered by GPT-5.5.",
         "model_messages": {
             "instructions_template": "You are Codex, a coding agent powered by GPT-5.5.",
@@ -112,9 +139,7 @@ def chatgpt_passthrough_entry() -> dict:
 def write_catalog(models: list[ShimModel], path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     entries: list[dict] = []
-    if chatgpt_passthrough_available():
-        entries.append(chatgpt_passthrough_entry())
-    entries.extend(catalog_entry(model) for model in models)
+    entries.extend(catalog_entry(model) for model in models if getattr(model, "visible", True))
     payload = {"models": entries}
     path.write_text(json.dumps(payload, indent=2, sort_keys=False) + "\n")
     return path
@@ -139,6 +164,41 @@ experimental_bearer_token = "dummy"
 request_max_retries = 3
 stream_max_retries = 3
 stream_idle_timeout_ms = 600000
+supports_websockets = {str(websockets_enabled()).lower()}
+'''
+    path.write_text(text)
+    return path
+
+
+def write_direct_responses_config(
+    models: list[ShimModel],
+    path: Path,
+    catalog_path: Path,
+    base_url: str,
+    *,
+    provider_name: str = "vibeproxy_direct",
+    provider_display_name: str = "VibeProxy Direct",
+) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        default_slug = default_model_slug(models, include_chatgpt=False)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    text = f'''# Generated by codex-shim for direct Responses-compatible routing.
+# This mode points Codex directly at the upstream. No shim daemon is required.
+model = "{_toml_escape(default_slug)}"
+model_provider = "{_toml_escape(provider_name)}"
+model_catalog_json = "{_toml_escape(str(catalog_path))}"
+
+[model_providers.{_toml_escape(provider_name)}]
+name = "{_toml_escape(provider_display_name)}"
+base_url = "{_toml_escape(base_url.rstrip('/'))}"
+wire_api = "responses"
+experimental_bearer_token = "dummy"
+request_max_retries = 3
+stream_max_retries = 3
+stream_idle_timeout_ms = 600000
+supports_websockets = {str(websockets_enabled()).lower()}
 '''
     path.write_text(text)
     return path
@@ -156,6 +216,7 @@ def codex_config_overrides(catalog_path: Path, default_slug: str, port: int) -> 
         f'model_providers.{PROVIDER_NAME}.request_max_retries=3',
         f'model_providers.{PROVIDER_NAME}.stream_max_retries=3',
         f'model_providers.{PROVIDER_NAME}.stream_idle_timeout_ms=600000',
+        f'model_providers.{PROVIDER_NAME}.supports_websockets={str(websockets_enabled()).lower()}',
     ]
 
 
@@ -167,7 +228,23 @@ def _default_context(model: ShimModel) -> int:
         return 400_000
     if "gemini" in lower:
         return 1_000_000
+    if "kimi" in lower:
+        return 256_000
+    if "deepseek" in lower:
+        return 200_000
     return 128_000
+
+
+def _supports_reasoning_summaries(model: ShimModel) -> bool:
+    capabilities = getattr(model, "capabilities", None)
+    if capabilities is not None and capabilities.supports_reasoning_summaries:
+        return True
+    provider = model.provider.lower()
+    if provider in REASONING_PROVIDERS:
+        return True
+    if provider == "moonshot":
+        return model.model.startswith("kimi-")
+    return False
 
 
 def _reasoning_effort(model: ShimModel) -> str:
@@ -185,4 +262,3 @@ def _reasoning_effort(model: ShimModel) -> str:
 
 def _toml_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
-

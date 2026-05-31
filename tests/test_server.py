@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from aiohttp import web
@@ -11,6 +12,9 @@ from codex_shim.server import (
     ResponsesStreamState,
     ShimServer,
     _current_managed_model,
+    _merge_codex_forward_headers,
+    _metadata_as_forward_headers,
+    _passthrough_forward_headers,
     _picker_html,
     _rewrite_response_model,
     _sanitize_chatgpt_passthrough_body,
@@ -33,6 +37,18 @@ def auth_missing(monkeypatch, tmp_path):
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
     monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", missing)
+
+
+def test_sanitize_chatgpt_passthrough_body_preserves_hosted_tool_input_items():
+    body = {
+        "input": [
+            {"type": "local_shell_call", "call_id": "call_shell", "action": {"command": "pwd"}},
+            {"type": "web_search_call", "call_id": "call_search", "action": {"query": "docs"}},
+        ]
+    }
+    sanitized = _sanitize_chatgpt_passthrough_body(body)
+    types = [item.get("type") for item in sanitized["input"]]
+    assert types == ["local_shell_call", "web_search_call"]
 
 
 def test_sanitize_chatgpt_passthrough_body_drops_shim_reasoning():
@@ -122,8 +138,8 @@ def test_image_generation_detection_is_conservative():
     ) is True
 
 
-async def test_image_generation_routes_to_chatgpt_passthrough_and_rewrites_model(monkeypatch, tmp_path, auth_present):
-    captured = {}
+async def test_image_generation_does_not_bypass_selected_non_image_model(monkeypatch, tmp_path, auth_present):
+    captured = {"called": False}
 
     class FakeUpstream:
         status = 200
@@ -136,6 +152,7 @@ async def test_image_generation_routes_to_chatgpt_passthrough_and_rewrites_model
             pass
 
     async def fake_post(self, url, json=None, headers=None):
+        captured["called"] = True
         captured["url"] = url
         captured["body"] = json
         captured["headers"] = headers
@@ -168,12 +185,92 @@ async def test_image_generation_routes_to_chatgpt_passthrough_and_rewrites_model
             "tools": [{"type": "image_generation", "name": "image_generation"}],
         },
     )
+    assert resp.status == 400
+    payload = await resp.json()
+    assert payload["error"]["type"] == "unsupported_capability"
+    assert "Image generation requires" in payload["error"]["message"]
+    assert captured["called"] is False
+
+    await shim_client.close()
+
+
+async def test_chatgpt_image_generation_routes_to_chatgpt_passthrough(monkeypatch, tmp_path, auth_present):
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {"id": "resp_img", "model": "gpt-5.5", "output": [{"type": "image_generation_call", "model": "gpt-5.5"}]}
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["url"] = url
+        captured["body"] = json
+        captured["headers"] = headers
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "gpt-5.5",
+            "input": [{"role": "user", "content": "@image generate a neon fox"}],
+            "tools": [{"type": "image_generation", "name": "image_generation"}],
+        },
+    )
     assert resp.status == 200
     payload = await resp.json()
-    assert payload["model"] == "real-openai"
-    assert payload["output"][0]["model"] == "real-openai"
+    assert payload["model"] == "gpt-5.5"
+    assert payload["output"][0]["model"] == "gpt-5.5"
     assert captured["body"]["model"] == "gpt-5.5"
     assert captured["headers"]["Authorization"] == "Bearer stub"
+
+    await shim_client.close()
+
+
+async def test_chatgpt_passthrough_keeps_native_previous_response_id(monkeypatch, tmp_path, auth_present):
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {"id": "resp_native_next", "model": "gpt-5.5", "output": [{"type": "message", "role": "assistant"}]}
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["url"] = url
+        captured["body"] = json
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "gpt-5.5", "previous_response_id": "native-upstream-id", "input": "continue"},
+    )
+
+    assert resp.status == 200
+    payload = await resp.json()
+    assert payload["id"] == "resp_native_next"
+    assert captured["url"] == "https://chatgpt.com/backend-api/codex/responses"
+    assert captured["body"]["previous_response_id"] == "native-upstream-id"
 
     await shim_client.close()
 
@@ -227,6 +324,515 @@ async def test_responses_routes_to_openai_chat(tmp_path):
     await upstream_client.close()
 
 
+async def test_responses_invalid_content_returns_400_without_upstream_call(tmp_path):
+    captured = {"called": False}
+
+    async def chat(request):
+        captured["called"] = True
+        return web.json_response({"id": "chatcmpl_fake", "choices": [{"message": {"role": "assistant", "content": "hello"}}]})
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": [{"role": "user", "content": [{"type": "file", "file_id": "file_123"}]}]},
+    )
+
+    assert resp.status == 400
+    payload = await resp.json()
+    assert payload["error"]["type"] == "invalid_request_error"
+    assert "Unsupported Responses content part type: file" in payload["error"]["message"]
+    assert captured["called"] is False
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_previous_response_id_replays_stored_window(tmp_path):
+    captured: list[dict] = []
+
+    async def chat(request):
+        body = await request.json()
+        captured.append(body)
+        turn = len(captured)
+        return web.json_response(
+            {
+                "id": "chatcmpl_first" if turn == 1 else "chatcmpl_second",
+                "choices": [{"message": {"role": "assistant", "content": "first answer" if turn == 1 else "second answer"}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "first"})
+    assert first.status == 200
+    first_payload = await first.json()
+    assert first_payload["id"] == "chatcmpl_first"
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "previous_response_id": "chatcmpl_first", "input": "second"},
+    )
+    assert second.status == 200
+
+    assert captured[1]["messages"] == [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "first answer"},
+        {"role": "user", "content": "second"},
+    ]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_previous_response_id_unknown_returns_404(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": "http://example.invalid/v1",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "previous_response_id": "missing", "input": "second"},
+    )
+
+    assert resp.status == 404
+    payload = await resp.json()
+    assert payload["error"]["type"] == "not_found"
+    assert "missing" in payload["error"]["message"]
+
+    await shim_client.close()
+
+
+async def test_structured_access_log_includes_trace_latency_and_tokens(tmp_path, capsys):
+    async def chat(request):
+        await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_logged",
+                "choices": [{"message": {"role": "assistant", "content": "logged"}}],
+                "usage": {
+                    "prompt_tokens": 4,
+                    "completion_tokens": 3,
+                    "total_tokens": 7,
+                    "prompt_tokens_details": {"cached_tokens": 2},
+                    "completion_tokens_details": {"reasoning_tokens": 1},
+                },
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "hi", "metadata": {"trace_id": "metadata-trace"}},
+        headers={"x-trace-id": "trace-test"},
+    )
+    assert resp.status == 200
+
+    access_line = [line for line in capsys.readouterr().out.splitlines() if line.startswith("[access] ")][-1]
+    record = json.loads(access_line.removeprefix("[access] "))
+    assert record["trace_id"] == "metadata-trace"
+    assert record["path"] == "/v1/responses"
+    assert record["model"] == "real-openai"
+    assert record["provider_model"] == "real-openai"
+    assert record["model_route"] == "direct_slug"
+    assert record["status"] == 200
+    assert record["stream"] is False
+    assert isinstance(record["latency_ms"], int)
+    assert isinstance(record["provider_ms"], int)
+    assert isinstance(record["total_ms"], int)
+    assert record["token_stats"] == {
+        "input_tokens": 4,
+        "output_tokens": 3,
+        "total_tokens": 7,
+        "cached_tokens": 2,
+        "reasoning_tokens": 1,
+    }
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_streaming_response_is_stored_for_previous_response_id(tmp_path):
+    captured: list[dict] = []
+
+    async def chat(request):
+        body = await request.json()
+        captured.append(body)
+        if body.get("stream"):
+            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+            await response.prepare(request)
+            await response.write(b'data: {"choices":[{"delta":{"content":"streamed answer"}}]}\n\n')
+            await response.write(b"data: [DONE]\n\n")
+            await response.write_eof()
+            return response
+        return web.json_response(
+            {"id": "chatcmpl_after_stream", "choices": [{"message": {"role": "assistant", "content": "after stream"}}]}
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "first", "stream": True})
+    assert first.status == 200
+    completed = [event for event in _sse_events(await first.text()) if event.get("type") == "response.completed"][-1]
+    response_id = completed["response"]["id"]
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "previous_response_id": response_id, "input": "second"},
+    )
+    assert second.status == 200
+    assert captured[1]["messages"] == [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "streamed answer"},
+        {"role": "user", "content": "second"},
+    ]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_streaming_hosted_tool_turn_stored_with_session_id(tmp_path):
+    captured: list[dict] = []
+
+    async def chat(request):
+        body = await request.json()
+        captured.append(body)
+        if body.get("stream"):
+            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+            await response.prepare(request)
+            await response.write(
+                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_shell","type":"function","function":{"name":"local_shell","arguments":""}}]}}]}\n\n'
+            )
+            await response.write(
+                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"command\\":\\"echo probe\\"}"}}]}}]}\n\n'
+            )
+            await response.write(b"data: [DONE]\n\n")
+            await response.write_eof()
+            return response
+        return web.json_response(
+            {"id": "chatcmpl_follow", "choices": [{"message": {"role": "assistant", "content": "acknowledged"}}]}
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "run shell", "stream": True},
+        headers={"session_id": "stream-hosted-session"},
+    )
+    assert first.status == 200
+    completed = [event for event in _sse_events(await first.text()) if event.get("type") == "response.completed"][-1]
+    response_id = completed["response"]["id"]
+    tool_types = [item.get("type") for item in completed["response"].get("output") or []]
+    assert "local_shell_call" in tool_types
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "previous_response_id": response_id,
+            "input": [{"type": "function_call_output", "call_id": "call_shell", "output": "probe"}],
+            "stream": False,
+        },
+        headers={"session_id": "stream-hosted-session"},
+    )
+    assert second.status == 200
+    follow_up = captured[1]
+    tool_names = [
+        call["function"]["name"]
+        for message in follow_up["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert "local_shell" in tool_names
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_compact_returns_501_when_provider_policy_disables_compact(tmp_path):
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "no-compact",
+                        "model": "real-model",
+                        "display_name": "No Compact",
+                        "provider": "generic-chat-completion-api",
+                        "base_url": "http://127.0.0.1:9/v1",
+                        "supports_compact": False,
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses/compact", json={"model": "no-compact", "input": "old state"})
+
+    assert resp.status == 501
+    payload = await resp.json()
+    assert payload["error"]["type"] == "unsupported_route"
+    assert "does not support" in payload["error"]["message"]
+
+    await shim_client.close()
+
+
+async def test_deepseek_replays_reasoning_content_on_tool_followup(tmp_path):
+    captured = {}
+
+    async def chat(request):
+        captured["body"] = await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_fake",
+                "choices": [{"message": {"role": "assistant", "content": "done"}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "model": "deepseek-chat",
+                        "display_name": "DeepSeek Chat",
+                        "provider": "deepseek",
+                        "base_url": str(upstream_client.make_url("/v1")),
+                        "api_key": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "deepseek-chat",
+            "input": [
+                {
+                    "type": "reasoning",
+                    "summary": [{"type": "summary_text", "text": "Need the current date before answering."}],
+                },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "Let me check the date."}],
+                },
+                {
+                    "type": "function_call",
+                    "call_id": "call_date",
+                    "name": "get_date",
+                    "arguments": "{}",
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_date",
+                    "output": "2026-05-26",
+                },
+            ],
+        },
+    )
+
+    assert resp.status == 200
+    assert captured["body"]["model"] == "deepseek-chat"
+    assert captured["body"]["thinking"] == {"type": "enabled"}
+    assert captured["body"]["messages"][0] == {
+        "role": "assistant",
+        "content": "Let me check the date.",
+        "tool_calls": [
+            {
+                "id": "call_date",
+                "type": "function",
+                "function": {"name": "get_date", "arguments": "{}"},
+            }
+        ],
+        "reasoning_content": "Need the current date before answering.",
+    }
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_moonshot_legacy_model_does_not_forward_codex_thinking(tmp_path):
+    captured = {}
+
+    async def chat(request):
+        captured["body"] = await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_fake",
+                "choices": [{"message": {"role": "assistant", "content": "done"}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "model": "moonshot-v1-32k",
+                        "display_name": "Moonshot v1 32K",
+                        "provider": "moonshot",
+                        "base_url": str(upstream_client.make_url("/v1")),
+                        "api_key": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "moonshot-v1-32k", "input": "hi", "thinking": True},
+    )
+
+    assert resp.status == 200
+    assert "thinking" not in captured["body"]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
 def _sse_events(text: str) -> list[dict]:
     events = []
     for block in text.split("\n\n"):
@@ -236,6 +842,17 @@ def _sse_events(text: str) -> list[dict]:
         if data and data != "[DONE]":
             events.append(json.loads(data))
     return events
+
+
+class _FakeStreamResponse:
+    def __init__(self):
+        self.chunks: list[bytes] = []
+
+    async def write(self, data: bytes):
+        self.chunks.append(data)
+
+    def text(self) -> str:
+        return b"".join(self.chunks).decode()
 
 
 async def test_streaming_openai_chat_response_completed_includes_usage(tmp_path):
@@ -283,14 +900,7 @@ async def test_streaming_openai_chat_response_completed_includes_usage(tmp_path)
 
 
 async def test_streaming_anthropic_response_completed_includes_usage():
-    class FakeResponse:
-        def __init__(self):
-            self.chunks: list[bytes] = []
-
-        async def write(self, data: bytes):
-            self.chunks.append(data)
-
-    downstream = FakeResponse()
+    downstream = _FakeStreamResponse()
     state = ResponsesStreamState("claude-real")
     await state.write_anthropic_delta(
         downstream,
@@ -302,9 +912,113 @@ async def test_streaming_anthropic_response_completed_includes_usage():
     )
     await state.finish(downstream)
 
-    events = _sse_events(b"".join(downstream.chunks).decode())
+    events = _sse_events(downstream.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     assert completed["response"]["usage"] == {"input_tokens": 5, "output_tokens": 3}
+
+
+async def test_response_stream_state_emits_reasoning_text_and_tool_items():
+    downstream = _FakeStreamResponse()
+    state = ResponsesStreamState("real-openai")
+
+    await state.start(downstream)
+    await state.write_chat_delta(downstream, {"choices": [{"delta": {"reasoning_content": "think"}}]})
+    await state.write_chat_delta(downstream, {"choices": [{"delta": {"content": "hello"}}]})
+    await state.write_chat_delta(
+        downstream,
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "tool_calls": [
+                            {
+                                "index": 0,
+                                "id": "call_weather",
+                                "function": {"name": "weather", "arguments": '{"city":'},
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+    )
+    await state.write_chat_delta(
+        downstream,
+        {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": '"Paris"}'}}]}}]},
+    )
+    final_response = await state.finish(downstream)
+
+    events = _sse_events(downstream.text())
+    types = [event.get("type") for event in events]
+    assert "response.reasoning_summary_text.delta" in types
+    assert "response.output_text.delta" in types
+    assert "response.function_call_arguments.delta" in types
+    assert types[-1] == "response.completed"
+    assert downstream.text().rstrip().endswith("data: [DONE]")
+    assert [item["type"] for item in final_response["output"]] == ["reasoning", "message", "function_call"]
+    assert final_response["output"][0]["summary"][0]["text"] == "think"
+    assert final_response["output"][1]["content"][0]["text"] == "hello"
+    assert final_response["output"][2]["arguments"] == '{"city":"Paris"}'
+
+
+async def test_response_stream_state_accepts_anthropic_deltas():
+    downstream = _FakeStreamResponse()
+    state = ResponsesStreamState("claude-real")
+
+    await state.start(downstream)
+    await state.write_anthropic_delta(
+        downstream,
+        {
+            "type": "content_block_start",
+            "index": 0,
+            "content_block": {"type": "thinking", "thinking": "plan ", "signature": "sig-"},
+        },
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": "more"}},
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "tail"}},
+    )
+    await state.write_anthropic_delta(downstream, {"type": "content_block_stop", "index": 0})
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": "hello"}},
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " there"}},
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {
+            "type": "content_block_start",
+            "index": 2,
+            "content_block": {"type": "tool_use", "id": "toolu_1", "name": "lookup", "input": {}},
+        },
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "content_block_delta", "index": 2, "delta": {"type": "input_json_delta", "partial_json": '{"q":"x"}'}},
+    )
+    await state.write_anthropic_delta(downstream, {"type": "content_block_stop", "index": 2})
+    await state.write_anthropic_delta(
+        downstream,
+        {"type": "message_delta", "usage": {"input_tokens": 3, "output_tokens": 4}},
+    )
+    final_response = await state.finish(downstream)
+
+    events = _sse_events(downstream.text())
+    assert [item["type"] for item in final_response["output"]] == ["reasoning", "message", "function_call"]
+    assert final_response["output"][0]["summary"][0]["text"] == "plan more"
+    assert final_response["output"][0]["encrypted_content"].startswith("anthropic-thinking-v1:")
+    assert final_response["output"][1]["content"][0]["text"] == "hello there"
+    assert final_response["output"][2]["arguments"] == '{"q":"x"}'
+    assert final_response["usage"] == {"input_tokens": 3, "output_tokens": 4}
+    assert any(event.get("type") == "response.reasoning_summary_text.done" for event in events)
+    assert any(event.get("type") == "response.output_item.done" for event in events)
 
 
 async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_window(tmp_path):
@@ -360,12 +1074,163 @@ async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_win
     payload = await resp.json()
     assert payload["status"] == "completed"
     assert payload["model"] == "real-openai"
-    assert payload["output"][0]["content"][0]["text"] == "Task: keep implementing compact support."
+    assert payload["output"][0]["type"] == "context_compaction"
+    assert payload["output"][0]["summary"][0]["text"] == "Task: keep implementing compact support."
     assert payload["usage"] == {"total_tokens": 11}
     assert captured["body"]["model"] == "real-openai"
     assert captured["body"]["stream"] is False
     assert "service_tier" not in captured["body"]
     assert "Compact the conversation" in captured["body"]["messages"][0]["content"]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_streaming_hosted_tool_turn_stored_with_session_id(tmp_path):
+    captured: list[dict] = []
+
+    async def chat(request):
+        body = await request.json()
+        captured.append(body)
+        if body.get("stream"):
+            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+            await response.prepare(request)
+            await response.write(
+                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_shell","type":"function","function":{"name":"local_shell","arguments":""}}]}}]}\n\n'
+            )
+            await response.write(
+                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"command\\":\\"echo probe\\"}"}}]}}]}\n\n'
+            )
+            await response.write(b"data: [DONE]\n\n")
+            await response.write_eof()
+            return response
+        return web.json_response(
+            {"id": "chatcmpl_follow", "choices": [{"message": {"role": "assistant", "content": "acknowledged"}}]}
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "run shell", "stream": True},
+        headers={"session_id": "stream-hosted-session"},
+    )
+    assert first.status == 200
+    completed = [event for event in _sse_events(await first.text()) if event.get("type") == "response.completed"][-1]
+    response_id = completed["response"]["id"]
+    tool_types = [item.get("type") for item in completed["response"].get("output") or []]
+    assert "local_shell_call" in tool_types
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "previous_response_id": response_id,
+            "input": [{"type": "function_call_output", "call_id": "call_shell", "output": "probe"}],
+            "stream": False,
+        },
+        headers={"session_id": "stream-hosted-session"},
+    )
+    assert second.status == 200
+    follow_up = captured[1]
+    tool_names = [
+        call["function"]["name"]
+        for message in follow_up["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert "local_shell" in tool_names
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_compact_expands_previous_response_id(tmp_path):
+    captured = {}
+
+    async def chat(request):
+        captured["body"] = await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_compact_prev",
+                "choices": [{"message": {"role": "assistant", "content": "Compacted prior shell work."}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim = ShimServer(settings)
+    shim_client = TestClient(TestServer(shim.app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "input": [
+                {"type": "local_shell_call", "call_id": "call_shell", "action": {"command": "pwd"}},
+                {"type": "function_call_output", "call_id": "call_shell", "output": "/tmp"},
+            ],
+            "stream": False,
+        },
+        headers={"session_id": "compact-session"},
+    )
+    first_payload = await first.json()
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={
+            "model": "real-openai",
+            "previous_response_id": first_payload["id"],
+            "input": [{"type": "compaction_trigger"}],
+            "stream": False,
+        },
+        headers={"session_id": "compact-session"},
+    )
+    assert resp.status == 200
+    payload = await resp.json()
+    assert payload["output"][-1]["type"] == "context_compaction"
+    assert payload["output"][0]["type"] == "compaction_trigger"
+    messages = captured["body"]["messages"]
+    assert any("local_shell" in str(message) for message in messages)
 
     await shim_client.close()
     await upstream_client.close()
@@ -445,6 +1310,131 @@ async def test_health_and_models_hide_chatgpt_passthrough_when_auth_missing(tmp_
     assert payload["data"] == []
 
     await shim_client.close()
+
+
+async def test_hidden_unconfigured_models_do_not_route_or_list(tmp_path, auth_missing):
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {"id": "hidden-zai", "model": "glm-5.1", "display_name": "Hidden Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
+                    {"id": "visible-openai", "model": "visible-openai", "display_name": "Visible", "provider": "openai", "base_url": "http://example.invalid/v1"},
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+    try:
+        models = await shim_client.get("/v1/models")
+        payload = await models.json()
+        assert [model["id"] for model in payload["data"]] == ["visible-openai"]
+
+        api_models = await shim_client.get("/api/models?include_unavailable=1")
+        api_payload = await api_models.json()
+        hidden = [model for model in api_payload if model["slug"] == "hidden-zai"][0]
+        assert hidden["visible"] is False
+        assert hidden["unavailable_reason"] == "missing API key from ZAI_API_KEY"
+
+        resp = await shim_client.post("/v1/responses", json={"model": "hidden-zai", "input": "hi"})
+        assert resp.status == 404
+    finally:
+        await shim_client.close()
+
+
+async def test_zai_provider_posts_to_v4_chat_completions_without_v1_injection(tmp_path, auth_missing):
+    captured = {}
+
+    async def chat(request):
+        captured["path"] = request.path
+        captured["headers"] = dict(request.headers)
+        captured["body"] = await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_zai",
+                "choices": [{"message": {"role": "assistant", "content": "zai hello"}}],
+                "usage": {"total_tokens": 3},
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/api/paas/v4/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "zai",
+                        "model": "glm-5.1",
+                        "display_name": "Z.AI GLM-5.1",
+                        "provider": "zai",
+                        "base_url": str(upstream_client.make_url("/api/paas/v4")),
+                        "api_key": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+    try:
+        resp = await shim_client.post("/v1/responses", json={"model": "zai", "input": "hi"})
+        assert resp.status == 200
+        payload = await resp.json()
+        assert payload["output"][0]["content"][0]["text"] == "zai hello"
+        assert captured["path"] == "/api/paas/v4/chat/completions"
+        assert captured["body"]["model"] == "glm-5.1"
+        assert captured["headers"]["Authorization"] == "Bearer secret"
+    finally:
+        await shim_client.close()
+        await upstream_client.close()
+
+
+async def test_nvidia_nim_provider_uses_openai_v1_chat_completions(tmp_path, auth_missing):
+    captured = {}
+
+    async def chat(request):
+        captured["path"] = request.path
+        captured["body"] = await request.json()
+        return web.json_response({"id": "chatcmpl_nim", "choices": [{"message": {"role": "assistant", "content": "nim hello"}}]})
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "nim",
+                        "model": "z-ai/glm-5.1",
+                        "display_name": "NIM GLM",
+                        "provider": "nvidia-nim",
+                        "base_url": str(upstream_client.make_url("/v1")),
+                        "api_key": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+    try:
+        resp = await shim_client.post("/v1/responses", json={"model": "nim", "input": "hi"})
+        assert resp.status == 200
+        assert captured["path"] == "/v1/chat/completions"
+        assert captured["body"]["model"] == "z-ai/glm-5.1"
+    finally:
+        await shim_client.close()
+        await upstream_client.close()
 
 
 async def test_chat_routes_to_openai_normalizes_developer_role(tmp_path):
@@ -724,3 +1714,253 @@ async def test_switch_model_requires_slug(tmp_path, auth_missing):
     finally:
         await shim_client.close()
 
+
+def test_merge_codex_forward_headers_allowlists_trace_metadata():
+    class FakeRequest:
+        headers = {
+            "Authorization": "Bearer client",
+            "session_id": "sess_1",
+            "x-codex-installation-id": "install_1",
+            "x-codex-window-id": "win_1",
+            "x-codex-parent-thread-id": "thread_parent",
+            "x-client-request-id": "client_req_1",
+            "x-oai-attestation": "attest_stub",
+            "traceparent": "00-abc-def-01",
+            "x-request-id": "req_1",
+            "cf-ray": "ray_stub",
+        }
+
+    forwarded = _merge_codex_forward_headers(FakeRequest())  # type: ignore[arg-type]
+    assert forwarded["session_id"] == "sess_1"
+    assert forwarded["x-codex-installation-id"] == "install_1"
+    assert forwarded["x-codex-window-id"] == "win_1"
+    assert forwarded["x-codex-parent-thread-id"] == "thread_parent"
+    assert forwarded["x-client-request-id"] == "client_req_1"
+    assert forwarded["x-oai-attestation"] == "attest_stub"
+    assert forwarded["traceparent"] == "00-abc-def-01"
+    assert forwarded["x-request-id"] == "req_1"
+    assert forwarded["cf-ray"] == "ray_stub"
+    assert "Authorization" not in forwarded
+
+
+def test_metadata_as_forward_headers_maps_body_trace_ids():
+    headers = _metadata_as_forward_headers({"metadata": {"trace_id": "trace_body", "request_id": "req_body"}})
+    assert headers["x-trace-id"] == "trace_body"
+    assert headers["x-request-id"] == "req_body"
+
+
+def test_passthrough_forward_headers_prefers_request_headers_over_body_metadata():
+    class FakeRequest:
+        headers = {"x-trace-id": "trace_header", "x-codex-window-id": "win_1"}
+
+    merged = _passthrough_forward_headers(
+        FakeRequest(),  # type: ignore[arg-type]
+        {"metadata": {"trace_id": "trace_body", "request_id": "req_body"}},
+    )
+    assert merged["x-trace-id"] == "trace_header"
+    assert merged["x-request-id"] == "req_body"
+    assert merged["x-codex-window-id"] == "win_1"
+
+
+async def test_chatgpt_passthrough_forwards_codex_and_metadata_headers(monkeypatch, tmp_path, auth_present):
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {"id": "resp_headers", "model": "gpt-5.5", "output": []}
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["headers"] = headers
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "gpt-5.5",
+            "input": "hello",
+            "metadata": {"trace_id": "trace_meta", "request_id": "req_meta"},
+        },
+        headers={
+            "x-codex-installation-id": "install_1",
+            "session_id": "sess_client",
+        },
+    )
+    assert resp.status == 200
+    forwarded = captured["headers"]
+    assert forwarded["x-codex-installation-id"] == "install_1"
+    assert forwarded["session_id"] == "sess_client"
+    assert forwarded["x-trace-id"] == "trace_meta"
+    assert forwarded["x-request-id"] == "req_meta"
+    assert forwarded["Authorization"] == "Bearer stub"
+    assert "host" not in {key.lower() for key in forwarded}
+
+    await shim_client.close()
+
+
+async def test_chatgpt_passthrough_compact_returns_native_shape(monkeypatch, tmp_path, auth_present):
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "desktop" / "passthrough_compact.json").read_text()
+    )
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {"id": "resp_compact_native", "model": "gpt-5.5", **fixture}
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={"model": "gpt-5.5", "input": "compact me"},
+        headers={"x-codex-window-id": "win_compact", "session_id": "sess_compact"},
+    )
+    assert resp.status == 200
+    payload = await resp.json()
+    assert payload["output"][0]["type"] == "context_compaction"
+    assert payload["model"] == "gpt-5.5"
+
+    await shim_client.close()
+
+
+async def test_chatgpt_passthrough_compact_forwards_headers(monkeypatch, tmp_path, auth_present):
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {
+                "id": "resp_compact_hdr",
+                "model": "gpt-5.5",
+                "status": "completed",
+                "output": [{"type": "context_compaction", "summary": [{"type": "summary_text", "text": "ok"}]}],
+            }
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["headers"] = headers
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={"model": "gpt-5.5", "input": "hi", "metadata": {"trace_id": "compact_trace"}},
+        headers={"x-client-request-id": "client_req_compact"},
+    )
+    assert resp.status == 200
+    assert captured["headers"]["x-client-request-id"] == "client_req_compact"
+    assert captured["headers"]["x-trace-id"] == "compact_trace"
+
+    await shim_client.close()
+
+
+async def test_chatgpt_passthrough_streaming_forwards_raw_sse(monkeypatch, tmp_path, auth_present):
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        headers = {"Content-Type": "text/event-stream"}
+
+        def __init__(self):
+            self.content = _FakeStreamContent(
+                [
+                    b'data: {"type":"response.completed","response":{"id":"resp_stream","status":"completed","output":[]}}\n\n',
+                    b"data: [DONE]\n\n",
+                ]
+            )
+
+        def release(self):
+            pass
+
+    class _FakeStreamContent:
+        def __init__(self, chunks: list[bytes]):
+            self._chunks = chunks
+
+        def iter_chunked(self, _size: int):
+            async def _gen():
+                for chunk in self._chunks:
+                    yield chunk
+
+            return _gen()
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["stream"] = json.get("stream")
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "gpt-5.5", "input": "hi", "stream": True})
+    assert resp.status == 200
+    assert captured["stream"] is True
+    text = await resp.text()
+    assert "response.completed" in text
+
+    await shim_client.close()
+
+
+def test_responses_stream_state_emits_native_local_shell_item():
+    state = ResponsesStreamState("slug")
+    tool_state = {
+        "id": "call_shell",
+        "call_id": "call_shell",
+        "name": "local_shell",
+        "arguments": '{"command":"pwd"}',
+        "output_index": 0,
+        "closed": False,
+        "native_type": "local_shell_call",
+    }
+    item = state._tool_item(tool_state, "completed")
+    assert item["type"] == "local_shell_call"
+    assert item["action"]["command"] == "pwd"
+
+
+def test_responses_stream_state_emits_native_image_generation_item():
+    state = ResponsesStreamState("slug")
+    tool_state = {
+        "id": "call_img",
+        "call_id": "call_img",
+        "name": "image_generation",
+        "arguments": '{"prompt":"neon fox"}',
+        "output_index": 0,
+        "closed": False,
+        "native_type": "image_generation_call",
+    }
+    item = state._tool_item(tool_state, "completed")
+    assert item["type"] == "image_generation_call"
+    assert item["action"]["prompt"] == "neon fox"

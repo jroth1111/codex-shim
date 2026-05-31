@@ -1,0 +1,21 @@
+{
+  "input": [
+    {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Plan a shell command."}]},
+    {
+      "type": "reasoning",
+      "summary": [{"type": "summary_text", "text": "User wants a shell command planned."}],
+      "encrypted_content": "anthropic-thinking-v1:eyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6IlBsYW4gYSBzaGVsbCBjb21tYW5kLiIsInNpZ25hdHVyZSI6IiJ9"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [{"type": "output_text", "text": "Use echo to verify the environment."}]
+    },
+    {
+      "type": "local_shell_call",
+      "call_id": "call_reason_shell",
+      "action": {"command": "echo plan"}
+    },
+    {"type": "function_call_output", "call_id": "call_reason_shell", "output": "plan\n"}
+  ]
+}
