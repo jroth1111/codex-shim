@@ -9,14 +9,18 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from codex_shim.cli import _inspect_codex_desktop_bundles, _inspection_has_missing_patch  # noqa: E402
+from codex_shim.desktop_decompiled import app_asar_extracted_dir, missing_message, require_available  # noqa: E402
 from codex_shim.patch_specs import INSPECTION_SPECS_BY_VERSION  # noqa: E402
 
 
 def main() -> int:
-    workdir = ROOT / "codex-desktop-decompiled" / "app-asar-extracted"
-    if not workdir.exists():
-        print(f"Desktop bundle extraction not found: {workdir}", file=sys.stderr)
-        return 1
+    workdir = app_asar_extracted_dir()
+    if not workdir.is_dir():
+        if require_available():
+            print(missing_message(), file=sys.stderr)
+            return 1
+        print(f"skip patch needle check ({missing_message()})", file=sys.stderr)
+        return 0
     exit_code = 0
     for desktop_version in sorted(INSPECTION_SPECS_BY_VERSION):
         print(f"Desktop {desktop_version}:")

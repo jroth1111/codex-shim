@@ -9,8 +9,16 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STRINGS_PATH = ROOT / "codex-desktop-decompiled" / "native-binaries" / "codex.strings.txt"
-README_PATH = ROOT / "codex-desktop-decompiled" / "README.md"
+sys.path.insert(0, str(ROOT))
+
+from codex_shim.desktop_decompiled import (  # noqa: E402
+    codex_strings_path,
+    provenance_readme,
+    require_available,
+)
+
+STRINGS_PATH = codex_strings_path()
+README_PATH = provenance_readme()
 OUTPUT_PATH = ROOT / "codex_shim" / "desktop_contract.py"
 
 SHIM_EXTRA_RESPONSE_INPUT_TYPES = (
@@ -127,6 +135,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write", action="store_true", help="Rewrite codex_shim/desktop_contract.py.")
     parser.add_argument("--check", action="store_true", help="Fail if the generated contract is stale.")
     args = parser.parse_args(argv)
+    if not STRINGS_PATH.is_file():
+        message = f"Desktop strings dump not found: {STRINGS_PATH}"
+        if args.check and not require_available():
+            print(f"skip contract regen check ({message})", file=sys.stderr)
+            return 0
+        print(message, file=sys.stderr)
+        return 1
     generated = _render_contract()
     if args.write:
         OUTPUT_PATH.write_text(generated)

@@ -47,9 +47,9 @@ and this project does not yet follow semantic versioning (pre-1.0).
   `CODEX_SHIM_DEBUG_DUMP=1` and redacted unless
   `CODEX_SHIM_DEBUG_DUMP_FULL=1` is set. Upstream error bodies are logged
   with the model slug before being returned as normalized Responses errors.
-- Generated Desktop protocol contract constants from
-  `codex-desktop-decompiled/native-binaries/codex.strings.txt`, with
-  `codex-shim doctor contract` and CI drift checks.
+- Generated Desktop protocol contract constants (from local
+  `codex-desktop-decompiled/native-binaries/codex.strings.txt` when regenerating), with
+  `codex-shim doctor contract` and CI drift checks against committed `desktop_contract.py`.
 
 ### Changed
 

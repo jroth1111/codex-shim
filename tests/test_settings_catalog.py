@@ -861,13 +861,12 @@ def test_desktop_bundle_patch_specs_do_not_mutate_legacy_picker():
 
 
 def test_decompiled_bundle_patch_needles_match_specs():
-    from pathlib import Path
-
     from codex_shim.desktop_contract import DESKTOP_CONTRACT_SOURCE_VERSION
+    from codex_shim.desktop_decompiled import app_asar_extracted_dir, missing_message
 
-    workdir = Path(__file__).resolve().parents[1] / "codex-desktop-decompiled" / "app-asar-extracted"
-    if not workdir.exists():
-        pytest.skip(f"Desktop bundle extraction not found: {workdir}")
+    workdir = app_asar_extracted_dir()
+    if not workdir.is_dir():
+        pytest.skip(missing_message())
 
     inspection = cli._inspect_codex_desktop_bundles(workdir, version=DESKTOP_CONTRACT_SOURCE_VERSION)
     by_label = {report["label"]: report for report in inspection}

@@ -28,8 +28,8 @@ jobs:
       - name: Compile check
         run: python -m compileall codex_shim/ -q
       - name: Desktop contract drift check
-        run: python scripts/generate_desktop_contract.py --check
+        run: python scripts/generate_desktop_contract.py --check  # skips without local RE tree
       - name: Desktop patch needle drift check
-        run: python scripts/check_desktop_patch_needles.py
+        run: python scripts/check_desktop_patch_needles.py       # skips without local RE tree
       - name: Run tests
         run: python -m pytest tests/ -m "not live" -q

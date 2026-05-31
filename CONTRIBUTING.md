@@ -14,9 +14,12 @@ python3 -m pip install -e ".[dev]"
 
 python3 -m pytest tests/ -q
 python3 -m compileall codex_shim/ -q
-python3 scripts/generate_desktop_contract.py --check
-python3 scripts/check_desktop_patch_needles.py
+python3 scripts/generate_desktop_contract.py --check   # skips if no local RE tree
+python3 scripts/check_desktop_patch_needles.py         # same
 ```
+
+Optional: maintain a gitignored `codex-desktop-decompiled/` tree (see README). Set
+`CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` to fail those checks when the tree is absent.
 
 CI runs the same commands on Python 3.11 and 3.12 via
 `.github/workflows/ci.yml`. Match it locally before opening a PR.

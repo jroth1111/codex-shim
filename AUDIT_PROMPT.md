@@ -19,20 +19,22 @@ Clone or browse with GitHub MCP. Treat repo files as the **authoritative shim co
 ├── AUDIT_MANIFEST.md             # Reading order and scope notes
 ├── codex_shim/                   # Shim implementation (Python)
 ├── tests/                        # Unit/integration tests + fixtures/desktop/
-├── README.md                     # Documented behavior, fidelity tiers
-└── codex-desktop-decompiled/     # Desktop client evidence (source-only; see its .gitignore)
+└── README.md                     # Documented behavior, fidelity tiers
 ```
 
 ### Desktop source (expectations / ground truth)
 
-| Path | Use for |
+**Not in git.** Optional local tree at `codex-desktop-decompiled/` (or `CODEX_DESKTOP_DECOMPILED_DIR`).
+Committed shim evidence: `codex_shim/desktop_contract.py`, `tests/fixtures/desktop/`.
+
+| Path (local RE root) | Use for |
 |------|---------|
-| `codex-desktop-decompiled/app-asar-extracted/` | Electron UI (picker, providers, webview RPC) |
-| `codex-desktop-decompiled/ghidra/codex/decomp-rust/` | Native Rust CLI pseudo-C decompilation |
-| `codex-desktop-decompiled/ghidra/codex/recovered-src/` | Recovered source clusters |
-| `codex-desktop-decompiled/native-binaries/codex.strings.txt` | String evidence from native CLI |
-| `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` | Integration map |
-| `codex-desktop-decompiled/README.md` | Extraction provenance (Codex 26.519.81530, codex-cli 0.133.0) |
+| `app-asar-extracted/` | Electron UI (picker, providers, webview RPC) |
+| `ghidra/codex/decomp-rust/` | Native Rust CLI pseudo-C decompilation |
+| `ghidra/codex/recovered-src/` | Recovered source clusters |
+| `native-binaries/codex.strings.txt` | String evidence from native CLI |
+| `CODEX_SHIM_ARCHITECTURE.md` | Integration map |
+| `README.md` | Extraction provenance (e.g. Codex 26.519.81530, codex-cli 0.133.0) |
 
 ### Shim source (implementation under audit)
 
@@ -241,6 +243,6 @@ List the most useful Desktop source locations you discovered (file + search term
 - **Quantify** test gaps (e.g., "streaming `tool_search_call` round-trip untested").
 - **Do not** suggest rewriting Codex Desktop or executing tools inside the shim unless Desktop source proves it's necessary.
 
-Begin by reading `AUDIT_MANIFEST.md`, then **`AUDIT_CONTRACTS.md`** (implementation-grounded Tier A vs BYOK contracts with shim source index), then `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md`. Search Desktop source for `/v1/responses` and Response item type strings to **verify or falsify each contract row**, then read `codex_shim_repo/codex_shim/server.py` and `translate.py`. Only then write findings.
+Begin by reading `AUDIT_MANIFEST.md`, then **`AUDIT_CONTRACTS.md`** (implementation-grounded Tier A vs BYOK contracts with shim source index), then `codex_shim/desktop_contract.py` and any local `CODEX_SHIM_ARCHITECTURE.md` if the RE tree is available. Search Desktop source (local tree or fixtures) for `/v1/responses` and Response item type strings to **verify or falsify each contract row**, then read `codex_shim/server.py` and `translate.py`. Only then write findings.
 
 Your trace matrix must reference `AUDIT_CONTRACTS.md` rows and mark each as **VERIFIED**, **GAP**, or **DESKTOP-EVIDENCE-MISSING**.

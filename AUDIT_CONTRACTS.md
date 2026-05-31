@@ -1,8 +1,8 @@
 # Codex Desktop ↔ codex-shim Wire Contracts
 
-**Purpose:** Precise, implementation-grounded contracts for LLM audit. Every rule below cites shim source. The auditor must **cross-check each claim against Codex Desktop source** in `codex-desktop-decompiled/` and mark gaps where Desktop expects something the shim does not implement.
+**Purpose:** Precise, implementation-grounded contracts for LLM audit. Every rule below cites shim source. When a local RE tree is available (`codex-desktop-decompiled/` or `CODEX_DESKTOP_DECOMPILED_DIR`), cross-check each claim against Codex Desktop source there; otherwise use `codex_shim/desktop_contract.py` and `tests/fixtures/desktop/`, marking rows **DESKTOP-EVIDENCE-MISSING** where client source cannot be verified.
 
-**Version context:** Codex Desktop 26.519.81530, codex-cli 0.133.0 (see `codex-desktop-decompiled/README.md`).
+**Version context:** `DESKTOP_CONTRACT_SOURCE_VERSION` in `codex_shim/desktop_contract.py` (currently from Codex Desktop 26.519.81530 / codex-cli 0.133.0 strings evidence).
 
 ---
 
@@ -261,4 +261,4 @@ Live tests intentionally do **not** claim absolute Tier A parity (sanitization, 
 | `codex_shim/desktop_contract.py` | Generated constants (CI `--check`) |
 | `codex_shim/desktop_validate.py` | Runtime validators for hosted-tool `action` sub-shapes |
 | `codex_shim/patch_specs.py` | Version-keyed ASAR patch needle library |
-| `scripts/check_desktop_patch_needles.py` | CI needle drift check against bundled decomp |
+| `scripts/check_desktop_patch_needles.py` | Needle drift check against local `app-asar-extracted/` (skipped in CI without RE tree) |

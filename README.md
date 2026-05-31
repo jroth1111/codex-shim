@@ -534,7 +534,8 @@ chats while Desktop is routed through the `codex_shim` provider.
 
 The current patch needles target Codex Desktop **26.519.81530** /
 `codex-cli 0.133.0` on macOS arm64. Use `codex-shim doctor patch` or
-`python scripts/check_desktop_patch_needles.py` to verify drift before patching.
+`python scripts/check_desktop_patch_needles.py` to verify drift before patching (skips
+when the local RE tree is absent unless `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1`).
 
 > Back up `app.asar` and `Info.plist` before patching.
 
@@ -738,7 +739,21 @@ codex-shim probe passthrough-compact --live
 
 Recommended dev loop: `codex-shim enable` → `codex-shim start` → `CODEX_SHIM_LIVE=1 pytest tests/live -m live` → `codex-shim test <slug>`.
 
-For Desktop integration notes from local reverse-engineering, see [`codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md`](codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md).
+### Optional local Desktop RE tree (not in git)
+
+Reverse-engineered Codex Desktop artifacts live in `codex-desktop-decompiled/` at the repo
+root. That directory is **gitignored** and never published to GitHub. Clone or extract it
+locally when you need ASAR needles, Ghidra decomp, or strings evidence.
+
+| Env | Purpose |
+|-----|---------|
+| `CODEX_DESKTOP_DECOMPILED_DIR` | Override the RE tree root (default: `./codex-desktop-decompiled`) |
+| `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` | Fail CI-style checks instead of skipping when the tree is absent |
+
+With the tree present, see `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` for
+integration notes. Committed shim constants live in `codex_shim/desktop_contract.py`
+(regenerate with `python scripts/generate_desktop_contract.py --write` after updating
+`native-binaries/codex.strings.txt`).
 
 ---
 
