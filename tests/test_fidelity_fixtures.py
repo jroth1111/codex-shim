@@ -3,11 +3,50 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from codex_shim.desktop_validate import (
+    assert_image_generation_action,
+    assert_local_shell_action,
+    assert_web_search_action,
+)
 from codex_shim.probe import validate_compact_response
-from codex_shim.translate import responses_to_chat, validate_responses_input
+from codex_shim.translate import function_call_to_native_item, responses_to_chat, validate_responses_input
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "desktop"
+
+DESKTOP_INPUT_FIXTURES = (
+    "tool_heavy_turn.json",
+    "compaction_turn.json",
+    "reasoning_turn.json",
+    "mcp_tool_turn.json",
+    "web_search_turn.json",
+    "image_gen_turn.json",
+    "tool_search_turn.json",
+)
+
+
+def _validate_fixture_hosted_actions(payload: dict) -> None:
+    for item in payload.get("input") or []:
+        if not isinstance(item, dict):
+            continue
+        action = item.get("action")
+        if not isinstance(action, dict):
+            continue
+        item_type = item.get("type")
+        if item_type == "web_search_call":
+            assert_web_search_action(action)
+        elif item_type == "local_shell_call":
+            assert_local_shell_action(action)
+        elif item_type == "image_generation_call":
+            assert_image_generation_action(action)
+
+
+def test_all_desktop_input_fixtures_validate_against_contract():
+    for name in DESKTOP_INPUT_FIXTURES:
+        payload = json.loads((FIXTURES / name).read_text())
+        body = {"model": "slug", "input": payload["input"]}
+        validate_responses_input(body)
+        _validate_fixture_hosted_actions(payload)
 
 
 def test_tool_heavy_fixture_translates_hosted_calls():
@@ -98,6 +137,23 @@ def test_image_gen_fixture_translates_tool_call():
         for call in message.get("tool_calls") or []
     ]
     assert tool_names == ["image_generation"]
+    for item in payload["input"]:
+        if item.get("type") == "image_generation_call" and isinstance(item.get("action"), dict):
+            assert_image_generation_action(item["action"])
+
+
+def test_hosted_tool_emission_matches_desktop_contract():
+    web_item = function_call_to_native_item("web_search", "call_1", '{"query":"docs"}')
+    assert web_item is not None
+    assert_web_search_action(web_item["action"])
+
+    shell_item = function_call_to_native_item("local_shell", "call_2", '{"command":"pwd"}')
+    assert shell_item is not None
+    assert_local_shell_action(shell_item["action"])
+
+    image_item = function_call_to_native_item("image_generation", "call_3", '{"prompt":"fox"}')
+    assert image_item is not None
+    assert_image_generation_action(image_item["action"])
 
 
 def test_tool_search_fixture_translates_tool_call():

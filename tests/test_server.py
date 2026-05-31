@@ -182,7 +182,8 @@ async def test_chatgpt_passthrough_streaming_forwards_hosted_tool_input(monkeypa
     )
     assert resp.status == 200
     assert captured["body"]["stream"] is True
-    assert captured["body"]["input"][0]["type"] == "local_shell_call"
+    assert captured["body"]["input"][0]["type"] == "function_call"
+    assert captured["body"]["input"][0]["name"] == "local_shell"
 
     await shim_client.close()
 
@@ -306,6 +307,7 @@ async def test_chatgpt_image_generation_routes_to_chatgpt_passthrough(monkeypatc
         "/v1/responses",
         json={
             "model": "gpt-5.5",
+            "stream": False,
             "input": [{"role": "user", "content": "@image generate a neon fox"}],
             "tools": [{"type": "image_generation", "name": "image_generation"}],
         },
@@ -320,7 +322,7 @@ async def test_chatgpt_image_generation_routes_to_chatgpt_passthrough(monkeypatc
     await shim_client.close()
 
 
-async def test_chatgpt_passthrough_keeps_native_previous_response_id(monkeypatch, tmp_path, auth_present):
+async def test_chatgpt_passthrough_strips_previous_response_id_by_default(monkeypatch, tmp_path, auth_present):
     captured = {}
 
     class FakeUpstream:
@@ -346,13 +348,62 @@ async def test_chatgpt_passthrough_keeps_native_previous_response_id(monkeypatch
 
     resp = await shim_client.post(
         "/v1/responses",
-        json={"model": "gpt-5.5", "previous_response_id": "native-upstream-id", "input": "continue"},
+        json={
+            "model": "gpt-5.5",
+            "previous_response_id": "native-upstream-id",
+            "input": "continue",
+            "stream": False,
+        },
     )
 
     assert resp.status == 200
     payload = await resp.json()
     assert payload["id"] == "resp_native_next"
     assert captured["url"] == "https://chatgpt.com/backend-api/codex/responses"
+    assert "previous_response_id" not in captured["body"]
+    assert captured["body"]["instructions"]
+    assert captured["body"]["store"] is False
+    assert captured["body"]["stream"] is False
+
+    await shim_client.close()
+
+
+async def test_chatgpt_passthrough_forwards_previous_response_id_when_env_set(
+    monkeypatch, tmp_path, auth_present
+):
+    captured = {}
+    monkeypatch.setenv("CODEX_SHIM_PASSTHROUGH_KEEP_PREVIOUS_RESPONSE_ID", "1")
+
+    class FakeUpstream:
+        status = 200
+        content_type = "application/json"
+
+        async def json(self, content_type=None):
+            return {"id": "resp_native_next", "model": "gpt-5.5", "output": [{"type": "message", "role": "assistant"}]}
+
+        def release(self):
+            pass
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["body"] = json
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "gpt-5.5",
+            "previous_response_id": "native-upstream-id",
+            "input": "continue",
+            "stream": False,
+        },
+    )
+    assert resp.status == 200
     assert captured["body"]["previous_response_id"] == "native-upstream-id"
 
     await shim_client.close()

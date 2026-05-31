@@ -10,7 +10,7 @@ from .desktop_contract import (
     DESKTOP_WEB_SEARCH_ACTION_TYPES,
     SHIM_EXTRA_RESPONSE_INPUT_TYPES,
 )
-from .desktop_validate import assert_local_shell_action, assert_web_search_action
+from .desktop_validate import assert_image_generation_action, assert_local_shell_action, assert_web_search_action
 from .settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,
@@ -48,14 +48,6 @@ SUPPORTED_AUDIO_MIME_FORMATS = {
 
 class ResponsesInputError(ValueError):
     """Raised when a Responses request contains content this shim cannot translate."""
-
-
-def _encode_thinking_blob(payload: dict[str, Any]) -> str:
-    return encode_thinking_payload(payload)
-
-
-def _decode_thinking_blob(encoded: Any) -> dict[str, Any] | None:
-    return decode_thinking_payload(encoded)
 
 
 def responses_to_chat(
@@ -167,7 +159,7 @@ def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens
     for chat_msg in _responses_input_to_messages(body.get("input")):
         role = chat_msg.get("role", "user")
         if chat_msg.get("_reasoning_only"):
-            decoded = _decode_thinking_blob(chat_msg.get("encrypted_content"))
+            decoded = decode_thinking_payload(chat_msg.get("encrypted_content"))
             if decoded is not None and is_signed_thinking_block(decoded):
                 pending_thinking.append(decoded)
             else:
@@ -389,7 +381,7 @@ def anthropic_to_response(payload: dict[str, Any], requested_model: str) -> dict
                     "type": "reasoning",
                     "status": "completed",
                     "summary": [],
-                    "encrypted_content": _encode_thinking_blob(
+                    "encrypted_content": encode_thinking_payload(
                         {"type": "redacted_thinking", "data": str(block.get("data") or "")}
                     ),
                 }
@@ -791,6 +783,7 @@ def function_call_to_native_item(
         if not parsed_action and arguments:
             parsed_action = {"prompt": arguments}
         item["action"] = parsed_action
+        assert_image_generation_action(item["action"])
         revised = parsed_action.get("revised_prompt") or parsed_action.get("prompt")
         if revised:
             item["revised_prompt"] = str(revised)
@@ -920,7 +913,7 @@ def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             # encrypted_content as a `thinking` block on the assistant turn.
             flush_pending_assistant_tool_calls()
             encrypted = item.get("encrypted_content")
-            decoded = _decode_thinking_blob(encrypted)
+            decoded = decode_thinking_payload(encrypted)
             reasoning_content = ""
             if decoded is not None and decoded.get("thinking"):
                 reasoning_content = str(decoded["thinking"])

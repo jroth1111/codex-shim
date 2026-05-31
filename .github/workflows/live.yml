@@ -1,0 +1,51 @@
+name: Live integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  live:
+    name: pytest live (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    env:
+      CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+      CODEX_SHIM_MODELS_JSON: ${{ secrets.CODEX_SHIM_MODELS_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package + dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Write Codex auth (optional)
+        if: env.CODEX_AUTH_JSON != ''
+        run: |
+          mkdir -p ~/.codex
+          printf '%s' "$CODEX_AUTH_JSON" > ~/.codex/auth.json
+      - name: Write BYOK models (optional)
+        if: env.CODEX_SHIM_MODELS_JSON != ''
+        run: |
+          mkdir -p ~/.codex-shim
+          printf '%s' "$CODEX_SHIM_MODELS_JSON" > ~/.codex-shim/models.json
+      - name: Start shim daemon
+        run: |
+          codex-shim start --port 8765 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8765/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8765/health
+      - name: Run live integration tests
+        env:
+          CODEX_SHIM_LIVE: "1"
+          CODEX_SHIM_PORT: "8765"
+          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+        run: python -m pytest tests/live -m live -v --tb=short

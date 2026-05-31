@@ -633,13 +633,17 @@ mint a new token and the entry comes back automatically on the next
 of normalized Desktop model as configured BYOK rows, so catalog generation,
 picker state, health, and routing all see one filtered Desktop model set.
 
-The passthrough keeps Codex's native `/v1/responses` payload intact, changes the
-model to `gpt-5.5`, and sends your Codex access token as `Authorization: Bearer
-<access_token>` with the ChatGPT account id from `auth.json` when present. It
-bypasses configured BYOK routes entirely and uses your ChatGPT subscription quota.
-Image-generation requests only use this path when the selected Desktop model is
-`gpt-5.5`; the shim does not silently reroute image-generation prompts away from
-the BYOK model selected in Desktop.
+The passthrough adapts Desktop Responses input for ChatGPT: hosted tool and MCP
+items are converted to ChatGPT-accepted `function_call` / `function_call_output`
+pairs, compact items are normalized, and shim-only or provider-hostile top-level
+fields (`metadata`, `trace_id`, `request_id`, `max_output_tokens`, and by
+default `previous_response_id`) are stripped. It changes the model to `gpt-5.5`
+and sends your Codex access token as `Authorization: Bearer <access_token>` with
+the ChatGPT account id from `auth.json` when present. It bypasses configured
+BYOK routes entirely and uses your ChatGPT subscription quota. Image-generation
+requests only use this path when the selected Desktop model is `gpt-5.5`; the
+shim does not silently reroute image-generation prompts away from the BYOK model
+selected in Desktop.
 
 It is already in `.codex-shim/custom_model_catalog.json` after `codex-shim
 generate`. Select `GPT-5.5` in the picker, or run:
@@ -700,25 +704,39 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 **Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
 
 **Conversation store:** `previous_response_id` history is persisted in `.codex-shim/response_store.sqlite` (override with `CODEX_SHIM_RESPONSE_STORE`). LRU cap defaults to 256 per active scope (`CODEX_SHIM_RESPONSE_STORE_MAX`). History is scoped by Desktop `session_id` by default; set `CODEX_SHIM_RESPONSE_STORE_SCOPE=global` only for single-session legacy behavior.
+This store expansion applies to BYOK routes. Tier A ChatGPT passthrough strips
+`previous_response_id` by default and does not expand shim store history.
 
-**Compaction probe:** With the daemon running, validate BYOK compact output shape:
+**Offline vs live tests:** Default CI runs `pytest -m "not live"` (mocked unit tests). Live integration hits a real daemon and real upstreams (no mocks).
 
 ```bash
-codex-shim probe all          # offline fidelity + live checks when daemon/auth available
+codex-shim start
+export CODEX_SHIM_LIVE=1
+pytest tests/live -m live -v          # pytest live suite
+codex-shim probe live-matrix        # CLI: Tier A + BYOK family matrix
+codex-shim probe all --live         # offline fidelity + BYOK probes + full live matrix
+```
+
+Optional env overrides for BYOK families: `CODEX_SHIM_LIVE_SLUG_OPENAI`, `CODEX_SHIM_LIVE_SLUG_ANTHROPIC`, `CODEX_SHIM_LIVE_SLUG_CURSOR`. Set `ZAI_API_KEY` to auto-configure Z.AI GLM-5.1 Coding Plan for Tier B openai_chat live tests (then `codex-shim restart`).
+
+Tier A prepare env: `CODEX_SHIM_PASSTHROUGH_KEEP_PREVIOUS_RESPONSE_ID=1` forwards `previous_response_id` (default strips it).
+
+**Compaction / history probes** (daemon must be running):
+
+```bash
 codex-shim probe fidelity     # offline translation fixtures only
 codex-shim probe compact
 codex-shim probe compact --slug your-byok-slug
 codex-shim probe history      # hosted tools + previous_response_id + compact w/ trigger
 codex-shim probe streaming-history
 codex-shim probe ws-streaming          # BYOK WebSocket stream:true deltas
-codex-shim probe passthrough --live        # Tier A; requires ~/.codex/auth.json
+codex-shim probe passthrough --live        # Tier A streaming OK
 codex-shim probe passthrough-compact --live
-# Or set CODEX_SHIM_PROBE_PASSTHROUGH=1 to enable Tier A probes in `probe all` without --live
 ```
 
 **Tier A passthrough headers:** ChatGPT passthrough forwards Desktop metadata headers (`x-codex-*`, `session_id`, `x-client-request-id`, `x-oai-attestation`, `traceparent`, `x-request-id`, `x-trace-id`, `cf-ray`) plus body `metadata.trace_id` / `metadata.request_id`. Client `Authorization` is never forwarded.
 
-Recommended dev loop: `codex-shim enable` → `codex-shim probe all` → `codex-shim test <slug>`.
+Recommended dev loop: `codex-shim enable` → `codex-shim start` → `CODEX_SHIM_LIVE=1 pytest tests/live -m live` → `codex-shim test <slug>`.
 
 For Desktop integration notes from local reverse-engineering, see [`codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md`](codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md).
 

@@ -74,6 +74,26 @@ strings "/Applications/Codex.app/Contents/Resources/codex" \
   > codex-desktop-decompiled/native-binaries/codex.strings.txt
 ```
 
+## Shim contract sync (after Desktop updates)
+
+When Codex Desktop changes wire shapes or patch needles:
+
+1. Refresh `app-asar-extracted/` and `native-binaries/codex.strings.txt` (commands above).
+2. Update bundle version in this README table.
+3. Regenerate the Python contract consumed by the shim:
+
+```bash
+python3 scripts/generate_desktop_contract.py --write
+python3 scripts/generate_desktop_contract.py --check
+python3 scripts/check_desktop_patch_needles.py
+python3 -m pytest tests/test_desktop_contract.py tests/test_fidelity_fixtures.py -q
+```
+
+4. If sidebar patch needles moved, update `codex_shim/patch_specs.py` for the new
+   Desktop version and re-run `codex-shim doctor patch`.
+
+CI runs the `--check` and patch-needle scripts on every push.
+
 ## 5. `ghidra/codex/` — headless native RE (Rust CLI)
 
 The embedded CLI (`native-binaries/codex`, ~185 MB arm64 Mach-O) is **not** Bun-packaged. Recovery uses **Ghidra headless**, not `recover_bun_standalone.py`.

@@ -30,6 +30,7 @@ WEB_SEARCH_ACTION_FIELDS = {
 }
 
 LOCAL_SHELL_ACTION_FIELDS = ("command", "timeout_ms", "working_directory", "env", "user")
+IMAGE_GENERATION_ACTION_FIELDS = ("prompt", "revised_prompt")
 
 
 def _source_version() -> str:
@@ -63,6 +64,15 @@ def _web_search_action_types(text: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
+def _image_generation_action_fields(text: str) -> tuple[str, ...]:
+    if "image_generation_call" not in text:
+        raise SystemExit("Could not locate image_generation_call in Desktop strings.")
+    missing = [field for field in IMAGE_GENERATION_ACTION_FIELDS if field not in text]
+    if missing:
+        raise SystemExit(f"Desktop strings missing ImageGeneration action fields: {sorted(missing)}")
+    return IMAGE_GENERATION_ACTION_FIELDS
+
+
 def _render_tuple(values: tuple[str, ...], *, indent: str = "    ") -> str:
     return "\n".join(f'{indent}"{value}",' for value in values)
 
@@ -72,6 +82,7 @@ def _render_contract() -> str:
     source_hash = hashlib.sha256(STRINGS_PATH.read_bytes()).hexdigest()
     response_item_types = _response_item_types(text)
     web_search_action_types = _web_search_action_types(text)
+    image_generation_action_fields = _image_generation_action_fields(text)
     missing_actions = set(WEB_SEARCH_ACTION_FIELDS) - set(web_search_action_types)
     if missing_actions:
         raise SystemExit(f"Desktop strings are missing expected WebSearchAction variants: {sorted(missing_actions)}")
@@ -103,6 +114,10 @@ DESKTOP_WEB_SEARCH_ACTION_FIELDS = {{
 
 DESKTOP_LOCAL_SHELL_ACTION_FIELDS = frozenset((
 {_render_tuple(LOCAL_SHELL_ACTION_FIELDS)}
+))
+
+DESKTOP_IMAGE_GENERATION_ACTION_FIELDS = frozenset((
+{_render_tuple(image_generation_action_fields)}
 ))
 '''
 

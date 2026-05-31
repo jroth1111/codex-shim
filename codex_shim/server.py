@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from copy import deepcopy
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -16,12 +14,32 @@ from .access_log import log_access as _log_access
 from .access_log import log_incoming_request as _log_incoming_request
 from .compact import as_compact_response as _as_compact_response
 from .compact import compact_request_body as _compact_request_body
-from .debug_dump import DEBUG_DIR
-from .debug_dump import dump_debug_request as _dump_debug_request
 from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
 from .cursor_cli import CursorCliError, run_cursor_cli
+from .debug_dump import DEBUG_DIR
+from .debug_dump import dump_debug_request as _dump_debug_request
+from .errors import (
+    cursor_acp_error_response as _cursor_acp_error_response,
+    cursor_acp_stream_error as _cursor_acp_stream_error,
+    cursor_agent_error_response as _cursor_agent_error_response,
+    cursor_agent_stream_error as _cursor_agent_stream_error,
+    error_response as _error_response,
+    invalid_request_error_response as _invalid_request_error_response,
+    unsupported_capability_response as _unsupported_capability_response,
+    unsupported_compact_response as _unsupported_compact_response,
+)
 from .hostguard import build_allowed_hosts, host_guard_middleware
 from .image_gate import needs_image_generation
+from .passthrough import (
+    chatgpt_compact_passthrough,
+    chatgpt_passthrough,
+    merge_codex_forward_headers as _merge_codex_forward_headers,
+    metadata_as_forward_headers as _metadata_as_forward_headers,
+    passthrough_forward_headers as _passthrough_forward_headers,
+    responses_items_from_input as _responses_items_from_input,
+    rewrite_response_model as _rewrite_response_model,
+    sanitize_chatgpt_passthrough_body as _sanitize_chatgpt_passthrough_body,
+)
 from .picker import CODEX_CONFIG_PATH
 from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
@@ -36,7 +54,6 @@ from .settings import (
     DEFAULT_SETTINGS,
     DEFAULT_HOST,
     DEFAULT_PORT,
-    PROVIDER_NAME,
     ModelSettings,
     ShimModel,
     chatgpt_passthrough_available,
@@ -48,7 +65,6 @@ from .streaming import safe_write as _safe_write
 from .streaming import sse_lines as _sse_lines
 from .streaming import write_sse as _write_sse
 from .translate import (
-    SHIM_ENCRYPTED_CONTENT_PREFIX,
     ResponsesInputError,
     anthropic_to_chat_response,
     anthropic_to_response,
@@ -206,7 +222,8 @@ class ShimServer:
                 )
         if route.is_chatgpt:
             response_model_override = model if model and model != CHATGPT_MODEL_SLUG else None
-            return await self._chatgpt_passthrough(
+            return await chatgpt_passthrough(
+                self,
                 request,
                 route,
                 body,
@@ -285,6 +302,7 @@ class ShimServer:
         request_body: dict[str, Any],
         response_payload: dict[str, Any],
     ) -> None:
+        """Persist completed turn items; session id comes from _shim_session_id on request_body."""
         response_id = str(response_payload.get("id") or "")
         if not response_id:
             return
@@ -323,7 +341,7 @@ class ShimServer:
         _log_incoming_request("/v1/responses/compact", body)
         route = self._route(body)
         if route.is_chatgpt:
-            return await self._chatgpt_compact_passthrough(request, route, body)
+            return await chatgpt_compact_passthrough(self, request, route, body)
         if route.capabilities.compact_behavior == COMPACT_UNSUPPORTED:
             return _unsupported_compact_response(route)
         session_id = request.headers.get("session_id", "") or ""
@@ -380,163 +398,6 @@ class ShimServer:
         if isinstance(content, dict):
             return str(content.get("text") or content.get("content") or "")
         return str(content)
-
-    async def _chatgpt_passthrough(
-        self,
-        request: web.Request,
-        route: ShimModel,
-        body: dict[str, Any],
-        response_model_override: str | None = None,
-        ws_stream: WsStreamResponse | None = None,
-    ) -> web.StreamResponse:
-        """Forward a Responses request to chatgpt.com using the user's Codex auth.
-
-        Lets the picker expose OpenAI's real GPT-5.5 (ChatGPT subscription) as a
-        first-class model alongside configured BYOK entries.
-        """
-        auth_path = DEFAULT_CODEX_AUTH.expanduser()
-        try:
-            auth = json.loads(auth_path.read_text())
-        except FileNotFoundError:
-            raise web.HTTPUnauthorized(text="~/.codex/auth.json not found")
-        tokens = auth.get("tokens") or {}
-        access_token = tokens.get("access_token")
-        account_id = tokens.get("account_id") or ""
-        if not access_token:
-            raise web.HTTPUnauthorized(text="auth.json has no access_token")
-        forwarded = _sanitize_chatgpt_passthrough_body(body)
-        forwarded["model"] = CHATGPT_MODEL_SLUG
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-            "Accept": "text/event-stream" if forwarded.get("stream") else "application/json",
-            "OpenAI-Beta": _chatgpt_openai_beta_header(),
-            "originator": "codex_cli_rs",
-            "chatgpt-account-id": account_id,
-            "session_id": request.headers.get("session_id", ""),
-            **_passthrough_forward_headers(request, body),
-        }
-        url = "https://chatgpt.com/backend-api/codex/responses"
-        started_at = time.monotonic()
-        provider_started_at = time.monotonic()
-        async with ClientSession(timeout=self.timeout) as session:
-            upstream = await session.post(url, json=forwarded, headers=headers)
-            if upstream.status >= 400:
-                _log_access(
-                    request,
-                    route,
-                    upstream.status,
-                    started_at,
-                    stream=bool(forwarded.get("stream")),
-                    error="upstream_error",
-                    request_body=body,
-                    provider_ms=_elapsed_ms(provider_started_at),
-                )
-                return await _error_response(upstream)
-            if not forwarded.get("stream"):
-                payload = await upstream.json(content_type=None)
-                provider_ms = _elapsed_ms(provider_started_at)
-                _rewrite_response_model(payload, response_model_override)
-                store_body = self._store_body_with_session(body, request)
-                self._store_response_history(store_body, payload)
-                _log_access(
-                    request,
-                    route,
-                    200,
-                    started_at,
-                    payload=payload,
-                    stream=False,
-                    request_body=body,
-                    provider_ms=provider_ms,
-                )
-                return web.json_response(payload)
-            response = await _open_stream_sink(request, ws_stream)
-            parse_sse = bool(response_model_override or ws_stream is not None)
-            try:
-                if parse_sse:
-                    async for line in _sse_lines(upstream):
-                        if line == "[DONE]":
-                            break
-                        try:
-                            payload = json.loads(line)
-                        except json.JSONDecodeError:
-                            await _safe_write(response, f"data: {line}\n\n".encode())
-                            continue
-                        if response_model_override:
-                            _rewrite_response_model(payload, response_model_override)
-                        await _write_sse(response, payload)
-                else:
-                    async for chunk in upstream.content.iter_chunked(4096):
-                        await _safe_write(response, chunk)
-            except ClientDisconnected:
-                pass
-            finally:
-                upstream.release()
-            _log_access(request, route, 200, started_at, stream=True, request_body=body)
-            try:
-                await response.write_eof()
-            except Exception:
-                pass
-            return response
-
-    async def _chatgpt_compact_passthrough(
-        self, request: web.Request, route: ShimModel, body: dict[str, Any]
-    ) -> web.StreamResponse:
-        auth_path = DEFAULT_CODEX_AUTH.expanduser()
-        try:
-            auth = json.loads(auth_path.read_text())
-        except FileNotFoundError:
-            raise web.HTTPUnauthorized(text="~/.codex/auth.json not found")
-        tokens = auth.get("tokens") or {}
-        access_token = tokens.get("access_token")
-        account_id = tokens.get("account_id") or ""
-        if not access_token:
-            raise web.HTTPUnauthorized(text="auth.json has no access_token")
-        forwarded = _sanitize_chatgpt_passthrough_body(body)
-        original_model = str(forwarded.get("model") or "")
-        forwarded["model"] = CHATGPT_MODEL_SLUG
-        forwarded.pop("stream", None)
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "OpenAI-Beta": _chatgpt_openai_beta_header(),
-            "originator": "codex_cli_rs",
-            "chatgpt-account-id": account_id,
-            "session_id": request.headers.get("session_id", ""),
-            **_passthrough_forward_headers(request, body),
-        }
-        url = "https://chatgpt.com/backend-api/codex/responses/compact"
-        started_at = time.monotonic()
-        provider_started_at = time.monotonic()
-        async with ClientSession(timeout=self.timeout) as session:
-            upstream = await session.post(url, json=forwarded, headers=headers)
-            if upstream.status >= 400:
-                _log_access(
-                    request,
-                    route,
-                    upstream.status,
-                    started_at,
-                    stream=False,
-                    error="upstream_error",
-                    request_body=body,
-                    provider_ms=_elapsed_ms(provider_started_at),
-                )
-                return await _error_response(upstream)
-            payload = await upstream.json(content_type=None)
-            provider_ms = _elapsed_ms(provider_started_at)
-        _rewrite_response_model(payload, original_model or None)
-        _log_access(
-            request,
-            route,
-            200,
-            started_at,
-            payload=payload,
-            stream=False,
-            request_body=body,
-            provider_ms=provider_ms,
-        )
-        return web.json_response(payload)
 
     def _route(self, body: dict[str, Any]) -> ShimModel:
         requested = str(body.get("model") or "")
@@ -1027,73 +888,6 @@ class ShimServer:
         return response
 
 
-def _responses_items_from_input(value: Any) -> list[dict[str, Any]]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": value}]}]
-    if isinstance(value, dict):
-        return [deepcopy(value)]
-    if isinstance(value, list):
-        items: list[dict[str, Any]] = []
-        for item in value:
-            if isinstance(item, str):
-                items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": item}]})
-            elif isinstance(item, dict):
-                items.append(deepcopy(item))
-        return items
-    return [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": str(value)}]}]
-
-
-_DROP_ITEM = object()
-
-
-def _sanitize_chatgpt_passthrough_body(body: dict[str, Any]) -> dict[str, Any]:
-    sanitized = _sanitize_chatgpt_passthrough_value(body)
-    return sanitized if isinstance(sanitized, dict) else {}
-
-
-def _sanitize_chatgpt_passthrough_value(value: Any) -> Any:
-    if isinstance(value, list):
-        output = []
-        for item in value:
-            sanitized = _sanitize_chatgpt_passthrough_value(item)
-            if sanitized is not _DROP_ITEM:
-                output.append(sanitized)
-        return output
-    if isinstance(value, dict):
-        if value.get("type") == "reasoning" and _has_shim_encrypted_content(value):
-            return _DROP_ITEM
-        output = {}
-        for key, item in value.items():
-            if key == "encrypted_content" and isinstance(item, str) and item.startswith(SHIM_ENCRYPTED_CONTENT_PREFIX):
-                continue
-            sanitized = _sanitize_chatgpt_passthrough_value(item)
-            if sanitized is not _DROP_ITEM:
-                output[key] = sanitized
-        return output
-    return value
-
-
-def _has_shim_encrypted_content(value: dict[str, Any]) -> bool:
-    encrypted_content = value.get("encrypted_content")
-    return isinstance(encrypted_content, str) and encrypted_content.startswith(SHIM_ENCRYPTED_CONTENT_PREFIX)
-
-
-def _rewrite_response_model(payload: Any, model: str | None) -> None:
-    if not model:
-        return
-    if isinstance(payload, dict):
-        if payload.get("model") == CHATGPT_MODEL_SLUG:
-            payload["model"] = model
-        for value in payload.values():
-            _rewrite_response_model(value, model)
-    elif isinstance(payload, list):
-        for item in payload:
-            _rewrite_response_model(item, model)
-
-
-
 def _join_url(base_url: str, endpoint: str) -> str:
     base = base_url.rstrip("/")
     if base.endswith("/v1"):
@@ -1120,145 +914,6 @@ def _anthropic_headers(route: ShimModel) -> dict[str, str]:
         headers.setdefault("x-api-key", route.api_key)
         headers.setdefault("Authorization", f"Bearer {route.api_key}")
     return headers
-
-
-
-def _merge_codex_forward_headers(request: web.Request) -> dict[str, str]:
-    forwarded: dict[str, str] = {}
-    allow_exact = {
-        "session_id",
-        "x-request-id",
-        "x-trace-id",
-        "x-client-request-id",
-        "request-id",
-        "traceparent",
-        "tracestate",
-        "cf-ray",
-        "x-oai-attestation",
-        "x-openai-subagent",
-        "x-responsesapi-include-timing-metrics",
-    }
-    for key, value in request.headers.items():
-        if not value:
-            continue
-        lower = key.lower()
-        if lower in {"authorization", "host", "content-length", "content-type", "accept"}:
-            continue
-        if lower in allow_exact or lower.startswith("x-codex-"):
-            forwarded[key] = value
-    return forwarded
-
-
-def _metadata_as_forward_headers(body: dict[str, Any]) -> dict[str, str]:
-    forwarded: dict[str, str] = {}
-    metadata = body.get("metadata")
-    if isinstance(metadata, dict):
-        trace_id = metadata.get("trace_id")
-        if trace_id:
-            forwarded["x-trace-id"] = str(trace_id)
-        request_id = metadata.get("request_id")
-        if request_id:
-            forwarded["x-request-id"] = str(request_id)
-    for key, header in (("trace_id", "x-trace-id"), ("request_id", "x-request-id")):
-        value = body.get(key)
-        if value and header not in {existing.lower() for existing in forwarded}:
-            forwarded[header] = str(value)
-    return forwarded
-
-
-def _passthrough_forward_headers(request: web.Request, body: dict[str, Any]) -> dict[str, str]:
-    merged = _merge_codex_forward_headers(request)
-    existing = {key.lower() for key in merged}
-    for key, value in _metadata_as_forward_headers(body).items():
-        if key.lower() not in existing:
-            merged[key] = value
-    return merged
-
-
-
-_ERROR_PASSTHROUGH_KEYS = frozenset(("code", "param", "doc_url", "help_url"))
-
-
-async def _error_response(upstream, *, slug: str | None = None) -> web.Response:
-    text = await upstream.text()
-    status = upstream.status
-    message = text.strip() or f"Upstream request failed with status {status}"
-    error_type = "upstream_error"
-    extras: dict[str, str] = {}
-    if slug:
-        print(
-            f"[err] upstream {slug} returned {status}: {text[:500]}",
-            flush=True,
-        )
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        payload = None
-    if isinstance(payload, dict):
-        nested = payload.get("error")
-        if isinstance(nested, dict):
-            message = str(nested.get("message") or message)
-            error_type = str(nested.get("type") or error_type)
-            extras = {k: str(v) for k, v in nested.items() if k in _ERROR_PASSTHROUGH_KEYS and v is not None}
-        elif payload.get("message"):
-            message = str(payload.get("message") or message)
-            error_type = str(payload.get("type") or error_type)
-    envelope: dict[str, Any] = {"type": error_type, "message": message}
-    envelope.update(extras)
-    return web.json_response({"error": envelope}, status=status)
-
-
-def _chatgpt_openai_beta_header() -> str:
-    # Desktop strings expose responses_websockets=2026-02-06 for WS transport;
-    # HTTP passthrough uses responses=2026-02-06 (override via env for capture A/B).
-    return os.environ.get("CODEX_SHIM_OPENAI_BETA", "responses=2026-02-06").strip() or "responses=2026-02-06"
-
-
-def _cursor_acp_error_response(exc: CursorAcpError) -> web.Response:
-    return _cursor_agent_error_response(exc, "cursor_acp_error")
-
-
-def _cursor_agent_error_response(exc: Exception, error_type: str) -> web.Response:
-    return web.json_response({"error": {"type": error_type, "message": str(exc)}}, status=502)
-
-
-def _invalid_request_error_response(exc: ResponsesInputError) -> web.Response:
-    return web.json_response({"error": {"type": "invalid_request_error", "message": str(exc)}}, status=400)
-
-
-def _unsupported_capability_response(message: str) -> web.Response:
-    return web.json_response({"error": {"type": "unsupported_capability", "message": message}}, status=400)
-
-
-def _unsupported_compact_response(route: ShimModel) -> web.Response:
-    return web.json_response(
-        {
-            "error": {
-                "type": "unsupported_route",
-                "message": f"{route.slug} ({route.provider}) does not support /v1/responses/compact.",
-            }
-        },
-        status=501,
-    )
-
-
-def _cursor_acp_stream_error(model: str, exc: CursorAcpError) -> dict[str, Any]:
-    return _cursor_agent_stream_error(model, exc, "cursor_acp_error")
-
-
-def _cursor_agent_stream_error(model: str, exc: Exception, error_type: str) -> dict[str, Any]:
-    return {
-        "type": "response.failed",
-        "response": {
-            "id": f"resp_cursor_acp_failed_{int(time.time())}",
-            "object": "response",
-            "created_at": int(time.time()),
-            "status": "failed",
-            "model": model,
-            "output": [],
-            "error": {"type": error_type, "message": str(exc)},
-        },
-    }
 
 
 def _normalize_roles(messages: list[dict]) -> list[dict]:

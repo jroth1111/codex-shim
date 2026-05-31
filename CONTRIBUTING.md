@@ -4,6 +4,9 @@ Thanks for hacking on the shim. Issues and PRs welcome.
 
 ## Dev loop
 
+Requires **Python 3.11+** (`requires-python` in `pyproject.toml`; 3.9/3.10 fail on
+`int | None` union syntax in `responses_ws.py`).
+
 ```bash
 git clone https://github.com/0xSero/codex-shim
 cd codex-shim
@@ -31,6 +34,9 @@ CI runs the same commands on Python 3.11 and 3.12 via
 - Doc patches that name a specific build / version. "I tested on Codex
   Desktop 0.x.y on macOS arm64 and it did Z" is more useful than a
   generic warning.
+- Unsupported **image generation** on BYOK routes returns **400**
+  (`unsupported_capability`); unsupported **compact** returns **501**
+  (`unsupported_route`) — keep docs and tests aligned with that split.
 
 ## Code style
 

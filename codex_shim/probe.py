@@ -5,284 +5,67 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
-from .settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_available
+from . import integration_harness as harness
+from .settings import ModelSettings, chatgpt_passthrough_available
 
+CompactProbeError = harness.CompactProbeError
+TIER_A_PROBE_INSTRUCTIONS = harness.TIER_A_PROBE_INSTRUCTIONS
+_PROBE_OUTPUT_TEXT_KEY = harness.PROBE_OUTPUT_TEXT_KEY
 
-class CompactProbeError(RuntimeError):
-    pass
+tier_a_passthrough_body = harness.tier_a_passthrough_body
+tier_a_compact_body = harness.tier_a_compact_body
+validate_compact_response = harness.validate_compact_response
+validate_passthrough_streaming_response = harness.validate_passthrough_streaming_response
+validate_passthrough_compact_response = harness.validate_passthrough_compact_response
+validate_history_response = harness.validate_history_response
 
-
-def resolve_compact_probe_slug(settings_path: Path, slug: str | None) -> ShimModel:
-    models = ModelSettings(settings_path).load()
-    desktop: list[ShimModel] = []
-    for model in models:
-        if model.visible and not model.is_chatgpt:
-            desktop.append(model)
-    if not desktop:
-        raise CompactProbeError("No visible BYOK models configured for compact probe.")
-    if slug:
-        for model in desktop:
-            if model.slug == slug:
-                return model
-        raise CompactProbeError(f"Unknown or hidden BYOK slug: {slug}")
-    return desktop[0]
+_post_json = harness.post_json
+_post_json_streaming = harness.post_json_streaming
 
 
-def validate_compact_response(payload: dict[str, Any], *, expect_trigger: bool = False) -> tuple[str, str]:
-    if payload.get("status") != "completed":
-        raise CompactProbeError(f"Expected status=completed, got {payload.get('status')!r}")
-    output = payload.get("output")
-    if not isinstance(output, list) or not output:
-        raise CompactProbeError(f"Expected compaction output items, got {type(output)!r}")
-    if expect_trigger:
-        if not isinstance(output[0], dict) or output[0].get("type") != "compaction_trigger":
-            raise CompactProbeError("Expected compaction_trigger as first output item.")
-    compaction_items = [
-        item for item in output if isinstance(item, dict) and item.get("type") in {"context_compaction", "compaction"}
-    ]
-    if len(compaction_items) != 1:
-        raise CompactProbeError(
-            f"Expected exactly one context_compaction/compaction item, got {len(compaction_items)}"
-        )
-    item = compaction_items[0]
-    summary_text = _summary_text(item)
-    if not summary_text.strip():
-        raise CompactProbeError("Compaction summary text is empty.")
-    return str(item.get("type") or ""), summary_text
+def resolve_compact_probe_slug(settings_path: Path, slug: str | None):
+    return harness.resolve_byok_slug(settings_path, slug)
 
 
-def _summary_text(item: dict[str, Any]) -> str:
-    summary = item.get("summary")
-    if isinstance(summary, list):
-        parts = [str(part.get("text") or "") for part in summary if isinstance(part, dict)]
-        text = "\n".join(part for part in parts if part).strip()
-        if text:
-            return text
-    content = item.get("content")
-    if isinstance(content, list):
-        parts = [str(part.get("text") or "") for part in content if isinstance(part, dict)]
-        return "\n".join(part for part in parts if part).strip()
-    return str(item.get("text") or "").strip()
+def resolve_history_probe_slug(settings_path: Path, slug: str | None):
+    return harness.resolve_byok_slug(settings_path, slug)
 
 
 def probe_compact(settings_path: Path, port: int, slug: str | None = None) -> int:
-    route = resolve_compact_probe_slug(settings_path, slug)
+    route = harness.resolve_byok_slug(settings_path, slug)
     if route.capabilities.compact_behavior == "unsupported":
         raise CompactProbeError(f"{route.slug} ({route.provider}) does not support /v1/responses/compact.")
-
-    health_url = f"http://127.0.0.1:{port}/health"
-    try:
-        with urlopen(health_url, timeout=5) as resp:
-            if resp.status != 200:
-                raise CompactProbeError(f"Shim health check failed: HTTP {resp.status}")
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise CompactProbeError(f"Shim is not reachable at {health_url}: {exc}") from exc
-
-    body = {
-        "model": route.slug,
-        "input": [
-            {"type": "compaction_trigger"},
-            {"role": "user", "content": "Summarize this thread for the next turn."},
-            {"type": "function_call_output", "call_id": "call_probe", "output": "probe fixture"},
-        ],
-        "stream": False,
-    }
-    url = f"http://127.0.0.1:{port}/v1/responses/compact"
-    request = Request(
-        url,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=120) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise CompactProbeError(f"Compact probe failed: HTTP {exc.code}: {detail[:500]}") from exc
-    except URLError as exc:
-        raise CompactProbeError(f"Compact probe request failed: {exc}") from exc
-
-    item_type, summary = validate_compact_response(payload, expect_trigger=True)
+    item_type, summary = harness.run_byok_compact(port, route)
     print(f"Compact probe passed for {route.slug} ({route.provider}).")
     print(f"  item_type: {item_type}")
     print(f"  summary: {summary[:160]}{'…' if len(summary) > 160 else ''}")
     return 0
 
 
-def resolve_history_probe_slug(settings_path: Path, slug: str | None) -> ShimModel:
-    return resolve_compact_probe_slug(settings_path, slug)
-
-
-def validate_history_response(first: dict[str, Any], second: dict[str, Any]) -> None:
-    first_id = str(first.get("id") or "")
-    if not first_id:
-        raise CompactProbeError("First response missing id for previous_response_id probe.")
-    if second.get("status") != "completed":
-        raise CompactProbeError(f"Follow-up response status={second.get('status')!r}")
-    output = second.get("output")
-    if not isinstance(output, list) or not output:
-        raise CompactProbeError("Follow-up response has no output items.")
-
-
 def probe_history(settings_path: Path, port: int, slug: str | None = None) -> int:
-    route = resolve_history_probe_slug(settings_path, slug)
-    health_url = f"http://127.0.0.1:{port}/health"
-    try:
-        with urlopen(health_url, timeout=5) as resp:
-            if resp.status != 200:
-                raise CompactProbeError(f"Shim health check failed: HTTP {resp.status}")
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise CompactProbeError(f"Shim is not reachable at {health_url}: {exc}") from exc
-
-    first_body = {
-        "model": route.slug,
-        "input": [
-            {"type": "local_shell_call", "call_id": "call_shell", "action": {"command": "echo probe"}},
-            {"type": "function_call_output", "call_id": "call_shell", "output": "probe"},
-            {"role": "user", "content": [{"type": "input_text", "text": "continue"}]},
-        ],
-        "stream": False,
-    }
-    session_headers = {"session_id": "probe-history"}
-    first = _post_json(f"http://127.0.0.1:{port}/v1/responses", first_body, headers=session_headers)
-    validate_history_response({}, first)
-    second_body = {
-        "model": route.slug,
-        "previous_response_id": first.get("id"),
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": "ack"}]}],
-        "stream": False,
-    }
-    second = _post_json(f"http://127.0.0.1:{port}/v1/responses", second_body, headers=session_headers)
-    validate_history_response(first, second)
-    compact_body = {
-        "model": route.slug,
-        "previous_response_id": first.get("id"),
-        "input": [{"type": "compaction_trigger"}],
-        "stream": False,
-    }
-    compact = _post_json(
-        f"http://127.0.0.1:{port}/v1/responses/compact",
-        compact_body,
-        headers=session_headers,
-    )
-    item_type, summary = validate_compact_response(compact, expect_trigger=True)
+    route = harness.resolve_byok_slug(settings_path, slug)
+    info = harness.run_byok_history(port, route)
     print("  compact: compaction_trigger + context_compaction")
     print(f"History probe passed for {route.slug} ({route.provider}).")
-    print(f"  previous_response_id: {first.get('id')}")
-    print(f"  follow_up_items: {len(second.get('output') or [])}")
-    print(f"  compact_item_type: {item_type}")
-    print(f"  compact_summary: {summary[:120]}{'…' if len(summary) > 120 else ''}")
+    print(f"  previous_response_id: {info['previous_response_id']}")
+    print(f"  compact_item_type: {info['compact_item_type']}")
+    print(f"  compact_summary: {info['compact_summary'][:120]}{'…' if len(info['compact_summary']) > 120 else ''}")
     return 0
 
 
 def probe_streaming_history(settings_path: Path, port: int, slug: str | None = None) -> int:
-    """BYOK streaming turn stored, then follow-up via previous_response_id."""
-    route = resolve_history_probe_slug(settings_path, slug)
-    health_url = f"http://127.0.0.1:{port}/health"
-    try:
-        with urlopen(health_url, timeout=5) as resp:
-            if resp.status != 200:
-                raise CompactProbeError(f"Shim health check failed: HTTP {resp.status}")
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise CompactProbeError(f"Shim is not reachable at {health_url}: {exc}") from exc
-
-    first_body = {
-        "model": route.slug,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": "stream probe"}]}],
-        "stream": True,
-    }
-    first = _post_json_streaming(f"http://127.0.0.1:{port}/v1/responses", first_body, headers={"session_id": "probe-stream"})
-    validate_history_response({}, first)
-    second_body = {
-        "model": route.slug,
-        "previous_response_id": first.get("id"),
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": "ack"}]}],
-        "stream": False,
-    }
-    second = _post_json(
-        f"http://127.0.0.1:{port}/v1/responses",
-        second_body,
-        headers={"session_id": "probe-stream"},
-    )
-    validate_history_response(first, second)
-    compact_body = {
-        "model": route.slug,
-        "previous_response_id": first.get("id"),
-        "input": [{"type": "compaction_trigger"}],
-        "stream": False,
-    }
-    compact = _post_json(
-        f"http://127.0.0.1:{port}/v1/responses/compact",
-        compact_body,
-        headers={"session_id": "probe-stream"},
-    )
-    item_type, summary = validate_compact_response(compact, expect_trigger=True)
+    route = harness.resolve_byok_slug(settings_path, slug)
+    info = harness.run_byok_streaming_history(port, route)
     print(f"Streaming history probe passed for {route.slug} ({route.provider}).")
-    print(f"  previous_response_id: {first.get('id')}")
-    print(f"  compact_item_type: {item_type}")
-    print(f"  compact_summary: {summary[:120]}{'…' if len(summary) > 120 else ''}")
+    print(f"  previous_response_id: {info['previous_response_id']}")
+    print(f"  compact_item_type: {info['compact_item_type']}")
+    print(f"  compact_summary: {info['compact_summary'][:120]}{'…' if len(info['compact_summary']) > 120 else ''}")
     return 0
 
 
-def _post_json_streaming(url: str, body: dict[str, Any], headers: dict[str, str] | None = None) -> dict[str, Any]:
-    merged = {"Content-Type": "application/json", "Accept": "text/event-stream"}
-    if headers:
-        merged.update(headers)
-    request = Request(url, data=json.dumps(body).encode("utf-8"), headers=merged, method="POST")
-    try:
-        with urlopen(request, timeout=120) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise CompactProbeError(f"Streaming probe failed: HTTP {exc.code}: {detail[:500]}") from exc
-    except URLError as exc:
-        raise CompactProbeError(f"Streaming probe request failed: {exc}") from exc
-    completed: dict[str, Any] | None = None
-    for block in raw.split("\n\n"):
-        for line in block.split("\n"):
-            text = line.strip()
-            if not text.startswith("data:"):
-                continue
-            payload_text = text[5:].strip()
-            if payload_text == "[DONE]":
-                break
-            try:
-                event = json.loads(payload_text)
-            except json.JSONDecodeError:
-                continue
-            if event.get("type") == "response.completed":
-                completed = event.get("response")
-    if not isinstance(completed, dict):
-        raise CompactProbeError("Streaming probe did not receive response.completed event.")
-    return completed
-
-
-def _post_json(url: str, body: dict[str, Any], headers: dict[str, str] | None = None) -> dict[str, Any]:
-    merged = {"Content-Type": "application/json", "Accept": "application/json"}
-    if headers:
-        merged.update(headers)
-    request = Request(url, data=json.dumps(body).encode("utf-8"), headers=merged, method="POST")
-    try:
-        with urlopen(request, timeout=120) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise CompactProbeError(f"History probe failed: HTTP {exc.code}: {detail[:500]}") from exc
-    except URLError as exc:
-        raise CompactProbeError(f"History probe request failed: {exc}") from exc
-    if isinstance(payload, dict) and payload.get("error"):
-        raise CompactProbeError(f"History probe error: {payload['error']}")
-    if not isinstance(payload, dict):
-        raise CompactProbeError(f"History probe returned unexpected payload type: {type(payload)!r}")
-    return payload
-
-
 def _fixture_dir() -> Path:
-    return Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "desktop"
+    return harness.DESKTOP_FIXTURE_DIR
 
 
 def probe_fidelity() -> int:
@@ -324,10 +107,9 @@ def probe_fidelity() -> int:
     action = web_item.get("action")
     if not isinstance(action, dict) or action.get("type") != "search":
         raise CompactProbeError("Fidelity probe web_search: action.type must be 'search'.")
-    from .desktop_validate import assert_local_shell_action, assert_web_search_action
+    from .desktop_validate import assert_image_generation_action, assert_local_shell_action, assert_web_search_action
 
     assert_web_search_action(action)
-    # local_shell_call shape
     shell_item = tool_call_to_response_item(
         {"id": "call_shell_probe", "function": {"name": "local_shell", "arguments": '{"command":"echo probe"}'}}
     )
@@ -337,7 +119,6 @@ def probe_fidelity() -> int:
     if not isinstance(shell_action, dict) or shell_action.get("command") != "echo probe":
         raise CompactProbeError("Fidelity probe local_shell: action.command must be 'echo probe'.")
     assert_local_shell_action(shell_action)
-    # image_generation_call shape
     img_item = tool_call_to_response_item(
         {"id": "call_img_probe", "function": {"name": "image_generation", "arguments": '{"prompt":"probe fox"}'}}
     )
@@ -345,7 +126,10 @@ def probe_fidelity() -> int:
         raise CompactProbeError("Fidelity probe image_generation: expected image_generation_call output item.")
     if img_item.get("revised_prompt") != "probe fox":
         raise CompactProbeError("Fidelity probe image_generation: revised_prompt must be 'probe fox'.")
-    # tool_search_call shape
+    img_action = img_item.get("action")
+    if not isinstance(img_action, dict):
+        raise CompactProbeError("Fidelity probe image_generation: action must be a dict.")
+    assert_image_generation_action(img_action)
     ts_item = tool_call_to_response_item(
         {"id": "call_ts_probe", "function": {"name": "tool_search", "arguments": '{"query":"grep"}'}}
     )
@@ -356,12 +140,7 @@ def probe_fidelity() -> int:
 
 
 def _shim_reachable(port: int) -> bool:
-    health_url = f"http://127.0.0.1:{port}/health"
-    try:
-        with urlopen(health_url, timeout=5) as resp:
-            return resp.status == 200
-    except (HTTPError, URLError, TimeoutError):
-        return False
+    return harness.shim_reachable(port)
 
 
 def _passthrough_live_enabled(live: bool) -> bool:
@@ -377,22 +156,10 @@ def probe_passthrough(port: int, *, live: bool = False) -> int:
     if not chatgpt_passthrough_available():
         print("Skipping passthrough probe: ~/.codex/auth.json missing tokens.access_token.")
         return 0
-    if not _shim_reachable(port):
-        raise CompactProbeError(f"Shim is not reachable at http://127.0.0.1:{port}/health")
-    body = {
-        "model": CHATGPT_MODEL_SLUG,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": "Reply with exactly: OK"}]}],
-        "stream": False,
-        "max_output_tokens": 32,
-        "metadata": {"trace_id": "codex-shim-passthrough-probe"},
-    }
-    payload = _post_json(f"http://127.0.0.1:{port}/v1/responses", body)
-    output = payload.get("output")
-    if not isinstance(output, list) or not output:
-        raise CompactProbeError("Passthrough probe returned no output items.")
+    response_id, output_text = harness.run_tier_a_passthrough_streaming(port)
     print("Passthrough probe passed (gpt-5.5 via shim daemon).")
-    print(f"  response_id: {payload.get('id')}")
-    print(f"  output_items: {len(output)}")
+    print(f"  response_id: {response_id}")
+    print(f"  output_text: {output_text!r}")
     return 0
 
 
@@ -403,26 +170,38 @@ def probe_passthrough_compact(port: int, *, live: bool = False) -> int:
     if not chatgpt_passthrough_available():
         print("Skipping passthrough-compact probe: ~/.codex/auth.json missing tokens.access_token.")
         return 0
-    if not _shim_reachable(port):
-        raise CompactProbeError(f"Shim is not reachable at http://127.0.0.1:{port}/health")
-    body = {
-        "model": CHATGPT_MODEL_SLUG,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": "Summarize briefly."}]}],
-        "stream": False,
-    }
-    payload = _post_json(f"http://127.0.0.1:{port}/v1/responses/compact", body)
-    item_type, summary = validate_compact_response(payload)
+    response_id, item_type, summary = harness.run_tier_a_passthrough_compact(port)
     print("Passthrough compact probe passed.")
+    print(f"  response_id: {response_id}")
     print(f"  item_type: {item_type}")
     print(f"  summary: {summary[:160]}{'…' if len(summary) > 160 else ''}")
     return 0
+
+
+def probe_live_matrix(settings_path: Path, port: int) -> int:
+    if not harness.shim_reachable(port):
+        raise CompactProbeError(f"Shim is not reachable at {harness.shim_base_url(port)}/health")
+    results = harness.run_live_matrix(settings_path, port)
+    exit_code = 0
+    for result in results:
+        status = "PASS" if result.ok else "FAIL"
+        if result.detail.startswith("skipped:"):
+            status = "SKIP"
+        print(f"  [{status}] {result.label}: {result.detail}")
+        if not result.ok and not result.detail.startswith("skipped:"):
+            exit_code = 1
+    if exit_code == 0:
+        print("Live matrix probe passed.")
+    else:
+        print("Live matrix probe finished with failures.", file=sys.stderr)
+    return exit_code
 
 
 def probe_all(settings_path: Path, port: int, slug: str | None = None, *, live: bool = False) -> int:
     exit_code = probe_fidelity()
     if exit_code != 0:
         return exit_code
-    if not _shim_reachable(port):
+    if not harness.shim_reachable(port):
         print("Shim daemon not reachable; skipping live probes.")
         print("  Start with: codex-shim serve")
         return 0
@@ -438,48 +217,25 @@ def probe_all(settings_path: Path, port: int, slug: str | None = None, *, live: 
             print(f"{label} probe failed: {exc}", file=sys.stderr)
             return 1
         exit_code = max(exit_code, code)
-    try:
-        exit_code = max(exit_code, probe_passthrough(port, live=live))
-        exit_code = max(exit_code, probe_passthrough_compact(port, live=live))
-    except CompactProbeError as exc:
-        print(f"passthrough probe failed: {exc}", file=sys.stderr)
-        return 1
+    if live:
+        try:
+            exit_code = max(exit_code, probe_live_matrix(settings_path, port))
+        except CompactProbeError as exc:
+            print(f"live-matrix probe failed: {exc}", file=sys.stderr)
+            return 1
+    else:
+        try:
+            exit_code = max(exit_code, probe_passthrough(port, live=False))
+            exit_code = max(exit_code, probe_passthrough_compact(port, live=False))
+        except CompactProbeError as exc:
+            print(f"passthrough probe failed: {exc}", file=sys.stderr)
+            return 1
     print("Probe all finished.")
     return exit_code
 
 
-async def _probe_ws_streaming_async(settings_path: Path, port: int, slug: str | None) -> None:
-    import aiohttp
-
-    route = resolve_compact_probe_slug(settings_path, slug)
-    url = f"ws://127.0.0.1:{port}/v1/responses"
-    async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(url, timeout=aiohttp.ClientWSTimeout(ws_receive=120)) as ws:
-            await ws.send_json({"model": route.slug, "input": "Reply with exactly: OK", "stream": True})
-            completed = None
-            saw_delta = False
-            async for msg in ws:
-                if msg.type != aiohttp.WSMsgType.TEXT:
-                    continue
-                frame = json.loads(msg.data)
-                frame_type = frame.get("type")
-                if frame_type and "delta" in str(frame_type):
-                    saw_delta = True
-                if frame_type == "response.completed":
-                    completed = frame.get("response")
-                    break
-            if not saw_delta:
-                raise CompactProbeError("WS streaming probe did not receive any delta frames.")
-            if not isinstance(completed, dict):
-                raise CompactProbeError("WS streaming probe did not receive response.completed.")
-
-
 def probe_ws_streaming(settings_path: Path, port: int, slug: str | None = None) -> int:
-    import asyncio
-
-    route = resolve_compact_probe_slug(settings_path, slug)
-    if not _shim_reachable(port):
-        raise CompactProbeError(f"Shim is not reachable at http://127.0.0.1:{port}/health")
-    asyncio.run(_probe_ws_streaming_async(settings_path, port, slug))
+    route = harness.resolve_byok_slug(settings_path, slug)
+    harness.run_ws_streaming(port, route)
     print(f"WS streaming probe passed for {route.slug} ({route.provider}).")
     return 0

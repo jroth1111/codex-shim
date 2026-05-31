@@ -41,3 +41,7 @@ codex-shim = "codex_shim.cli:_entrypoint"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "live: real daemon + upstream integration (requires CODEX_SHIM_LIVE=1)",
+  "tier_a: ChatGPT passthrough live tests",
+]

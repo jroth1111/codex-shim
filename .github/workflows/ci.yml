@@ -32,4 +32,4 @@ jobs:
       - name: Desktop patch needle drift check
         run: python scripts/check_desktop_patch_needles.py
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -m "not live" -q

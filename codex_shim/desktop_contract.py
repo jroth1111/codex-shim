@@ -53,3 +53,8 @@ DESKTOP_LOCAL_SHELL_ACTION_FIELDS = frozenset((
     "env",
     "user",
 ))
+
+DESKTOP_IMAGE_GENERATION_ACTION_FIELDS = frozenset((
+    "prompt",
+    "revised_prompt",
+))

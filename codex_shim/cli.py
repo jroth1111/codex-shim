@@ -95,7 +95,15 @@ def main(argv: list[str] | None = None) -> int:
     probe_sub.add_parser("fidelity", help="Offline hosted-tool and compaction translation checks.")
     probe_all_parser = probe_sub.add_parser("all", help="Run offline fidelity plus live probes when daemon/auth allow.")
     probe_all_parser.add_argument("--slug", help="BYOK model slug for live BYOK probes.")
-    probe_all_parser.add_argument("--live", action="store_true", help="Run Tier A passthrough probes (requires auth).")
+    probe_all_parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Run full live matrix (Tier A + BYOK families) instead of offline-only passthrough skips.",
+    )
+    probe_sub.add_parser(
+        "live-matrix",
+        help="Run full live fidelity matrix (Tier A + one BYOK slug per provider family).",
+    )
     probe_passthrough_parser = probe_sub.add_parser("passthrough", help="Live Tier A passthrough probe via shim daemon.")
     probe_passthrough_parser.add_argument("--live", action="store_true", help="Run probe (or set CODEX_SHIM_PROBE_PASSTHROUGH=1).")
     probe_passthrough_compact_parser = probe_sub.add_parser(
@@ -212,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
             return probe_passthrough_route(args.port, live=args.live)
         if args.probe_command == "passthrough-compact":
             return probe_passthrough_compact_route(args.port, live=args.live)
+        if args.probe_command == "live-matrix":
+            return probe_live_matrix_route(args.settings, args.port)
     if args.command == "configure":
         return configure(args.settings, args)
     if args.command == "patch-app":
@@ -641,6 +651,16 @@ def probe_passthrough_compact_route(port: int, *, live: bool) -> int:
 
     try:
         return probe_passthrough_compact(port, live=live)
+    except CompactProbeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+
+def probe_live_matrix_route(settings_path: Path, port: int) -> int:
+    from .probe import CompactProbeError, probe_live_matrix
+
+    try:
+        return probe_live_matrix(Path(settings_path).expanduser(), port)
     except CompactProbeError as exc:
         print(str(exc), file=sys.stderr)
         return 1

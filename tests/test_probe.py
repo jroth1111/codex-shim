@@ -4,7 +4,12 @@ import json
 
 import pytest
 
-from codex_shim.probe import CompactProbeError, validate_compact_response
+from codex_shim.probe import (
+    CompactProbeError,
+    validate_compact_response,
+    validate_passthrough_compact_response,
+    validate_passthrough_streaming_response,
+)
 
 
 def test_validate_compact_response_accepts_context_compaction():
@@ -102,6 +107,32 @@ def test_probe_ws_streaming_skips_when_daemon_unreachable(tmp_path):
     )
     with pytest.raises(CompactProbeError, match="not reachable"):
         probe_ws_streaming(settings, port=59999)
+
+
+def test_validate_passthrough_compact_response_accepts_compaction_summary():
+    item_type, summary = validate_passthrough_compact_response(
+        {
+            "id": "resp_compact",
+            "output": [
+                {"type": "message", "role": "user"},
+                {"type": "compaction_summary", "encrypted_content": "gAAAAABprobe"},
+            ],
+        }
+    )
+    assert item_type == "compaction_summary"
+    assert summary.startswith("encrypted (")
+
+
+def test_validate_passthrough_streaming_response_checks_output_text():
+    response_id = validate_passthrough_streaming_response(
+        {
+            "id": "resp_stream",
+            "status": "completed",
+            "__probe_output_text": "OK",
+        },
+        expect_text="OK",
+    )
+    assert response_id == "resp_stream"
 
 
 def test_validate_compact_response_rejects_message_shape():
