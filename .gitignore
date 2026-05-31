@@ -12,7 +12,7 @@ reverse-cursor-agent/
 .antigravitycli/
 .claude/
 .cursor/
-# codex-desktop-decompiled/ is tracked (source-only); see its .gitignore for exclusions
+codex-desktop-decompiled/
 *-bsLDOISN.js
 hooks-settings-model-*.js
 model-queries-*.js
