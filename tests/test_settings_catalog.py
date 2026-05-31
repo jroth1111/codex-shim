@@ -600,6 +600,14 @@ def test_desktop_models_include_chatgpt_synthetic_model_when_auth_present(tmp_pa
     assert model.capabilities.supports_image_generation is True
 
 
+def test_by_slug_or_model_normalizes_gpt_5p5_alias(tmp_path, auth_present):
+    settings = tmp_path / "models.json"
+    settings.write_text(json.dumps({"models": []}))
+    resolved = ModelSettings(settings).by_slug_or_model("gpt-5p5")
+    assert resolved is not None
+    assert resolved.slug == "gpt-5.5"
+
+
 def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing):
     catalog_path = tmp_path / "catalog.json"
     write_catalog([], catalog_path)
@@ -784,7 +792,7 @@ def test_restore_app_fails_off_macos(monkeypatch, capsys):
     assert "macOS-only" in capsys.readouterr().err
 
 
-def test_desktop_bundle_patch_applies_model_picker_and_sidebar(tmp_path):
+def test_desktop_bundle_patch_applies_sidebar_and_leaves_legacy_picker(tmp_path):
     assets = tmp_path / "webview" / "assets"
     assets.mkdir(parents=True)
     model_bundle = assets / "model-queries-test.js"
@@ -793,7 +801,8 @@ def test_desktop_bundle_patch_applies_model_picker_and_sidebar(tmp_path):
     sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
 
     assert cli._patch_codex_desktop_bundles(tmp_path) is True
-    assert cli.MODEL_PICKER_REPLACEMENT in model_bundle.read_text()
+    assert cli.MODEL_PICKER_NEEDLE in model_bundle.read_text()
+    assert cli.MODEL_PICKER_REPLACEMENT not in model_bundle.read_text()
     assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
     assert cli._patch_codex_desktop_bundles(tmp_path) is False
 
@@ -805,6 +814,30 @@ def test_desktop_bundle_patch_fails_when_sidebar_needle_is_missing(tmp_path):
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
     assert cli._patch_codex_desktop_bundles(tmp_path) is None
+
+
+def test_desktop_bundle_patch_applies_sidebar_when_legacy_picker_needle_missing(tmp_path):
+    assets = tmp_path / "webview" / "assets"
+    assets.mkdir(parents=True)
+    (assets / "model-queries-test.js").write_text("Desktop 26.519 build without legacy useHiddenModels gate")
+    sidebar_bundle = assets / "app-server-manager-signals-test.js"
+    sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
+
+    assert cli._patch_codex_desktop_bundles(tmp_path) is True
+    assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
+
+
+def test_desktop_bundle_patch_inspection_marks_legacy_picker_as_skipped(tmp_path):
+    assets = tmp_path / "webview" / "assets"
+    assets.mkdir(parents=True)
+    (assets / "model-queries-test.js").write_text("Desktop 26.519 build without legacy useHiddenModels gate")
+    (assets / "app-server-manager-signals-test.js").write_text("different build")
+
+    inspection = cli._inspect_codex_desktop_bundles(tmp_path)
+
+    assert inspection[0]["status"] == "skipped"
+    assert inspection[1]["status"] == "missing"
+    assert cli._inspection_has_missing_patch(inspection) is True
 
 
 def test_desktop_bundle_patch_inspection_detects_patched_and_missing(tmp_path):
@@ -819,6 +852,29 @@ def test_desktop_bundle_patch_inspection_detects_patched_and_missing(tmp_path):
     assert inspection[1]["status"] == "missing"
     assert cli._inspection_has_applied_patch(inspection) is True
     assert cli._inspection_has_missing_patch(inspection) is True
+
+
+def test_desktop_bundle_patch_specs_do_not_mutate_legacy_picker():
+    labels = [spec[0] for spec in cli._desktop_patch_specs()]
+    assert all("model picker" not in label for label in labels)
+    assert any("sidebar" in label for label in labels)
+
+
+def test_doctor_contract_runs_generator_check(monkeypatch):
+    calls = []
+
+    class Result:
+        returncode = 0
+
+    def fake_run(cmd, cwd=None):
+        calls.append((cmd, cwd))
+        return Result()
+
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+
+    assert cli.doctor_contract() == 0
+    assert calls
+    assert calls[0][0][-1] == "--check"
 
 
 def test_update_app_asar_integrity_uses_asar_json_header_hash(tmp_path):

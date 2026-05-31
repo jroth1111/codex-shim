@@ -1,0 +1,15 @@
+{
+  "input": [
+    {
+      "type": "web_search_call",
+      "call_id": "call_ws_1",
+      "status": "completed",
+      "action": {"type": "search", "query": "codex shim docs"}
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_ws_1",
+      "output": "10 results found"
+    }
+  ]
+}

@@ -11,6 +11,8 @@ python3 -m pip install -e ".[dev]"
 
 python3 -m pytest tests/ -q
 python3 -m compileall codex_shim/ -q
+python3 scripts/generate_desktop_contract.py --check
+python3 scripts/check_desktop_patch_needles.py
 ```
 
 CI runs the same commands on Python 3.11 and 3.12 via
@@ -24,8 +26,8 @@ CI runs the same commands on Python 3.11 and 3.12 via
   Anthropic-shaped upstream). Add a test that exercises the new shape end
   to end through `ShimServer`, the way `test_server.py` does.
 - Compatibility notes / safer detection for new Codex Desktop builds,
-  especially around the ASAR picker patch needle in
-  `codex_shim/cli.py::patch_codex_app`.
+  especially around the generated Desktop contract and ASAR sidebar patch
+  needle.
 - Doc patches that name a specific build / version. "I tested on Codex
   Desktop 0.x.y on macOS arm64 and it did Z" is more useful than a
   generic warning.

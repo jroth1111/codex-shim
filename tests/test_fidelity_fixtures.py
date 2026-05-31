@@ -72,3 +72,42 @@ def test_image_generation_call_input_translates():
         for call in message.get("tool_calls") or []
     ]
     assert tool_names == ["image_generation"]
+
+
+def test_web_search_fixture_translates_with_action_type():
+    payload = json.loads((FIXTURES / "web_search_turn.json").read_text())
+    body = {"model": "slug", "input": payload["input"]}
+    validate_responses_input(body)
+    out = responses_to_chat(body, "real-model")
+    tool_names = [
+        call["function"]["name"]
+        for message in out["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert tool_names == ["web_search"]
+
+
+def test_image_gen_fixture_translates_tool_call():
+    payload = json.loads((FIXTURES / "image_gen_turn.json").read_text())
+    body = {"model": "slug", "input": payload["input"]}
+    validate_responses_input(body)
+    out = responses_to_chat(body, "real-model")
+    tool_names = [
+        call["function"]["name"]
+        for message in out["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert tool_names == ["image_generation"]
+
+
+def test_tool_search_fixture_translates_tool_call():
+    payload = json.loads((FIXTURES / "tool_search_turn.json").read_text())
+    body = {"model": "slug", "input": payload["input"]}
+    validate_responses_input(body)
+    out = responses_to_chat(body, "real-model")
+    tool_names = [
+        call["function"]["name"]
+        for message in out["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert tool_names == ["tool_search"]

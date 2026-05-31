@@ -287,7 +287,7 @@ def _fixture_dir() -> Path:
 
 def probe_fidelity() -> int:
     """Offline translation fidelity checks (no daemon required)."""
-    from .translate import responses_to_chat, validate_responses_input
+    from .translate import responses_to_chat, tool_call_to_response_item, validate_responses_input
 
     fixture_dir = _fixture_dir()
     tool_payload = json.loads((fixture_dir / "tool_heavy_turn.json").read_text())
@@ -313,6 +313,40 @@ def probe_fidelity() -> int:
     }
     validate_responses_input(image_body)
     responses_to_chat(image_body, "probe-model")
+    web_item = tool_call_to_response_item(
+        {
+            "id": "call_search_probe",
+            "function": {"name": "web_search", "arguments": '{"query":"codex shim"}'},
+        }
+    )
+    if web_item.get("type") != "web_search_call":
+        raise CompactProbeError("Fidelity probe web_search: expected web_search_call output item.")
+    action = web_item.get("action")
+    if not isinstance(action, dict) or action.get("type") != "search":
+        raise CompactProbeError("Fidelity probe web_search: action.type must be 'search'.")
+    # local_shell_call shape
+    shell_item = tool_call_to_response_item(
+        {"id": "call_shell_probe", "function": {"name": "local_shell", "arguments": '{"command":"echo probe"}'}}
+    )
+    if shell_item.get("type") != "local_shell_call":
+        raise CompactProbeError("Fidelity probe local_shell: expected local_shell_call output item.")
+    shell_action = shell_item.get("action")
+    if not isinstance(shell_action, dict) or shell_action.get("command") != "echo probe":
+        raise CompactProbeError("Fidelity probe local_shell: action.command must be 'echo probe'.")
+    # image_generation_call shape
+    img_item = tool_call_to_response_item(
+        {"id": "call_img_probe", "function": {"name": "image_generation", "arguments": '{"prompt":"probe fox"}'}}
+    )
+    if img_item.get("type") != "image_generation_call":
+        raise CompactProbeError("Fidelity probe image_generation: expected image_generation_call output item.")
+    if img_item.get("revised_prompt") != "probe fox":
+        raise CompactProbeError("Fidelity probe image_generation: revised_prompt must be 'probe fox'.")
+    # tool_search_call shape
+    ts_item = tool_call_to_response_item(
+        {"id": "call_ts_probe", "function": {"name": "tool_search", "arguments": '{"query":"grep"}'}}
+    )
+    if ts_item.get("type") != "tool_search_call":
+        raise CompactProbeError("Fidelity probe tool_search: expected tool_search_call output item.")
     print("Fidelity probe passed (hosted tools, compaction, reasoning, MCP, image generation, passthrough compact shape).")
     return 0
 

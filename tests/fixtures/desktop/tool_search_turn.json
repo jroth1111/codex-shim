@@ -1,0 +1,14 @@
+{
+  "input": [
+    {
+      "type": "tool_search_call",
+      "call_id": "call_ts_1",
+      "arguments": "{\"query\":\"grep\"}"
+    },
+    {
+      "type": "tool_search_output",
+      "call_id": "call_ts_1",
+      "output": "found 3 tools"
+    }
+  ]
+}

@@ -99,7 +99,7 @@ Excluded: `authorization`, `host`, `content-length`, `content-type`, `accept`.
 | Step | Contract |
 |------|----------|
 | `previous_response_id` | If set: expand from SQLite `ResponseStore.get(id, session_id)`; prepend stored items to `input`; remove `previous_response_id`; unknown id → **404** |
-| Session scope | `session_id` header → `_shim_session_id` on body; store key `{session_id}::{id}` when `CODEX_SHIM_RESPONSE_STORE_SCOPE=session` |
+| Session scope | `session_id` header → `_shim_session_id` on body; default store scope is session-isolated with key `{session_id}::{id}`; `CODEX_SHIM_RESPONSE_STORE_SCOPE=global` restores legacy shared scope |
 | Input validation | `validate_responses_input` — unknown `input[].type` → **400** |
 | Image tools | If body needs image gen and `!route.capabilities.supports_image_generation` → **400** unsupported_capability |
 | Translation | Provider-specific: `responses_to_chat`, `responses_to_anthropic`, Cursor adapters |
@@ -121,7 +121,7 @@ compaction, compaction_trigger, reasoning, other
 | Desktop item / tool | OpenAI chat upstream | Anthropic upstream |
 |---------------------|----------------------|-------------------|
 | `local_shell_call` | `local_shell` function tool | tool_use / tool_result |
-| `web_search_call` | `web_search` function tool | tool_use / tool_result |
+| `web_search_call` | `web_search` function tool | tool_use / tool_result | Outbound `action.type` defaults to `search` when absent |
 | `image_generation_call` | `image_generation` function tool | tool_use / tool_result |
 | `tool_search_call` | `tool_search` function tool | tool_use / tool_result |
 | `function_call` / outputs | standard `tool_calls` / `role: tool` | tool_use / tool_result |
@@ -136,7 +136,7 @@ Outbound: upstream assistant output → Responses items via `chat_completion_to_
 | Field | Contract |
 |-------|----------|
 | Response `id` | **Shim-generated** (`resp_<timestamp>` via `ResponsesStreamState`) |
-| Streaming | Synthesized Responses SSE via `ResponsesStreamState`: `response.created`, output item added/delta/done, `response.completed`, `[DONE]` |
+| Streaming | Synthesized Responses SSE via `ResponsesStreamState`: `response.created`, output item added/delta/done, `response.completed`; no trailing `[DONE]` sentinel on Responses streams |
 | Reasoning | Shim-encoded `encrypted_content` prefix `anthropic-thinking-v1:` or summary-only — **not** OpenAI-native crypto blobs |
 | History store | On completed turn: `_store_response_history` writes input + output items under shim `id` |
 

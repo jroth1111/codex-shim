@@ -52,6 +52,8 @@ APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
 MODEL_PICKER_NEEDLE = "let u=c.useHiddenModels&&o!==`amazonBedrock`,d;"
 MODEL_PICKER_REPLACEMENT = "let u=!1,d;"
+# Legacy picker gate removed in Desktop 26.519.81530+ (availabilityNux-based hiding).
+MODEL_PICKER_OPTIONAL = True
 SIDEBAR_RECENT_THREADS_NEEDLE = (
     "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
     "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ke})}"
@@ -75,11 +77,12 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("disable")
     sub.add_parser("restart")
     sub.add_parser("status")
-    doctor_parser = sub.add_parser("doctor", help="Explain visibility, patch status, and catalog schema.")
+    doctor_parser = sub.add_parser("doctor", help="Explain visibility, patch status, catalog schema, and contract drift.")
     doctor_sub = doctor_parser.add_subparsers(dest="doctor_command")
     doctor_sub.add_parser("models", help="List visible and hidden configured models (default).")
-    doctor_sub.add_parser("patch", help="Report Codex Desktop picker patch status and app version.")
+    doctor_sub.add_parser("patch", help="Report Codex Desktop ASAR patch status and app version.")
     doctor_sub.add_parser("catalog", help="Compare generated catalog keys against Desktop schema fixture.")
+    doctor_sub.add_parser("contract", help="Check generated Desktop protocol contract drift.")
     test_parser = sub.add_parser("test", help="Run a non-streaming smoke test through the selected model route.")
     test_parser.add_argument("target", help="Model slug, provider, upstream model, or display name.")
     probe_parser = sub.add_parser("probe", help="Validate shim behavior against running daemon.")
@@ -102,9 +105,9 @@ def main(argv: list[str] | None = None) -> int:
     probe_passthrough_compact_parser.add_argument(
         "--live", action="store_true", help="Run probe (or set CODEX_SHIM_PROBE_PASSTHROUGH=1)."
     )
-    sub.add_parser("patch-app", help="Patch Codex Desktop picker/sidebar handling for custom shim models.")
+    sub.add_parser("patch-app", help="Patch Codex Desktop sidebar handling for custom shim models.")
     sub.add_parser("restore-app", help="Restore Codex Desktop app.asar from the pre-patch backup.")
-    sub.add_parser("patch-status", help="Inspect the macOS Codex Desktop picker patch and backups.")
+    sub.add_parser("patch-status", help="Inspect the macOS Codex Desktop ASAR patch and backups.")
     configure_parser = sub.add_parser("configure", help="Add or update common provider rows in the model settings file.")
     configure_sub = configure_parser.add_subparsers(dest="configure_provider", required=True)
     cursor_parser = configure_sub.add_parser("cursor", help="Configure Cursor Agent through ACP or the headless CLI.")
@@ -188,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
             return doctor_patch()
         if cmd == "catalog":
             return doctor_catalog(args.settings)
+        if cmd == "contract":
+            return doctor_contract()
         return doctor(args.settings)
     if args.command == "test":
         return test_provider_route(args.settings, args.target)
@@ -470,9 +475,18 @@ def doctor_patch() -> int:
     for report in inspection:
         path_note = f" ({report['path']})" if report.get("path") else ""
         print(f"  {report['label']}: {report['status']}{path_note}")
-        if report["status"] in {"missing", "mixed"}:
+        if report["status"] in {"missing", "mixed"} and report.get("optional", "false") != "true":
             ok = False
     return 0 if ok else 1
+
+
+def doctor_contract() -> int:
+    script = PROJECT_ROOT / "scripts" / "generate_desktop_contract.py"
+    if not script.exists():
+        print(f"Desktop contract generator not found: {script}", file=sys.stderr)
+        return 1
+    result = subprocess.run([sys.executable, str(script), "--check"], cwd=PROJECT_ROOT)
+    return result.returncode
 
 
 DESKTOP_CATALOG_KEYS = {
@@ -1130,46 +1144,63 @@ def _update_app_asar_integrity(app_asar: Path, info_plist: Path) -> None:
 
 def _patch_codex_desktop_bundles(workdir: Path) -> bool | None:
     changed = False
-    for label, globs, needle, replacement in _desktop_patch_specs():
+    hard_failure = False
+    for label, globs, needle, replacement, optional in _desktop_patch_specs():
         bundle_file = _find_js_bundle(workdir, globs, needle, replacement)
         if bundle_file is None:
+            if optional:
+                print(f"Skipping Codex Desktop {label} (needle not present in this Desktop version).")
+                continue
             print(f"Could not find the expected {label} in Codex Desktop.", file=sys.stderr)
-            return None
+            hard_failure = True
+            continue
         result = _replace_once(bundle_file, needle, replacement)
         if result is None:
             print(f"Could not patch the expected {label} in Codex Desktop.", file=sys.stderr)
-            return None
+            hard_failure = True
+            continue
         if result:
             changed = True
             print(f"Patched Codex Desktop {label}.")
         else:
             print(f"Codex Desktop {label} patch is already applied.")
+    if hard_failure:
+        return None
     return changed
 
 
-def _desktop_patch_specs() -> list[tuple[str, list[str], str, str]]:
+def _desktop_patch_specs() -> list[tuple[str, list[str], str, str, bool]]:
     return [
-        (
-            "model picker allowlist filter",
-            ["model-queries-*.js", "*.js"],
-            MODEL_PICKER_NEEDLE,
-            MODEL_PICKER_REPLACEMENT,
-        ),
         (
             "shim-mode sidebar provider filter",
             ["app-server-manager-signals-*.js", "*.js"],
             SIDEBAR_RECENT_THREADS_NEEDLE,
             SIDEBAR_RECENT_THREADS_REPLACEMENT,
+            False,
         ),
+    ]
+
+
+def _desktop_inspection_specs() -> list[tuple[str, list[str], str, str, bool]]:
+    return [
+        (
+            "model picker allowlist filter (legacy, informational)",
+            ["model-queries-*.js", "*.js"],
+            MODEL_PICKER_NEEDLE,
+            MODEL_PICKER_REPLACEMENT,
+            MODEL_PICKER_OPTIONAL,
+        ),
+        *_desktop_patch_specs(),
     ]
 
 
 def _inspect_codex_desktop_bundles(workdir: Path) -> list[dict[str, str]]:
     reports: list[dict[str, str]] = []
-    for label, globs, needle, replacement in _desktop_patch_specs():
+    for label, globs, needle, replacement, optional in _desktop_inspection_specs():
         bundle_file = _find_js_bundle(workdir, globs, needle, replacement)
         if bundle_file is None:
-            reports.append({"label": label, "status": "missing", "path": ""})
+            status = "skipped" if optional else "missing"
+            reports.append({"label": label, "status": status, "path": "", "optional": str(optional).lower()})
             continue
         text = _read_text_lossy(bundle_file)
         needle_count = text.count(needle)
@@ -1181,13 +1212,23 @@ def _inspect_codex_desktop_bundles(workdir: Path) -> list[dict[str, str]]:
         elif needle_count or replacement_count:
             status = "mixed"
         else:
-            status = "missing"
-        reports.append({"label": label, "status": status, "path": str(bundle_file)})
+            status = "skipped" if optional else "missing"
+        reports.append(
+            {
+                "label": label,
+                "status": status,
+                "path": str(bundle_file),
+                "optional": str(optional).lower(),
+            }
+        )
     return reports
 
 
 def _inspection_has_missing_patch(inspection: list[dict[str, str]]) -> bool:
-    return any(report["status"] in {"missing", "mixed"} for report in inspection)
+    return any(
+        report["status"] in {"missing", "mixed"} and report.get("optional", "false") != "true"
+        for report in inspection
+    )
 
 
 def _inspection_has_applied_patch(inspection: list[dict[str, str]]) -> bool:

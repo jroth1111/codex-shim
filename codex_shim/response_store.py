@@ -30,8 +30,8 @@ def default_max_items() -> int:
 
 
 def store_scope() -> str:
-    raw = os.environ.get("CODEX_SHIM_RESPONSE_STORE_SCOPE", "global").strip().lower()
-    return "session" if raw == "session" else "global"
+    raw = os.environ.get("CODEX_SHIM_RESPONSE_STORE_SCOPE", "session").strip().lower()
+    return "global" if raw == "global" else "session"
 
 
 class ResponseStore:
@@ -78,19 +78,11 @@ class ResponseStore:
             "SELECT items_json, id FROM responses WHERE id = ?",
             (storage_id,),
         ).fetchone()
-        found_id = storage_id
-        if row is None and self.scope == "session" and session_id:
-            found_id = response_id
-            row = self._conn.execute(
-                "SELECT items_json, id FROM responses WHERE id = ?",
-                (response_id,),
-            ).fetchone()
         if row is None:
             return None
-        found_id = row[1]
         self._conn.execute(
             "UPDATE responses SET created_at = ? WHERE id = ?",
-            (time.time(), found_id),
+            (time.time(), row[1]),
         )
         self._conn.commit()
         items = json.loads(row[0])
@@ -106,7 +98,7 @@ class ResponseStore:
     ) -> None:
         now = time.time()
         storage_id = self._storage_id(response_id, session_id)
-        scoped_session = session_id if self.scope == "session" else ""
+        scoped_session = session_id if self.scope == "session" and session_id else ""
         payload = json.dumps(items, separators=(",", ":"))
         self._conn.execute(
             """
@@ -121,24 +113,44 @@ class ResponseStore:
             (storage_id, payload, now, scoped_session, model or ""),
         )
         self._conn.commit()
-        self._prune()
+        self._prune(scoped_session)
 
-    def _prune(self) -> None:
-        count = self._conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+    def _prune(self, session_id: str) -> None:
+        if self.scope == "session":
+            count = self._conn.execute(
+                "SELECT COUNT(*) FROM responses WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()[0]
+        else:
+            count = self._conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
         excess = count - self.max_items
         if excess <= 0:
             return
-        self._conn.execute(
-            """
-            DELETE FROM responses
-            WHERE rowid IN (
-                SELECT rowid FROM responses
-                ORDER BY created_at ASC
-                LIMIT ?
+        if self.scope == "session":
+            self._conn.execute(
+                """
+                DELETE FROM responses
+                WHERE rowid IN (
+                    SELECT rowid FROM responses
+                    WHERE session_id = ?
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                )
+                """,
+                (session_id, excess),
             )
-            """,
-            (excess,),
-        )
+        else:
+            self._conn.execute(
+                """
+                DELETE FROM responses
+                WHERE rowid IN (
+                    SELECT rowid FROM responses
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                )
+                """,
+                (excess,),
+            )
         self._conn.commit()
 
     def close(self) -> None:

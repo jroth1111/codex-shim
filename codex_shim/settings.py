@@ -363,8 +363,7 @@ class ModelSettings:
 
     def by_slug_or_model(self, requested: str, *, include_unavailable: bool = False) -> NormalizedModel | None:
         models = self.load() if include_unavailable else self.desktop_models()
-        if requested.startswith("openai-gpt-5-5"):
-            requested = CHATGPT_MODEL_SLUG
+        requested = normalize_chatgpt_model_request(requested)
         by_slug = {m.slug: m for m in models}
         if requested in by_slug:
             return by_slug[requested]
@@ -372,6 +371,12 @@ class ModelSettings:
         if len(matches) == 1:
             return matches[0]
         return None
+
+
+def normalize_chatgpt_model_request(requested: str) -> str:
+    if requested.startswith("openai-gpt-5-5") or requested == "gpt-5p5":
+        return CHATGPT_MODEL_SLUG
+    return requested
 
 
 def _model_rows(data: Any) -> list[dict[str, Any]]:

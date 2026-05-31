@@ -1,0 +1,16 @@
+{
+  "input": [
+    {
+      "type": "image_generation_call",
+      "call_id": "call_ig_1",
+      "status": "completed",
+      "action": {"prompt": "neon fox"},
+      "revised_prompt": "neon fox"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_ig_1",
+      "output": "image rendered"
+    }
+  ]
+}

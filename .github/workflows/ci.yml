@@ -27,5 +27,9 @@ jobs:
           python -m pip install -e ".[dev]"
       - name: Compile check
         run: python -m compileall codex_shim/ -q
+      - name: Desktop contract drift check
+        run: python scripts/generate_desktop_contract.py --check
+      - name: Desktop patch needle drift check
+        run: python scripts/check_desktop_patch_needles.py
       - name: Run tests
         run: python -m pytest tests/ -q

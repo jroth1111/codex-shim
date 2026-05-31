@@ -4,6 +4,11 @@ import json
 import re
 from typing import Any
 
+from .desktop_contract import (
+    DESKTOP_RESPONSE_ITEM_TYPES,
+    DESKTOP_WEB_SEARCH_ACTION_TYPES,
+    SHIM_EXTRA_RESPONSE_INPUT_TYPES,
+)
 from .settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,
@@ -13,12 +18,11 @@ from .settings import (
     provider_thinking_behavior,
     provider_thinking_options,
 )
+from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX, decode_thinking_payload, encode_thinking_payload
 
 
 THINK_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 
-SHIM_ENCRYPTED_CONTENT_PREFIX = "anthropic-thinking-v1:"
-_THINKING_MAGIC = SHIM_ENCRYPTED_CONTENT_PREFIX
 MAX_INLINE_MEDIA_BYTES = 50 * 1024 * 1024
 SUPPORTED_AUDIO_FORMATS = {"mp3", "wav", "webm", "ogg", "flac", "mp4", "m4a"}
 SUPPORTED_AUDIO_MIME_FORMATS = {
@@ -39,26 +43,11 @@ class ResponsesInputError(ValueError):
 
 
 def _encode_thinking_blob(payload: dict[str, Any]) -> str:
-    import base64
-
-    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return _THINKING_MAGIC + base64.urlsafe_b64encode(raw).decode("ascii")
+    return encode_thinking_payload(payload)
 
 
 def _decode_thinking_blob(encoded: Any) -> dict[str, Any] | None:
-    import base64
-
-    if not isinstance(encoded, str) or not encoded.startswith(_THINKING_MAGIC):
-        return None
-    blob = encoded[len(_THINKING_MAGIC) :]
-    try:
-        raw = base64.urlsafe_b64decode(blob.encode("ascii"))
-        data = json.loads(raw.decode("utf-8"))
-    except Exception:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return data
+    return decode_thinking_payload(encoded)
 
 
 def responses_to_chat(
@@ -132,30 +121,7 @@ def validate_responses_input(body: dict[str, Any]) -> None:
     _responses_input_to_messages(body.get("input"))
 
 
-KNOWN_RESPONSE_INPUT_TYPES = {
-    "message",
-    "input_text",
-    "text",
-    "input_image",
-    "input_audio",
-    "computer_call_output",
-    "function_call",
-    "function_call_output",
-    "custom_tool_call",
-    "custom_tool_call_output",
-    "mcp_tool_call",
-    "mcp_tool_call_output",
-    "tool_search_call",
-    "tool_search_output",
-    "local_shell_call",
-    "web_search_call",
-    "image_generation_call",
-    "context_compaction",
-    "compaction",
-    "compaction_trigger",
-    "reasoning",
-    "other",
-}
+KNOWN_RESPONSE_INPUT_TYPES = DESKTOP_RESPONSE_ITEM_TYPES | SHIM_EXTRA_RESPONSE_INPUT_TYPES
 
 
 def _validate_responses_items(value: Any) -> None:
@@ -197,14 +163,9 @@ def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens
             if decoded is not None:
                 pending_thinking.append(decoded)
             else:
-                # Summary-only fallback: emit a plain `thinking` block (no
-                # signature). Anthropic requires `signature` on the original
-                # session; if we lack it, skip rather than upsetting strict
-                # APIs.
-                for summary in chat_msg.get("summary") or []:
-                    text = summary.get("text") if isinstance(summary, dict) else None
-                    if text:
-                        pending_thinking.append({"type": "thinking", "thinking": text, "signature": ""})
+                # Summary-only fallback: skip unsigned thinking blocks. Anthropic
+                # rejects assistant thinking without a valid signature.
+                pass
             continue
         if role in {"system", "developer"}:
             system_parts.append(_content_to_text(chat_msg.get("content", "")))
@@ -569,6 +530,128 @@ NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME = {
     "image_generation": "image_generation_call",
 }
 
+WEB_SEARCH_ACTION_TYPES = DESKTOP_WEB_SEARCH_ACTION_TYPES
+
+
+def normalize_web_search_action(parsed: dict[str, Any] | None, arguments: str) -> dict[str, Any]:
+    if isinstance(parsed, dict):
+        action_type = parsed.get("type")
+        if action_type in WEB_SEARCH_ACTION_TYPES:
+            return dict(parsed)
+        if "url" in parsed and action_type != "search":
+            return {"type": "open_page", **parsed}
+        if "pattern" in parsed or "find" in parsed:
+            merged = dict(parsed)
+            merged.setdefault("type", "find_in_page")
+            return merged
+        if parsed:
+            return {"type": "search", **parsed}
+    query = arguments.strip()
+    return {"type": "search", "query": query}
+
+
+def initial_native_tool_action(item_type: str) -> dict[str, Any]:
+    if item_type == "web_search_call":
+        return {"type": "search"}
+    if item_type == "local_shell_call":
+        return {}
+    if item_type == "image_generation_call":
+        return {}
+    return {}
+
+
+def build_streaming_tool_output_types(tools: Any) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    if not isinstance(tools, list):
+        return mapping
+    for tool in tools:
+        if not isinstance(tool, dict):
+            continue
+        name = _responses_tool_function_name(tool)
+        if not name:
+            continue
+        tool_type = str(tool.get("type") or "").strip().lower()
+        if tool_type.startswith("mcp"):
+            mapping[name] = "mcp_tool_call"
+        elif tool_type in {"custom", "custom_tool_call"}:
+            mapping[name] = "custom_tool_call"
+        elif name in NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME:
+            mapping[name] = NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME[name]
+    return mapping
+
+
+def streaming_tool_output_type(name: str, tool_types: dict[str, str]) -> str:
+    if name in tool_types:
+        return tool_types[name]
+    return NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME.get(name, "function_call")
+
+
+def streaming_tool_open_item(
+    item_type: str,
+    *,
+    call_id: str,
+    name: str,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {
+        "id": call_id,
+        "type": item_type,
+        "status": "in_progress",
+        "call_id": call_id,
+    }
+    if item_type == "function_call":
+        item["name"] = name
+        item["arguments"] = ""
+    elif item_type == "tool_search_call":
+        item["arguments"] = ""
+    elif item_type == "mcp_tool_call":
+        item["tool_name"] = name
+        item["arguments"] = ""
+    elif item_type == "custom_tool_call":
+        item["name"] = name
+        item["input"] = ""
+    else:
+        item["action"] = initial_native_tool_action(item_type)
+    return item
+
+
+def streaming_tool_completed_item(
+    item_type: str,
+    *,
+    call_id: str,
+    name: str,
+    arguments: str,
+    status: str = "completed",
+) -> dict[str, Any]:
+    if item_type == "mcp_tool_call":
+        return {
+            "id": call_id,
+            "type": "mcp_tool_call",
+            "status": status,
+            "call_id": call_id,
+            "tool_name": name,
+            "arguments": arguments or "{}",
+        }
+    if item_type == "custom_tool_call":
+        return {
+            "id": call_id,
+            "type": "custom_tool_call",
+            "status": status,
+            "call_id": call_id,
+            "name": name,
+            "input": arguments or "",
+        }
+    native = function_call_to_native_item(name, call_id, arguments, status=status)
+    if native is not None:
+        return native
+    return {
+        "id": call_id,
+        "type": "function_call",
+        "status": status,
+        "call_id": call_id,
+        "name": name,
+        "arguments": arguments,
+    }
+
 HOSTED_CALL_FALLBACK_NAMES = {
     "local_shell_call": "local_shell",
     "web_search_call": "web_search",
@@ -664,7 +747,7 @@ def function_call_to_native_item(
         "call_id": call_id,
     }
     if native_type == "web_search_call":
-        item["action"] = parsed if parsed else {"query": arguments}
+        item["action"] = normalize_web_search_action(parsed, arguments)
     elif native_type == "local_shell_call":
         item["action"] = parsed if parsed else {"command": arguments}
     elif native_type == "tool_search_call":

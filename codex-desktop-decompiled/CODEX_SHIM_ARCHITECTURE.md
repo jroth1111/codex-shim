@@ -33,7 +33,15 @@ codex-shim (aiohttp, Host-guarded loopback)
 
 | Module | Role |
 |--------|------|
-| `codex_shim/server.py` | HTTP server: routing, upstream proxying, response store, compaction, picker UI, access logging |
+| `codex_shim/server.py` | HTTP server: routing and upstream proxying |
+| `codex_shim/streaming.py` | Responses SSE state machine and streaming event translation |
+| `codex_shim/compact.py` | BYOK compaction request/response helpers |
+| `codex_shim/access_log.py` | Request and access log formatting |
+| `codex_shim/debug_dump.py` | Opt-in redacted/full request debug dumps |
+| `codex_shim/image_gate.py` | Explicit image-generation tool/history gating |
+| `codex_shim/picker.py` | Local picker HTML and active-model config rewrite helpers |
+| `codex_shim/thinking.py` | Shared `anthropic-thinking-v1:` reasoning codec |
+| `codex_shim/desktop_contract.py` | Generated Desktop ResponseItem/action contract constants |
 | `codex_shim/translate.py` | Responses ⇄ chat/Anthropic; tool/reasoning/image translation; validation |
 | `codex_shim/settings.py` | Load `models.json`; provider presets; `ShimModel` normalization; visibility (keys, disabled rows) |
 | `codex_shim/catalog.py` | Build `custom_model_catalog.json` entries Codex Desktop reads |
@@ -42,16 +50,16 @@ codex-shim (aiohttp, Host-guarded loopback)
 | `codex_shim/cursor_acp.py` | `cursor-agent acp` JSON-RPC session |
 | `codex_shim/hostguard.py` | Reject non-loopback `Host` (DNS rebinding) |
 | `codex_shim/smoke.py` | Live route smoke tests for `codex-shim test` |
-| `codex_shim/response_store.py` | SQLite persistence for BYOK `previous_response_id` history (optional session scope) |
+| `codex_shim/response_store.py` | SQLite persistence for BYOK `previous_response_id` history (session-scoped by default) |
 | `codex_shim/probe.py` | Live daemon probes: compact shape, history expansion, offline fidelity |
 | `codex_shim/responses_ws.py` | WebSocket transport mirroring Responses SSE events |
 
 ## Request lifecycle (`POST /v1/responses`)
 
 1. **Route** by `model` slug → `ShimModel` (from settings + optional ChatGPT passthrough).
-2. **Image-gen guard** — BYOK routes without `supports_image_generation` get 501 if Codex requests image tools.
+2. **Image-gen guard** — BYOK routes without `supports_image_generation` get **400** if Codex requests image tools.
 3. **ChatGPT path** — forward body (model forced to `gpt-5.5`) with Bearer from `auth.json`.
-4. **BYOK path** — expand `previous_response_id` from SQLite `ResponseStore` (optional `CODEX_SHIM_RESPONSE_STORE_SCOPE=session`); `validate_responses_input`.
+4. **BYOK path** — expand `previous_response_id` from SQLite `ResponseStore` (session-scoped by default; `CODEX_SHIM_RESPONSE_STORE_SCOPE=global` is legacy); `validate_responses_input`.
 5. **Translate** to upstream (`responses_to_chat`, `responses_to_anthropic`, or Cursor adapters).
 6. **Stream or buffer** upstream; map deltas to Responses events (`function_call_arguments.delta`, reasoning items, etc.).
 7. **Store** output items under response `id` for follow-up turns.
@@ -64,9 +72,9 @@ Compaction: ChatGPT uses native compact endpoint; BYOK uses emulated summarizati
 - **Generated runtime** (repo `.codex-shim/`): catalog JSON, optional `config.toml` snippet, pid, log
 - **Codex wiring**: managed block in `~/.codex/config.toml` (`model_providers.codex_shim` → `http://127.0.0.1:8765/v1`)
 
-## macOS Desktop picker patch
+## macOS Desktop ASAR patch
 
-Codex Desktop hides catalog slugs not on a server allowlist (`useHiddenModels`). `codex-shim patch-app` patches `app.asar` JS to disable that branch and fixes sidebar `modelProviders: null` → `[]`, then updates `ElectronAsarIntegrity` and re-signs. See `cli.py` needles `MODEL_PICKER_NEEDLE` / `SIDEBAR_RECENT_THREADS_NEEDLE`.
+Codex Desktop hides catalog slugs via availability-based gates on newer builds; legacy `useHiddenModels` patching is informational only on Desktop 26.519+. The sidebar provider-filter patch remains the primary shim mutation target. See `cli.py` needles, `codex-shim doctor patch`, and `python scripts/check_desktop_patch_needles.py`.
 
 ## Security
 

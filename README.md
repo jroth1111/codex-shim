@@ -11,10 +11,10 @@ Anthropic Messages, a generic OpenAI-shaped chat endpoint, Cursor Agent CLI/ACP,
 or ChatGPT Codex passthrough), then translates streaming responses back into
 the shape Codex expects.
 
-> Tested on Codex Desktop **0.133.0-alpha.1** for macOS arm64. The shim server
+> Tested on Codex Desktop **26.519.81530** / `codex-cli 0.133.0` for macOS arm64. The shim server
 > and routing layer are plain Python/aiohttp and work on Windows, macOS, Linux,
-> WSL, and Git Bash. The only macOS-specific piece is the optional Desktop picker
-> ASAR patch, needed when Codex hides custom catalog entries.
+> WSL, and Git Bash. The only macOS-specific piece is the optional Desktop ASAR
+> patch for sidebar compatibility on supported macOS Desktop builds.
 
 ---
 
@@ -50,7 +50,7 @@ local:
 
 ## Requirements
 
-- Python 3.11+.
+- Python 3.11+ (3.9 and 3.10 cannot import the WebSocket/Responses type surface).
 - Codex CLI/Desktop installed and authenticated.
 - One of:
   - `~/.codex-shim/models.json` with configured BYOK/upstream models;
@@ -59,7 +59,7 @@ local:
     passthrough-only use.
 - Windows: PowerShell/cmd works when installed via the Python package entry
   point; WSL or Git Bash is needed only for the optional `bin/` shell wrappers.
-- macOS only: `npx` and `codesign` if you need the optional Desktop picker
+- macOS only: `npx` and `codesign` if you need the optional Desktop ASAR
   patch.
 
 ---
@@ -523,21 +523,18 @@ agent turn.
 
 ---
 
-## Picker patch for Codex Desktop on macOS
+## Desktop ASAR patch for Codex Desktop on macOS
 
-Codex Desktop has a Statsig server-side allowlist (`use_hidden_models: true`)
-that hides any model whose slug is not on a hardcoded list. Custom catalog
-entries fall into the hidden bucket and never render in the picker.
+Newer Codex Desktop builds hide unavailable catalog slugs through
+`availability_nux` state rather than the older `useHiddenModels` picker branch.
+`codex-shim patch-app` no longer mutates the legacy picker needle. It only
+patches the local recent-thread loader from `modelProviders: null` to
+`modelProviders: []`, so the sidebar continues to show existing native `openai`
+chats while Desktop is routed through the `codex_shim` provider.
 
-A single-boolean ASAR patch flips the allowlist branch off so the picker only
-checks the local `hidden` flag (which this catalog never sets). On recent
-Codex Desktop builds, the patch also changes the local recent-thread loader
-from `modelProviders: null` to `modelProviders: []` so the sidebar continues to
-show existing native `openai` chats while Desktop is routed through the
-`codex_shim` provider.
-
-The combined patch has been tested on Codex Desktop **26.519.41501** /
-`codex-cli 0.133.0-alpha.1` on macOS arm64.
+The current patch needles target Codex Desktop **26.519.81530** /
+`codex-cli 0.133.0` on macOS arm64. Use `codex-shim doctor patch` or
+`python scripts/check_desktop_patch_needles.py` to verify drift before patching.
 
 > Back up `app.asar` and `Info.plist` before patching.
 
@@ -549,13 +546,7 @@ sudo cp -R "$APP" "$APP.unpatched-$(date +%Y%m%d-%H%M%S)"
 cd /tmp && rm -rf codex-asar-patch && mkdir codex-asar-patch && cd codex-asar-patch
 npx --yes @electron/asar extract "$APP/Contents/Resources/app.asar" extracted
 
-# 2. Patch the picker filter (single occurrence in tested builds)
-PATCH_FILE=$(grep -RIl 'useHiddenModels' extracted/webview/assets/model-queries-*.js | head -n1)
-sed -i.bak -E 's/let u=c\.useHiddenModels&&o!==`amazonBedrock`,d;/let u=!1,d;/' "$PATCH_FILE"
-diff "$PATCH_FILE.bak" "$PATCH_FILE" || true
-rm "$PATCH_FILE.bak"
-
-# 3. Patch the sidebar recent-thread provider filter (single occurrence)
+# 2. Patch the sidebar recent-thread provider filter (single occurrence)
 SIDEBAR_FILE=$(grep -RIl 'listRecentThreads' extracted/webview/assets/app-server-manager-signals-*.js | head -n1)
 python3 - "$SIDEBAR_FILE" <<'PY'
 from pathlib import Path
@@ -570,7 +561,7 @@ if text.count(old) != 1:
 path.write_text(text.replace(old, new, 1))
 PY
 
-# 4. Repack
+# 3. Repack
 npx --yes @electron/asar pack extracted app.asar.new
 sudo cp app.asar.new "$APP/Contents/Resources/app.asar"
 ```
@@ -580,7 +571,7 @@ That alone can crash Codex on next launch with `EXC_BREAKPOINT`. Electron's
 header** of the ASAR archive (not the whole file). Recompute it and re-sign:
 
 ```bash
-# 5. Compute new header hash
+# 4. Compute new header hash
 HEADER_HASH=$(python3 - "$APP/Contents/Resources/app.asar" <<'PY'
 import struct, hashlib, sys
 with open(sys.argv[1], 'rb') as f:
@@ -591,15 +582,15 @@ PY
 )
 echo "new header hash: $HEADER_HASH"
 
-# 6. Patch Info.plist (replaces the hash for Resources/app.asar)
+# 5. Patch Info.plist (replaces the hash for Resources/app.asar)
 sudo /usr/libexec/PlistBuddy -c \
   "Set :ElectronAsarIntegrity:Resources/app.asar:hash $HEADER_HASH" \
   "$APP/Contents/Info.plist"
 
-# 7. Ad-hoc re-sign
+# 6. Ad-hoc re-sign
 sudo codesign --force --deep --sign - "$APP"
 
-# 8. Launch
+# 7. Launch
 open "$APP"
 ```
 
@@ -708,7 +699,7 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 
 **Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
 
-**Conversation store:** `previous_response_id` history is persisted in `.codex-shim/response_store.sqlite` (override with `CODEX_SHIM_RESPONSE_STORE`). LRU cap defaults to 256 (`CODEX_SHIM_RESPONSE_STORE_MAX`). Set `CODEX_SHIM_RESPONSE_STORE_SCOPE=session` to key history by Desktop `session_id` header.
+**Conversation store:** `previous_response_id` history is persisted in `.codex-shim/response_store.sqlite` (override with `CODEX_SHIM_RESPONSE_STORE`). LRU cap defaults to 256 per active scope (`CODEX_SHIM_RESPONSE_STORE_MAX`). History is scoped by Desktop `session_id` by default; set `CODEX_SHIM_RESPONSE_STORE_SCOPE=global` only for single-session legacy behavior.
 
 **Compaction probe:** With the daemon running, validate BYOK compact output shape:
 
@@ -789,9 +780,10 @@ stored input/output window before translation, so chat-completions, Anthropic,
 Cursor CLI, and Cursor ACP providers receive the prior context even though they
 do not implement OpenAI's Responses store.
 
-The store persists in SQLite (`.codex-shim/response_store.sqlite` by default). Restarting the shim keeps prior windows unless the store file is removed. An
-unknown `previous_response_id` returns a 404 instead of silently dropping prior
-context.
+The store persists in SQLite (`.codex-shim/response_store.sqlite` by default).
+Restarting the shim keeps prior windows unless the store file is removed. An
+unknown or cross-session `previous_response_id` returns a 404 instead of
+silently dropping or borrowing prior context.
 
 The translator rejects Responses content it cannot faithfully send upstream:
 unknown content part types, unsupported audio formats/media types, mismatched
@@ -975,6 +967,7 @@ codex-shim start             regenerate catalog and start local shim daemon
 codex-shim enable            start daemon and write managed ~/.codex/config.toml block
 codex-shim status            health check + model count
 codex-shim doctor            explain visible and hidden configured models
+codex-shim doctor contract   check generated Desktop protocol contract drift
 codex-shim test <target>     smoke-test a visible route by slug/provider/model/name
 codex-shim probe compact     validate BYOK /v1/responses/compact output against running shim
 codex-shim stop              stop daemon
@@ -985,7 +978,7 @@ codex-shim model list        list slugs currently usable in the picker
 codex-shim model use <slug>  set the Desktop default model in managed config
 codex-shim codex -- <args>   exec `codex` CLI through inline shim overrides
 codex-shim app [path]        launch Codex Desktop through managed shim config
-codex-shim patch-app         patch macOS Codex Desktop picker allowlist
+codex-shim patch-app         patch macOS Codex Desktop sidebar ASAR behavior
 codex-shim patch-status      inspect macOS patch/backups/tooling
 codex-shim restore-app       restore macOS app.asar from patch backup
 codex-shim configure cursor  add/update Cursor Agent model settings
@@ -1042,6 +1035,9 @@ the shim, so a visited web page cannot drive them via DNS rebinding.
 - API keys stay in your settings file; the generated catalog does not contain
   them.
 - Request logs are summary-level by default and avoid full prompt/API-key dumps.
+- Full request debug dumps are disabled by default. Set
+  `CODEX_SHIM_DEBUG_DUMP=1` to write a redacted `.codex-shim/last_request.json`;
+  add `CODEX_SHIM_DEBUG_DUMP_FULL=1` only for trusted local debugging.
 - ChatGPT passthrough reads `~/.codex/auth.json` at request time and forwards
   the access token only to ChatGPT's Codex endpoint.
 - If you put a prompt-catching proxy in front of the shim, that proxy controls

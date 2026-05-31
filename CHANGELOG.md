@@ -43,9 +43,13 @@ and this project does not yet follow semantic versioning (pre-1.0).
   existing `Host`-header allowlist, so a visited web page still cannot drive
   them via DNS rebinding.
 - Best-effort dump of the last forwarded chat-completions request body to
-  `.codex-shim/last_request.json` to make strict-provider tokenization /
-  schema errors easier to triage. Upstream error bodies are now logged with
-  the model slug before being forwarded back.
+  `.codex-shim/last_request.json` is now opt-in via
+  `CODEX_SHIM_DEBUG_DUMP=1` and redacted unless
+  `CODEX_SHIM_DEBUG_DUMP_FULL=1` is set. Upstream error bodies are logged
+  with the model slug before being returned as normalized Responses errors.
+- Generated Desktop protocol contract constants from
+  `codex-desktop-decompiled/native-binaries/codex.strings.txt`, with
+  `codex-shim doctor contract` and CI drift checks.
 
 ### Changed
 
@@ -56,13 +60,19 @@ and this project does not yet follow semantic versioning (pre-1.0).
 - Settings now prefer a generic top-level `models` array with snake_case keys,
   while still accepting `customModels` and camelCase aliases for existing
   exports.
+- `CODEX_SHIM_RESPONSE_STORE_SCOPE` now defaults to session isolation with
+  per-session LRU pruning; set it to `global` for legacy shared-store behavior.
+- The image-generation guard now keys only on explicit image tools,
+  `tool_choice`, or existing `image_generation_call` history, not English
+  prompt text.
 
 ### Fixed
 
-- `codex-shim patch-app` now also patches the Codex Desktop sidebar's recent
+- `codex-shim patch-app` patches only the Codex Desktop sidebar's recent
   thread loader so native `openai` chats remain visible while Desktop is routed
-  through the `codex_shim` provider. Tested on Codex Desktop 26.519.41501 /
-  `codex-cli 0.133.0-alpha.1` on macOS arm64.
+  through the `codex_shim` provider. The legacy picker `useHiddenModels`
+  needle is inspection-only. Tested on Codex Desktop 26.519.81530 /
+  `codex-cli 0.133.0` on macOS arm64.
 - `patch-app` now updates `ElectronAsarIntegrity` in `Info.plist` after
   repacking `app.asar`, and `restore-app` restores or recomputes that metadata
   before re-signing the app bundle.

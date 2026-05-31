@@ -7,7 +7,9 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
+from codex_shim import picker as picker_module
 from codex_shim import server as server_module
+from codex_shim.image_gate import needs_image_generation
 from codex_shim.server import (
     ResponsesStreamState,
     ShimServer,
@@ -20,7 +22,7 @@ from codex_shim.server import (
     _sanitize_chatgpt_passthrough_body,
     _set_active_model,
 )
-from codex_shim.translate import SHIM_ENCRYPTED_CONTENT_PREFIX
+from codex_shim.translate import SHIM_ENCRYPTED_CONTENT_PREFIX, streaming_tool_open_item
 
 
 @pytest.fixture
@@ -119,16 +121,16 @@ def test_rewrite_response_model_only_rewrites_chatgpt_metadata():
 
 
 def test_image_generation_detection_is_conservative():
-    shim = ShimServer()
     tools = [
         {"type": "function", "function": {"name": "shell"}},
         {"type": "image_generation", "name": "image_generation"},
     ]
 
-    assert shim._needs_image_gen({"tools": tools, "input": [{"role": "user", "content": "write code for an icon component"}]}) is False
-    assert shim._needs_image_gen({"tools": tools, "input": [{"role": "user", "content": "@image generate a neon fox"}]}) is True
-    assert shim._needs_image_gen({"tools": tools, "tool_choice": {"type": "image_generation"}, "input": "hi"}) is True
-    assert shim._needs_image_followup(
+    assert needs_image_generation({"tools": tools, "input": [{"role": "user", "content": "write code for an icon component"}]}) is False
+    assert needs_image_generation({"tools": tools, "input": [{"role": "user", "content": "@image generate a neon fox"}]}) is False
+    assert needs_image_generation({"tools": tools, "tool_choice": {"type": "image_generation"}, "input": "hi"}) is True
+    assert needs_image_generation({"tools": [{"type": "image_generation", "name": "image_generation"}], "input": "hi"}) is True
+    assert needs_image_generation(
         {
             "input": [
                 {"type": "image_generation_call", "id": "ig_1"},
@@ -983,7 +985,7 @@ async def test_response_stream_state_emits_reasoning_text_and_tool_items():
     assert "response.output_text.delta" in types
     assert "response.function_call_arguments.delta" in types
     assert types[-1] == "response.completed"
-    assert downstream.text().rstrip().endswith("data: [DONE]")
+    assert "data: [DONE]" not in downstream.text()
     assert [item["type"] for item in final_response["output"]] == ["reasoning", "message", "function_call"]
     assert final_response["output"][0]["summary"][0]["text"] == "think"
     assert final_response["output"][1]["content"][0]["text"] == "hello"
@@ -1510,6 +1512,7 @@ def _stub_codex_config(monkeypatch, tmp_path, *, model: str = "kimi-k26") -> "Pa
         'wire_api = "responses"\n'
     )
     monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", config)
+    monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", config)
     return config
 
 
@@ -1527,6 +1530,7 @@ def test_current_managed_model_reads_top_level_model(monkeypatch, tmp_path):
 
 def test_current_managed_model_returns_none_when_config_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
+    monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     assert _current_managed_model() is None
 
 
@@ -1540,6 +1544,7 @@ def test_set_active_model_rewrites_model_and_provider_name(monkeypatch, tmp_path
 
 def test_set_active_model_no_op_when_config_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
+    monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     # Should not raise.
     _set_active_model("anything", "Anything")
 
@@ -1948,6 +1953,160 @@ async def test_chatgpt_passthrough_websocket_streaming_parses_sse(monkeypatch, t
         await shim_client.close()
 
 
+@pytest.mark.asyncio
+async def test_streaming_web_search_emits_action_type(tmp_path):
+    async def chat(request):
+        await request.json()
+        response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+        await response.prepare(request)
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_search","type":"function","function":{"name":"web_search","arguments":""}}]}}]}\n\n'
+        )
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"query\\":\\"codex shim\\"}"}}]}}]}\n\n'
+        )
+        await response.write(b"data: [DONE]\n\n")
+        await response.write_eof()
+        return response
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "search", "stream": True},
+    )
+    assert resp.status == 200
+    completed = [event for event in _sse_events(await resp.text()) if event.get("type") == "response.completed"][-1]
+    web_items = [item for item in completed["response"]["output"] if item.get("type") == "web_search_call"]
+    assert web_items
+    assert web_items[0]["action"] == {"type": "search", "query": "codex shim"}
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_streaming_mcp_tool_preserves_native_item_type(tmp_path):
+    async def chat(request):
+        await request.json()
+        response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+        await response.prepare(request)
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_mcp","type":"function","function":{"name":"list_files","arguments":"{}"}}]}}]}\n\n'
+        )
+        await response.write(b"data: [DONE]\n\n")
+        await response.write_eof()
+        return response
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "input": "list files",
+            "stream": True,
+            "tools": [{"type": "mcp", "name": "list_files"}],
+        },
+    )
+    assert resp.status == 200
+    completed = [event for event in _sse_events(await resp.text()) if event.get("type") == "response.completed"][-1]
+    mcp_items = [item for item in completed["response"]["output"] if item.get("type") == "mcp_tool_call"]
+    assert mcp_items
+    assert mcp_items[0]["tool_name"] == "list_files"
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_byok_upstream_error_is_normalized(tmp_path):
+    async def chat(request):
+        return web.json_response(
+            {"error": {"type": "rate_limit_error", "message": "Too many requests"}},
+            status=429,
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "hi", "stream": False})
+    assert resp.status == 429
+    payload = await resp.json()
+    assert payload == {"error": {"type": "rate_limit_error", "message": "Too many requests"}}
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+def test_responses_stream_state_open_tool_seeds_web_search_action_type():
+    state = ResponsesStreamState("slug", tools=[{"type": "web_search"}])
+    item = streaming_tool_open_item("web_search_call", call_id="call_search", name="web_search")
+    assert item["action"] == {"type": "search"}
+
+
 def test_responses_stream_state_emits_native_local_shell_item():
     state = ResponsesStreamState("slug")
     tool_state = {
@@ -1978,3 +2137,314 @@ def test_responses_stream_state_emits_native_image_generation_item():
     item = state._tool_item(tool_state, "completed")
     assert item["type"] == "image_generation_call"
     assert item["action"]["prompt"] == "neon fox"
+
+
+# --- BYOK error relay expansion (audit F-005 regression guard) ---
+
+
+@pytest.mark.asyncio
+async def test_byok_upstream_500_empty_body_wraps_in_error_envelope(tmp_path):
+    async def chat(request):
+        return web.Response(text="", status=500)
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "hi", "stream": False})
+    assert resp.status == 500
+    payload = await resp.json()
+    assert payload == {"error": {"type": "upstream_error", "message": "Upstream request failed with status 500"}}
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_byok_upstream_502_plain_text_wraps_in_error_envelope(tmp_path):
+    async def chat(request):
+        return web.Response(text="bad gateway", status=502)
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "hi", "stream": False})
+    assert resp.status == 502
+    payload = await resp.json()
+    assert payload == {"error": {"type": "upstream_error", "message": "bad gateway"}}
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_byok_upstream_400_preserves_nested_error_type(tmp_path):
+    async def chat(request):
+        return web.json_response(
+            {"error": {"type": "context_length_exceeded", "message": "too many tokens"}},
+            status=400,
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "hi", "stream": False})
+    assert resp.status == 400
+    payload = await resp.json()
+    assert payload["error"]["type"] == "context_length_exceeded"
+    assert payload["error"]["message"] == "too many tokens"
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_byok_anthropic_upstream_529_normalizes_to_error_envelope(tmp_path):
+    async def messages(request):
+        return web.json_response(
+            {"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}},
+            status=529,
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/messages", messages)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-claude",
+                        "displayName": "Real Claude",
+                        "provider": "anthropic",
+                        "apiKey": "sk-test-123",
+                        "baseUrl": str(upstream_client.make_url("")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-claude", "input": "hi", "stream": False})
+    assert resp.status == 529
+    payload = await resp.json()
+    assert "error" in payload
+    assert payload["error"]["message"] == "Overloaded"
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_byok_upstream_top_level_error_message_is_normalized(tmp_path):
+    async def chat(request):
+        return web.json_response({"type": "invalid_request_error", "message": "bad input"}, status=400)
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "hi", "stream": False})
+    assert resp.status == 400
+    assert await resp.json() == {"error": {"type": "invalid_request_error", "message": "bad input"}}
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+# --- Streaming hosted-tool end-to-end tests (audit F-004 regression guard) ---
+
+
+@pytest.mark.asyncio
+async def test_streaming_tool_search_emits_native_item(tmp_path):
+    async def chat(request):
+        await request.json()
+        response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+        await response.prepare(request)
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_tsearch","type":"function","function":{"name":"tool_search","arguments":""}}]}}]}\n\n'
+        )
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"query\\":\\"grep\\"}"}}]}}]}\n\n'
+        )
+        await response.write(b"data: [DONE]\n\n")
+        await response.write_eof()
+        return response
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "search tools", "stream": True},
+    )
+    assert resp.status == 200
+    completed = [event for event in _sse_events(await resp.text()) if event.get("type") == "response.completed"][-1]
+    search_items = [item for item in completed["response"]["output"] if item.get("type") == "tool_search_call"]
+    assert search_items
+    assert search_items[0]["arguments"] == '{"query":"grep"}'
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_streaming_custom_tool_call_emits_native_item(tmp_path):
+    async def chat(request):
+        await request.json()
+        response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+        await response.prepare(request)
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_deploy","type":"function","function":{"name":"deploy","arguments":""}}]}}]}\n\n'
+        )
+        await response.write(
+            b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"env\\":\\"prod\\"}"}}]}}]}\n\n'
+        )
+        await response.write(b"data: [DONE]\n\n")
+        await response.write_eof()
+        return response
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "input": "deploy",
+            "stream": True,
+            "tools": [{"type": "custom_tool_call", "name": "deploy"}],
+        },
+    )
+    assert resp.status == 200
+    completed = [event for event in _sse_events(await resp.text()) if event.get("type") == "response.completed"][-1]
+    custom_items = [item for item in completed["response"]["output"] if item.get("type") == "custom_tool_call"]
+    assert custom_items
+    assert custom_items[0]["name"] == "deploy"
+    assert custom_items[0]["input"] == '{"env":"prod"}'
+
+    await shim_client.close()
+    await upstream_client.close()
