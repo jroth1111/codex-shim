@@ -93,6 +93,17 @@ def test_probe_passthrough_compact_skips_without_auth(monkeypatch):
     assert probe_passthrough_compact(8765, live=True) == 0
 
 
+def test_probe_ws_streaming_skips_when_daemon_unreachable(tmp_path):
+    from codex_shim.probe import CompactProbeError, probe_ws_streaming
+
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        '{"customModels":[{"model":"m","displayName":"M","provider":"openai","baseUrl":"http://127.0.0.1:9/v1"}]}'
+    )
+    with pytest.raises(CompactProbeError, match="not reachable"):
+        probe_ws_streaming(settings, port=59999)
+
+
 def test_validate_compact_response_rejects_message_shape():
     with pytest.raises(CompactProbeError, match="context_compaction"):
         validate_compact_response(

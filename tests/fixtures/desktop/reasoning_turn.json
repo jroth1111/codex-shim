@@ -4,7 +4,7 @@
     {
       "type": "reasoning",
       "summary": [{"type": "summary_text", "text": "User wants a shell command planned."}],
-      "encrypted_content": "anthropic-thinking-v1:eyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6IlBsYW4gYSBzaGVsbCBjb21tYW5kLiIsInNpZ25hdHVyZSI6IiJ9"
+      "encrypted_content": "anthropic-thinking-v1:eyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6IlBsYW4gYSBzaGVsbCBjb21tYW5kLiIsInNpZ25hdHVyZSI6ImRlc2t0b3AtdGVzdC1zaWcifQ=="
     },
     {
       "type": "message",

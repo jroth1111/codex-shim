@@ -50,17 +50,14 @@ MANAGED_TOP_LEVEL_KEYS = {"model", "model_provider", "model_catalog_json"}
 CODEX_APP_ASAR_PATH = Path("/Applications/Codex.app/Contents/Resources/app.asar")
 APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
-MODEL_PICKER_NEEDLE = "let u=c.useHiddenModels&&o!==`amazonBedrock`,d;"
-MODEL_PICKER_REPLACEMENT = "let u=!1,d;"
-# Legacy picker gate removed in Desktop 26.519.81530+ (availabilityNux-based hiding).
-MODEL_PICKER_OPTIONAL = True
-SIDEBAR_RECENT_THREADS_NEEDLE = (
-    "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ke})}"
-)
-SIDEBAR_RECENT_THREADS_REPLACEMENT = (
-    "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ke})}"
+from .patch_specs import (
+    MODEL_PICKER_NEEDLE,
+    MODEL_PICKER_OPTIONAL,
+    MODEL_PICKER_REPLACEMENT,
+    SIDEBAR_RECENT_THREADS_NEEDLE,
+    SIDEBAR_RECENT_THREADS_REPLACEMENT,
+    inspection_specs_for_version,
+    patch_specs_for_version,
 )
 
 
@@ -93,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
     probe_history_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
     probe_stream_parser = probe_sub.add_parser("streaming-history", help="Probe streaming turn + previous_response_id.")
     probe_stream_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
+    probe_ws_parser = probe_sub.add_parser("ws-streaming", help="Probe BYOK WebSocket streaming deltas.")
+    probe_ws_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
     probe_sub.add_parser("fidelity", help="Offline hosted-tool and compaction translation checks.")
     probe_all_parser = probe_sub.add_parser("all", help="Run offline fidelity plus live probes when daemon/auth allow.")
     probe_all_parser.add_argument("--slug", help="BYOK model slug for live BYOK probes.")
@@ -205,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
             return probe_fidelity_route()
         if args.probe_command == "streaming-history":
             return probe_streaming_history_route(args.settings, args.port, args.slug)
+        if args.probe_command == "ws-streaming":
+            return probe_ws_streaming_route(args.settings, args.port, args.slug)
         if args.probe_command == "all":
             return probe_all_route(args.settings, args.port, args.slug, live=args.live)
         if args.probe_command == "passthrough":
@@ -470,7 +471,7 @@ def doctor_patch() -> int:
     if workdir is None:
         print("Could not inspect app.asar bundles.")
         return 1
-    inspection = _inspect_codex_desktop_bundles(workdir)
+    inspection = _inspect_codex_desktop_bundles(workdir, version=version)
     ok = True
     for report in inspection:
         path_note = f" ({report['path']})" if report.get("path") else ""
@@ -582,6 +583,22 @@ def probe_streaming_history_route(settings_path: Path, port: int, slug: str | No
 
     try:
         return probe_streaming_history(Path(settings_path).expanduser(), port, slug)
+    except CompactProbeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except FileNotFoundError as exc:
+        print(f"Settings file not found: {exc.filename or exc}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"Settings file is not valid JSON: {exc}", file=sys.stderr)
+        return 1
+
+
+def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -> int:
+    from .probe import CompactProbeError, probe_ws_streaming
+
+    try:
+        return probe_ws_streaming(Path(settings_path).expanduser(), port, slug)
     except CompactProbeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -991,7 +1008,8 @@ def patch_codex_app() -> int:
         shutil.rmtree(workdir)
     workdir.mkdir(parents=True)
     subprocess.run(["npx", "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
-    inspection = _inspect_codex_desktop_bundles(workdir)
+    desktop_version = _codex_desktop_version(info_plist)
+    inspection = _inspect_codex_desktop_bundles(workdir, version=desktop_version)
     if _inspection_has_missing_patch(inspection):
         _print_patch_inspection(inspection, file=sys.stderr)
         print("Could not find every expected Codex Desktop patch needle.", file=sys.stderr)
@@ -1015,7 +1033,7 @@ def patch_codex_app() -> int:
         info_backup.write_bytes(info_plist.read_bytes())
         print(f"Backed up original Info.plist to {info_backup}.")
 
-    changed = _patch_codex_desktop_bundles(workdir)
+    changed = _patch_codex_desktop_bundles(workdir, version=_codex_desktop_version(info_plist))
     if changed is None:
         return 1
     if changed:
@@ -1096,7 +1114,7 @@ def patch_status() -> int:
         workdir.mkdir(parents=True, exist_ok=True)
         try:
             subprocess.run(["npx", "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
-            inspection = _inspect_codex_desktop_bundles(workdir)
+            inspection = _inspect_codex_desktop_bundles(workdir, version=_codex_desktop_version(info_plist))
             _print_patch_inspection(inspection)
             if _inspection_has_missing_patch(inspection):
                 ok = False
@@ -1142,10 +1160,18 @@ def _update_app_asar_integrity(app_asar: Path, info_plist: Path) -> None:
     print("Updated ElectronAsarIntegrity for app.asar.")
 
 
-def _patch_codex_desktop_bundles(workdir: Path) -> bool | None:
+def _codex_desktop_version(info_plist: Path | None = None) -> str:
+    path = info_plist or (CODEX_APP_ASAR_PATH.parent.parent / "Info.plist")
+    if not path.exists():
+        return "unknown"
+    data = plistlib.loads(path.read_bytes())
+    return str(data.get("CFBundleShortVersionString") or data.get("CFBundleVersion") or "unknown")
+
+
+def _patch_codex_desktop_bundles(workdir: Path, *, version: str = "unknown") -> bool | None:
     changed = False
     hard_failure = False
-    for label, globs, needle, replacement, optional in _desktop_patch_specs():
+    for label, globs, needle, replacement, optional in _desktop_patch_specs(version):
         bundle_file = _find_js_bundle(workdir, globs, needle, replacement)
         if bundle_file is None:
             if optional:
@@ -1169,34 +1195,17 @@ def _patch_codex_desktop_bundles(workdir: Path) -> bool | None:
     return changed
 
 
-def _desktop_patch_specs() -> list[tuple[str, list[str], str, str, bool]]:
-    return [
-        (
-            "shim-mode sidebar provider filter",
-            ["app-server-manager-signals-*.js", "*.js"],
-            SIDEBAR_RECENT_THREADS_NEEDLE,
-            SIDEBAR_RECENT_THREADS_REPLACEMENT,
-            False,
-        ),
-    ]
+def _desktop_patch_specs(version: str = "unknown") -> list[tuple[str, list[str], str, str, bool]]:
+    return patch_specs_for_version(version)
 
 
-def _desktop_inspection_specs() -> list[tuple[str, list[str], str, str, bool]]:
-    return [
-        (
-            "model picker allowlist filter (legacy, informational)",
-            ["model-queries-*.js", "*.js"],
-            MODEL_PICKER_NEEDLE,
-            MODEL_PICKER_REPLACEMENT,
-            MODEL_PICKER_OPTIONAL,
-        ),
-        *_desktop_patch_specs(),
-    ]
+def _desktop_inspection_specs(version: str = "unknown") -> list[tuple[str, list[str], str, str, bool]]:
+    return inspection_specs_for_version(version)
 
 
-def _inspect_codex_desktop_bundles(workdir: Path) -> list[dict[str, str]]:
+def _inspect_codex_desktop_bundles(workdir: Path, *, version: str = "unknown") -> list[dict[str, str]]:
     reports: list[dict[str, str]] = []
-    for label, globs, needle, replacement, optional in _desktop_inspection_specs():
+    for label, globs, needle, replacement, optional in _desktop_inspection_specs(version):
         bundle_file = _find_js_bundle(workdir, globs, needle, replacement)
         if bundle_file is None:
             status = "skipped" if optional else "missing"

@@ -695,7 +695,7 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 
 **Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
 
-**Native tool wire shapes:** `local_shell_call`, `web_search_call`, `tool_search_call`, and `image_generation_call` can be emitted on BYOK streams when the upstream used the matching function-tool fallback. `apply_patch` and `computer_use` remain `function_call` items (Desktop executes from tool calls; decompiled `ResponseItem` has no separate `apply_patch_call` type).
+**Native tool wire shapes:** `local_shell_call`, `web_search_call`, `tool_search_call`, and `image_generation_call` can be emitted on BYOK streams when the upstream used the matching function-tool fallback. During streaming, argument chunks still use `response.function_call_arguments.delta` for all tool types; only the final completed items carry native shapes. `apply_patch` and `computer_use` remain `function_call` items (Desktop executes from tool calls; decompiled `ResponseItem` has no separate `apply_patch_call` type).
 
 **Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
 
@@ -710,6 +710,7 @@ codex-shim probe compact
 codex-shim probe compact --slug your-byok-slug
 codex-shim probe history      # hosted tools + previous_response_id + compact w/ trigger
 codex-shim probe streaming-history
+codex-shim probe ws-streaming          # BYOK WebSocket stream:true deltas
 codex-shim probe passthrough --live        # Tier A; requires ~/.codex/auth.json
 codex-shim probe passthrough-compact --live
 # Or set CODEX_SHIM_PROBE_PASSTHROUGH=1 to enable Tier A probes in `probe all` without --live

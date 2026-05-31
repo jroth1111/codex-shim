@@ -7,7 +7,7 @@ from typing import Any
 from aiohttp import web
 
 from .responses_ws import WsStreamResponse
-from .thinking import encode_thinking_payload
+from .thinking import reasoning_encrypted_content
 from .translate import (
     build_streaming_tool_output_types,
     normalize_responses_usage,
@@ -410,13 +410,14 @@ class ResponsesStreamState:
     def _reasoning_item(self, state: dict[str, Any], status: str) -> dict[str, Any]:
         if state.get("redacted"):
             payload = {"type": "redacted_thinking", "data": state.get("redacted_data", "")}
+            encrypted = reasoning_encrypted_content(payload)
         else:
             payload = {
                 "type": "thinking",
                 "thinking": state.get("text", ""),
                 "signature": state.get("signature", ""),
             }
-        encrypted = encode_thinking_payload(payload)
+            encrypted = reasoning_encrypted_content(payload)
         return {
             "id": state["id"],
             "type": "reasoning",

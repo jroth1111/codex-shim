@@ -206,3 +206,37 @@ Use Desktop source to verify the contracts above are **necessary and sufficient*
 | Tool execution boundary | Desktop executes tools; shim translates wire only |
 
 **Audit rule:** A contract row is **verified** only when both shim source and Desktop source evidence are cited. Shim-only or Desktop-only rows are **partial**.
+
+---
+
+## OpenAI-Beta header provenance (F-009)
+
+| Transport | Shim value | Override | Desktop decomp evidence |
+|-----------|------------|----------|-------------------------|
+| HTTP passthrough (`POST …/codex/responses`) | `OpenAI-Beta: responses=2026-02-06` | `CODEX_SHIM_OPENAI_BETA` env | Decomp strings embed `responses_websockets=2026-02-06` adjacent to `OpenAI-Beta` family (same date; HTTP key spelling not isolated as its own literal) |
+| WebSocket (Desktop native) | N/A (Tier A WS not proxied) | — | `responses_websockets=2026-02-06` in `codex.strings.txt` |
+
+---
+
+## Intentional limitations (not bugs)
+
+| Area | Behavior | Rationale |
+|------|----------|-----------|
+| BYOK streaming arg deltas | All hosted/custom/MCP tools emit `response.function_call_arguments.delta` during streaming; **completed** items use native types (`web_search_call`, `local_shell_call`, etc.) | No decomp evidence for per-tool delta event types; Desktop parses final `output_item.done` shapes |
+| BYOK reasoning | Shim never fabricates OpenAI-native `encrypted_content`; summary-only reasoning without Anthropic signature is skipped on Anthropic replay | Avoid upstream 400; not cryptographic Tier A parity |
+| BYOK compaction | Emulated `context_compaction` via non-streaming summarization; no native v2 compaction blobs | Documented Tier B/C degradation |
+| `apply_patch` / `computer_use` | Remain `function_call` items on BYOK streams | Decompiled `ResponseItem` has no separate `apply_patch_call` type |
+| macOS patch-app | Sidebar `modelProviders: []` patch only on 26.519+; legacy `useHiddenModels` needle is inspection-only | Desktop uses `availabilityNux` + catalog `supported_in_api` for model visibility |
+| Cursor CLI / ACP | Wire fidelity validated by integration tests (`tests/test_cursor_cli.py`, `tests/test_cursor_acp.py`); not decomp-audited | Separate transport; no Desktop ResponseItem mapping in decomp |
+
+---
+
+## Decomp conformance pipeline
+
+| Artifact | Role |
+|----------|------|
+| `scripts/generate_desktop_contract.py` | Extract `ResponseItem` types and `WebSearchAction` variants from `codex.strings.txt` |
+| `codex_shim/desktop_contract.py` | Generated constants (CI `--check`) |
+| `codex_shim/desktop_validate.py` | Runtime validators for hosted-tool `action` sub-shapes |
+| `codex_shim/patch_specs.py` | Version-keyed ASAR patch needle library |
+| `scripts/check_desktop_patch_needles.py` | CI needle drift check against bundled decomp |

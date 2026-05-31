@@ -23,3 +23,21 @@ def decode_thinking_payload(encoded: Any) -> dict[str, Any] | None:
     except Exception:
         return None
     return data if isinstance(data, dict) else None
+
+
+def is_signed_thinking_block(block: dict[str, Any]) -> bool:
+    """Return true when a decoded thinking block is safe to replay to Anthropic."""
+    if block.get("type") == "redacted_thinking":
+        return bool(str(block.get("data") or ""))
+    if block.get("type") != "thinking":
+        return False
+    return bool(str(block.get("signature") or "").strip())
+
+
+def reasoning_encrypted_content(block: dict[str, Any]) -> str | None:
+    """Encode reasoning for Desktop only when the block carries a valid signature."""
+    if block.get("type") == "redacted_thinking":
+        return encode_thinking_payload(block)
+    if block.get("type") == "thinking" and is_signed_thinking_block(block):
+        return encode_thinking_payload(block)
+    return None

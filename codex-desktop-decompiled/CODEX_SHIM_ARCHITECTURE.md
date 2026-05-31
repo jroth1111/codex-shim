@@ -74,7 +74,7 @@ Compaction: ChatGPT uses native compact endpoint; BYOK uses emulated summarizati
 
 ## macOS Desktop ASAR patch
 
-Codex Desktop hides catalog slugs via availability-based gates on newer builds; legacy `useHiddenModels` patching is informational only on Desktop 26.519+. The sidebar provider-filter patch remains the primary shim mutation target. See `cli.py` needles, `codex-shim doctor patch`, and `python scripts/check_desktop_patch_needles.py`.
+Codex Desktop hides catalog slugs via availability-based gates on newer builds; legacy `useHiddenModels` patching is informational only on Desktop 26.519+. The sidebar provider-filter patch remains the primary shim mutation target. Version-keyed needles live in `codex_shim/patch_specs.py`. See `codex-shim doctor patch`, and `python scripts/check_desktop_patch_needles.py`.
 
 ## Security
 

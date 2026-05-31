@@ -5,10 +5,12 @@ import re
 from typing import Any
 
 from .desktop_contract import (
+    DESKTOP_LOCAL_SHELL_ACTION_FIELDS,
     DESKTOP_RESPONSE_ITEM_TYPES,
     DESKTOP_WEB_SEARCH_ACTION_TYPES,
     SHIM_EXTRA_RESPONSE_INPUT_TYPES,
 )
+from .desktop_validate import assert_local_shell_action, assert_web_search_action
 from .settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,
@@ -18,7 +20,13 @@ from .settings import (
     provider_thinking_behavior,
     provider_thinking_options,
 )
-from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX, decode_thinking_payload, encode_thinking_payload
+from .thinking import (
+    SHIM_ENCRYPTED_CONTENT_PREFIX,
+    decode_thinking_payload,
+    encode_thinking_payload,
+    is_signed_thinking_block,
+    reasoning_encrypted_content,
+)
 
 
 THINK_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
@@ -160,7 +168,7 @@ def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens
         role = chat_msg.get("role", "user")
         if chat_msg.get("_reasoning_only"):
             decoded = _decode_thinking_blob(chat_msg.get("encrypted_content"))
-            if decoded is not None:
+            if decoded is not None and is_signed_thinking_block(decoded):
                 pending_thinking.append(decoded)
             else:
                 # Summary-only fallback: skip unsigned thinking blocks. Anthropic
@@ -172,7 +180,7 @@ def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens
             continue
         if role == "assistant":
             blocks: list[dict[str, Any]] = []
-            blocks.extend(pending_thinking)
+            blocks.extend(block for block in pending_thinking if is_signed_thinking_block(block))
             pending_thinking = []
             content = chat_msg.get("content")
             if content:
@@ -218,8 +226,9 @@ def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens
     # If reasoning items appeared without a following assistant turn (e.g. the
     # final pending think after a tool_use round-trip), emit an assistant
     # message containing them so Anthropic's API accepts the followup.
-    if pending_thinking:
-        append("assistant", pending_thinking)
+    signed_pending = [block for block in pending_thinking if is_signed_thinking_block(block)]
+    if signed_pending:
+        append("assistant", signed_pending)
 
     anthropic: dict[str, Any] = {
         "model": upstream_model,
@@ -301,9 +310,7 @@ def chat_completion_to_response(payload: dict[str, Any], requested_model: str) -
                 "type": "reasoning",
                 "status": "completed",
                 "summary": [{"type": "summary_text", "text": reasoning_text}],
-                "encrypted_content": _encode_thinking_blob(
-                    {"type": "thinking", "thinking": reasoning_text, "signature": ""}
-                ),
+                "encrypted_content": None,
             }
         )
     text = strip_think(message.get("content") or "")
@@ -361,19 +368,18 @@ def anthropic_to_response(payload: dict[str, Any], requested_model: str) -> dict
         flush_text()
         if block_type == "thinking":
             thinking = str(block.get("thinking") or "")
+            thinking_block = {
+                "type": "thinking",
+                "thinking": thinking,
+                "signature": str(block.get("signature") or ""),
+            }
             output.append(
                 {
                     "id": f"rs_{len(output)}",
                     "type": "reasoning",
                     "status": "completed",
                     "summary": [{"type": "summary_text", "text": thinking}] if thinking else [],
-                    "encrypted_content": _encode_thinking_blob(
-                        {
-                            "type": "thinking",
-                            "thinking": thinking,
-                            "signature": str(block.get("signature") or ""),
-                        }
-                    ),
+                    "encrypted_content": reasoning_encrypted_content(thinking_block),
                 }
             )
         elif block_type == "redacted_thinking":
@@ -548,6 +554,32 @@ def normalize_web_search_action(parsed: dict[str, Any] | None, arguments: str) -
             return {"type": "search", **parsed}
     query = arguments.strip()
     return {"type": "search", "query": query}
+
+
+def normalize_local_shell_action(parsed: dict[str, Any] | None, arguments: str) -> dict[str, Any]:
+    if isinstance(parsed, dict) and parsed:
+        filtered = {key: parsed[key] for key in parsed if key in DESKTOP_LOCAL_SHELL_ACTION_FIELDS}
+        if "command" in filtered:
+            return filtered
+        if parsed.get("command"):
+            filtered["command"] = str(parsed["command"])
+            return filtered
+    command = arguments.strip()
+    return {"command": command} if command else {}
+
+
+def _normalize_hosted_call_item(item: dict[str, Any]) -> dict[str, Any]:
+    item_type = str(item.get("type") or "")
+    action = item.get("action")
+    if not isinstance(action, dict):
+        return item
+    if item_type == "web_search_call":
+        normalized = normalize_web_search_action(action, _jsonish(action))
+        return {**item, "action": normalized}
+    if item_type == "local_shell_call":
+        normalized = normalize_local_shell_action(action, _jsonish(action))
+        return {**item, "action": normalized}
+    return item
 
 
 def initial_native_tool_action(item_type: str) -> dict[str, Any]:
@@ -748,8 +780,10 @@ def function_call_to_native_item(
     }
     if native_type == "web_search_call":
         item["action"] = normalize_web_search_action(parsed, arguments)
+        assert_web_search_action(item["action"])
     elif native_type == "local_shell_call":
-        item["action"] = parsed if parsed else {"command": arguments}
+        item["action"] = normalize_local_shell_action(parsed, arguments)
+        assert_local_shell_action(item["action"])
     elif native_type == "tool_search_call":
         item["arguments"] = arguments or "{}"
     elif native_type == "image_generation_call":
@@ -869,7 +903,7 @@ def _responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             if tool:
                 pending_tool_calls.append(tool)
         elif item_type in {"local_shell_call", "web_search_call", "image_generation_call"}:
-            tool = _hosted_call_to_function_tool(item)
+            tool = _hosted_call_to_function_tool(_normalize_hosted_call_item(item))
             if tool:
                 pending_tool_calls.append(tool)
         elif item_type in {"context_compaction", "compaction"}:

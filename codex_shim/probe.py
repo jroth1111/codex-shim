@@ -324,6 +324,9 @@ def probe_fidelity() -> int:
     action = web_item.get("action")
     if not isinstance(action, dict) or action.get("type") != "search":
         raise CompactProbeError("Fidelity probe web_search: action.type must be 'search'.")
+    from .desktop_validate import assert_local_shell_action, assert_web_search_action
+
+    assert_web_search_action(action)
     # local_shell_call shape
     shell_item = tool_call_to_response_item(
         {"id": "call_shell_probe", "function": {"name": "local_shell", "arguments": '{"command":"echo probe"}'}}
@@ -333,6 +336,7 @@ def probe_fidelity() -> int:
     shell_action = shell_item.get("action")
     if not isinstance(shell_action, dict) or shell_action.get("command") != "echo probe":
         raise CompactProbeError("Fidelity probe local_shell: action.command must be 'echo probe'.")
+    assert_local_shell_action(shell_action)
     # image_generation_call shape
     img_item = tool_call_to_response_item(
         {"id": "call_img_probe", "function": {"name": "image_generation", "arguments": '{"prompt":"probe fox"}'}}
@@ -425,6 +429,7 @@ def probe_all(settings_path: Path, port: int, slug: str | None = None, *, live: 
     for label, runner in (
         ("history", lambda: probe_history(settings_path, port, slug)),
         ("streaming-history", lambda: probe_streaming_history(settings_path, port, slug)),
+        ("ws-streaming", lambda: probe_ws_streaming(settings_path, port, slug)),
         ("compact", lambda: probe_compact(settings_path, port, slug)),
     ):
         try:
@@ -441,3 +446,40 @@ def probe_all(settings_path: Path, port: int, slug: str | None = None, *, live: 
         return 1
     print("Probe all finished.")
     return exit_code
+
+
+async def _probe_ws_streaming_async(settings_path: Path, port: int, slug: str | None) -> None:
+    import aiohttp
+
+    route = resolve_compact_probe_slug(settings_path, slug)
+    url = f"ws://127.0.0.1:{port}/v1/responses"
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(url, timeout=aiohttp.ClientWSTimeout(ws_receive=120)) as ws:
+            await ws.send_json({"model": route.slug, "input": "Reply with exactly: OK", "stream": True})
+            completed = None
+            saw_delta = False
+            async for msg in ws:
+                if msg.type != aiohttp.WSMsgType.TEXT:
+                    continue
+                frame = json.loads(msg.data)
+                frame_type = frame.get("type")
+                if frame_type and "delta" in str(frame_type):
+                    saw_delta = True
+                if frame_type == "response.completed":
+                    completed = frame.get("response")
+                    break
+            if not saw_delta:
+                raise CompactProbeError("WS streaming probe did not receive any delta frames.")
+            if not isinstance(completed, dict):
+                raise CompactProbeError("WS streaming probe did not receive response.completed.")
+
+
+def probe_ws_streaming(settings_path: Path, port: int, slug: str | None = None) -> int:
+    import asyncio
+
+    route = resolve_compact_probe_slug(settings_path, slug)
+    if not _shim_reachable(port):
+        raise CompactProbeError(f"Shim is not reachable at http://127.0.0.1:{port}/health")
+    asyncio.run(_probe_ws_streaming_async(settings_path, port, slug))
+    print(f"WS streaming probe passed for {route.slug} ({route.provider}).")
+    return 0

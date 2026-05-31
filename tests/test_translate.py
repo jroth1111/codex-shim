@@ -30,6 +30,21 @@ def test_responses_to_anthropic_skips_summary_only_reasoning_without_signature()
     assert out["messages"] == [{"role": "user", "content": "next"}]
 
 
+def test_responses_to_anthropic_drops_unsigned_thinking_blob_on_replay():
+    from codex_shim.thinking import encode_thinking_payload
+
+    unsigned = encode_thinking_payload({"type": "thinking", "thinking": "unsigned", "signature": ""})
+    body = {
+        "model": "slug",
+        "input": [
+            {"type": "reasoning", "summary": [{"type": "summary_text", "text": "unsigned"}], "encrypted_content": unsigned},
+            {"role": "user", "content": "next"},
+        ],
+    }
+    out = responses_to_anthropic(body, "claude-real", 4096)
+    assert out["messages"] == [{"role": "user", "content": "next"}]
+
+
 def test_responses_to_chat_text_input():
     body = {"model": "slug", "instructions": "System", "input": "Hello", "stream": True, "max_output_tokens": 99}
     out = responses_to_chat(body, "real-model")
@@ -231,26 +246,31 @@ def test_responses_to_anthropic_messages():
 
 
 def test_responses_to_anthropic_converts_tools_and_reasoning():
-    prior = chat_completion_to_response(
-        {
-            "choices": [
-                {
-                    "message": {
-                        "reasoning_content": "Plan the lookup.",
-                        "content": "Calling the tool.",
-                    }
-                }
-            ]
-        },
-        "deepseek",
-    )
+    from codex_shim.thinking import encode_thinking_payload
+
+    signed_reasoning = {
+        "id": "rs_0",
+        "type": "reasoning",
+        "status": "completed",
+        "summary": [{"type": "summary_text", "text": "Plan the lookup."}],
+        "encrypted_content": encode_thinking_payload(
+            {"type": "thinking", "thinking": "Plan the lookup.", "signature": "sig"}
+        ),
+    }
+    prior_message = {
+        "id": "msg_0",
+        "type": "message",
+        "status": "completed",
+        "role": "assistant",
+        "content": [{"type": "output_text", "text": "Calling the tool.", "annotations": []}],
+    }
     body = {
         "model": "slug",
         "instructions": "System rules",
         "tools": [{"type": "function", "name": "lookup", "description": "Lookup data", "parameters": {"type": "object"}}],
         "input": [
-            prior["output"][0],
-            prior["output"][1],
+            signed_reasoning,
+            prior_message,
             {"type": "function_call", "call_id": "call_lookup", "name": "lookup", "arguments": '{"q":"weather"}'},
             {"type": "function_call_output", "call_id": "call_lookup", "output": "sunny"},
         ],
@@ -522,7 +542,7 @@ def test_chat_completion_to_response_preserves_reasoning_content_for_tool_calls(
 
     assert [item["type"] for item in out["output"]] == ["reasoning", "message", "function_call"]
     assert out["output"][0]["summary"][0]["text"] == "Need the current date before answering."
-    assert out["output"][0]["encrypted_content"].startswith("anthropic-thinking-v1:")
+    assert out["output"][0]["encrypted_content"] is None
 
 
 def test_chat_completion_to_response_normalizes_cached_usage():
@@ -598,12 +618,7 @@ def test_chat_completion_to_response_preserves_minimax_reasoning_details():
     assert out["output"][0]["type"] == "reasoning"
     assert out["output"][0]["summary"][0]["text"] == "First thought.\nSecond thought."
     assert out["output"][1]["content"][0]["text"] == "Answer"
-    decoded = json.loads(
-        __import__("base64")
-        .urlsafe_b64decode(out["output"][0]["encrypted_content"].removeprefix("anthropic-thinking-v1:").encode("ascii"))
-        .decode("utf-8")
-    )
-    assert decoded["thinking"] == "First thought.\nSecond thought."
+    assert out["output"][0]["encrypted_content"] is None
 
 
 def test_responses_to_chat_replays_reasoning_on_same_assistant_tool_call_message():
@@ -833,6 +848,22 @@ def test_normalize_web_search_action_preserves_explicit_search_type():
 
     action = normalize_web_search_action({"type": "search", "query": "codex"}, "")
     assert action == {"type": "search", "query": "codex"}
+
+
+def test_normalize_local_shell_action_defaults_command_from_arguments():
+    from codex_shim.translate import normalize_local_shell_action
+
+    assert normalize_local_shell_action(None, "pwd") == {"command": "pwd"}
+    assert normalize_local_shell_action({"command": "ls"}, "") == {"command": "ls"}
+
+
+def test_normalize_hosted_call_item_adds_web_search_action_type():
+    from codex_shim.translate import _normalize_hosted_call_item
+
+    item = _normalize_hosted_call_item(
+        {"type": "web_search_call", "call_id": "call_1", "action": {"query": "docs"}}
+    )
+    assert item["action"] == {"type": "search", "query": "docs"}
 
 
 # --- initial_native_tool_action (audit F-002 streaming seed) ---

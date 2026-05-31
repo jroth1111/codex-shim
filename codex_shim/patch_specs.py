@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+PatchSpec = tuple[str, list[str], str, str, bool]
+
+MODEL_PICKER_NEEDLE = "let u=c.useHiddenModels&&o!==`amazonBedrock`,d;"
+MODEL_PICKER_REPLACEMENT = "let u=!1,d;"
+MODEL_PICKER_OPTIONAL = True
+
+SIDEBAR_RECENT_THREADS_NEEDLE = (
+    "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ke})}"
+)
+SIDEBAR_RECENT_THREADS_REPLACEMENT = (
+    "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ke})}"
+)
+
+_SIDEBAR_SPEC: PatchSpec = (
+    "shim-mode sidebar provider filter",
+    ["app-server-manager-signals-*.js", "*.js"],
+    SIDEBAR_RECENT_THREADS_NEEDLE,
+    SIDEBAR_RECENT_THREADS_REPLACEMENT,
+    False,
+)
+
+_LEGACY_PICKER_SPEC: PatchSpec = (
+    "model picker allowlist filter (legacy, informational)",
+    ["model-queries-*.js", "*.js"],
+    MODEL_PICKER_NEEDLE,
+    MODEL_PICKER_REPLACEMENT,
+    MODEL_PICKER_OPTIONAL,
+)
+
+PATCH_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
+    "26.519.81530": [_SIDEBAR_SPEC],
+}
+
+INSPECTION_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
+    "26.519.81530": [_LEGACY_PICKER_SPEC, _SIDEBAR_SPEC],
+}
+
+KNOWN_DESKTOP_VERSIONS = tuple(sorted(PATCH_SPECS_BY_VERSION.keys(), reverse=True))
+
+
+def patch_specs_for_version(version: str) -> list[PatchSpec]:
+    if version in PATCH_SPECS_BY_VERSION:
+        return list(PATCH_SPECS_BY_VERSION[version])
+    for known in KNOWN_DESKTOP_VERSIONS:
+        if version.startswith(known.split(".")[0]):
+            return list(PATCH_SPECS_BY_VERSION[known])
+    if KNOWN_DESKTOP_VERSIONS:
+        return list(PATCH_SPECS_BY_VERSION[KNOWN_DESKTOP_VERSIONS[0]])
+    return [_SIDEBAR_SPEC]
+
+
+def inspection_specs_for_version(version: str) -> list[PatchSpec]:
+    if version in INSPECTION_SPECS_BY_VERSION:
+        return list(INSPECTION_SPECS_BY_VERSION[version])
+    for known in KNOWN_DESKTOP_VERSIONS:
+        if version.startswith(known.split(".")[0]):
+            return list(INSPECTION_SPECS_BY_VERSION.get(known, patch_specs_for_version(version)))
+    if KNOWN_DESKTOP_VERSIONS:
+        return list(INSPECTION_SPECS_BY_VERSION.get(KNOWN_DESKTOP_VERSIONS[0], patch_specs_for_version(version)))
+    return [_LEGACY_PICKER_SPEC, _SIDEBAR_SPEC]
