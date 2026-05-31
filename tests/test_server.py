@@ -285,7 +285,7 @@ async def test_responses_routes_to_openai_chat(tmp_path):
             {
                 "id": "chatcmpl_fake",
                 "choices": [{"message": {"role": "assistant", "content": "hello"}}],
-                "usage": {"total_tokens": 3},
+                "usage": {"prompt_tokens": 2, "completion_tokens": 1, "total_tokens": 3},
             }
         )
 
@@ -317,6 +317,7 @@ async def test_responses_routes_to_openai_chat(tmp_path):
     assert resp.status == 200
     payload = await resp.json()
     assert payload["output"][0]["content"][0]["text"] == "hello"
+    assert payload["usage"] == {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3}
     assert captured["body"]["model"] == "real-openai"
     assert captured["headers"]["Authorization"] == "Bearer secret"
 
@@ -861,7 +862,9 @@ async def test_streaming_openai_chat_response_completed_includes_usage(tmp_path)
         response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
         await response.prepare(request)
         await response.write(b'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n')
-        await response.write(b'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}}\n\n')
+        await response.write(
+            b'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6,"prompt_tokens_details":{"cached_tokens":3}}}\n\n'
+        )
         await response.write(b"data: [DONE]\n\n")
         await response.write_eof()
         return response
@@ -893,7 +896,12 @@ async def test_streaming_openai_chat_response_completed_includes_usage(tmp_path)
     assert resp.status == 200
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
-    assert completed["response"]["usage"] == {"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6}
+    assert completed["response"]["usage"] == {
+        "input_tokens": 4,
+        "output_tokens": 2,
+        "total_tokens": 6,
+        "input_tokens_details": {"cached_tokens": 3},
+    }
 
     await shim_client.close()
     await upstream_client.close()
@@ -905,16 +913,37 @@ async def test_streaming_anthropic_response_completed_includes_usage():
     await state.write_anthropic_delta(
         downstream,
         {
+            "type": "message_start",
+            "message": {
+                "usage": {
+                    "input_tokens": 5,
+                    "cache_read_input_tokens": 4,
+                    "output_tokens": 1,
+                }
+            },
+        },
+    )
+    await state.write_anthropic_delta(
+        downstream,
+        {
             "type": "message_delta",
             "delta": {"stop_reason": "end_turn"},
-            "usage": {"input_tokens": 5, "output_tokens": 3},
+            "usage": {"output_tokens": 3},
         },
     )
     await state.finish(downstream)
 
     events = _sse_events(downstream.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
-    assert completed["response"]["usage"] == {"input_tokens": 5, "output_tokens": 3}
+    assert completed["response"]["usage"] == {
+        "input_tokens": 5,
+        "output_tokens": 3,
+        "total_tokens": 8,
+        "input_tokens_details": {
+            "cached_tokens": 4,
+            "cache_read_input_tokens": 4,
+        },
+    }
 
 
 async def test_response_stream_state_emits_reasoning_text_and_tool_items():
@@ -1016,7 +1045,7 @@ async def test_response_stream_state_accepts_anthropic_deltas():
     assert final_response["output"][0]["encrypted_content"].startswith("anthropic-thinking-v1:")
     assert final_response["output"][1]["content"][0]["text"] == "hello there"
     assert final_response["output"][2]["arguments"] == '{"q":"x"}'
-    assert final_response["usage"] == {"input_tokens": 3, "output_tokens": 4}
+    assert final_response["usage"] == {"input_tokens": 3, "output_tokens": 4, "total_tokens": 7}
     assert any(event.get("type") == "response.reasoning_summary_text.done" for event in events)
     assert any(event.get("type") == "response.output_item.done" for event in events)
 
@@ -1030,7 +1059,7 @@ async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_win
             {
                 "id": "chatcmpl_compact",
                 "choices": [{"message": {"role": "assistant", "content": "Task: keep implementing compact support."}}],
-                "usage": {"total_tokens": 11},
+                "usage": {"prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11},
             }
         )
 
@@ -1076,7 +1105,7 @@ async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_win
     assert payload["model"] == "real-openai"
     assert payload["output"][0]["type"] == "context_compaction"
     assert payload["output"][0]["summary"][0]["text"] == "Task: keep implementing compact support."
-    assert payload["usage"] == {"total_tokens": 11}
+    assert payload["usage"] == {"input_tokens": 9, "output_tokens": 2, "total_tokens": 11}
     assert captured["body"]["model"] == "real-openai"
     assert captured["body"]["stream"] is False
     assert "service_tier" not in captured["body"]

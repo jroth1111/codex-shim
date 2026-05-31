@@ -1,51 +1,56 @@
 # LLM Audit Prompt — Codex Desktop ↔ codex-shim Fidelity Review
 
-You are a senior systems auditor reviewing **codex-shim**, a local OpenAI Responses API proxy that sits between **Codex Desktop** and various upstream model providers. Your job is to **ground every claim in the attached source bundle**, trace behavior from Desktop client expectations through the shim to upstream APIs, and produce a prioritized findings report.
+You are a senior systems auditor reviewing **codex-shim**, a local OpenAI Responses API proxy that sits between **Codex Desktop** and various upstream model providers. Your job is to **ground every claim in the repository source** (via GitHub MCP or local clone), trace behavior from Desktop client expectations through the shim to upstream APIs, and produce a prioritized findings report.
 
 ---
 
-## Attached bundle
+## Repository
 
-You have been given **`codex-shim-audit-source.zip`**. Unzip it and treat it as the **only authoritative corpus** for this review. Do not rely on memory of OpenAI/Codex APIs unless you cross-check against files in the bundle.
+**Fork under audit:** https://github.com/jroth1111/codex-shim
+
+Clone or browse with GitHub MCP. Treat repo files as the **authoritative shim corpus**. Do not rely on memory of OpenAI/Codex APIs unless you cross-check against source.
 
 ### Top-level layout
 
 ```
-codex-shim-audit-source/
-├── AUDIT_MANIFEST.md
+/
 ├── AUDIT_CONTRACTS.md            # Tier A vs BYOK wire contracts (shim-grounded)
 ├── AUDIT_PROMPT.md               # This audit instruction set
-├── codex_shim_repo/              # The shim (Python) — implementation under audit
-├── codex-desktop-decompiled/     # Desktop client evidence — ground truth for expectations
-└── reverse-cursor-agent/         # Supplemental spawn-helper decomp (minor)
+├── AUDIT_MANIFEST.md             # Reading order and scope notes
+├── codex_shim/                   # Shim implementation (Python)
+├── tests/                        # Unit/integration tests + fixtures/desktop/
+├── README.md                     # Documented behavior, fidelity tiers
+└── codex-desktop-decompiled/     # NOT in git — see below
 ```
 
 ### Desktop source (expectations / ground truth)
 
-| Path | What it is | Use for |
-|------|------------|---------|
-| `codex-desktop-decompiled/app-asar-extracted/` | Electron UI extracted from Codex.app `app.asar` (Vite bundles, webview JS) | Model picker, provider wiring, webview RPC, client-side Responses usage |
-| `codex-desktop-decompiled/ghidra/codex/decomp-rust/` | Ghidra pseudo-C decompilation of embedded Rust `codex` CLI (~11k functions) | Native client: HTTP paths, headers, Response item types, streaming, compaction |
-| `codex-desktop-decompiled/ghidra/codex/recovered-src/` | Clustered recovered source snippets | Higher-signal Rust modules |
-| `codex-desktop-decompiled/ghidra/codex/decomp/` | Early decomp pass (mostly stubs) | Cross-check only if rust decomp is inconclusive |
-| `codex-desktop-decompiled/native-binaries/codex.strings.txt` | Strings dump from native CLI | Search for URL paths, header names, error strings, enum/type names |
-| `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` | Repo-authored integration map | Orientation, not primary evidence |
-| `codex-desktop-decompiled/README.md` | Extraction provenance (Codex 26.519.81530, codex-cli 0.133.0) | Version context |
+**Important:** `codex-desktop-decompiled/` is **gitignored** and not on GitHub. If the operator provides it separately (local path, second repo, or tarball), use it as Desktop ground truth. Otherwise search what *is* in the repo: `README.md`, `CODEX_SHIM_ARCHITECTURE.md` references, and test fixtures under `tests/fixtures/desktop/`.
+
+When Desktop decomp **is** available locally:
+
+| Path | Use for |
+|------|---------|
+| `codex-desktop-decompiled/app-asar-extracted/` | Electron UI (picker, providers, webview RPC) |
+| `codex-desktop-decompiled/ghidra/codex/decomp-rust/` | Native Rust CLI pseudo-C decompilation |
+| `codex-desktop-decompiled/ghidra/codex/recovered-src/` | Recovered source clusters |
+| `codex-desktop-decompiled/native-binaries/codex.strings.txt` | String evidence from native CLI |
+| `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` | Integration map (repo copy if present) |
 
 ### Shim source (implementation under audit)
 
 | Path | Role |
 |------|------|
-| `codex_shim_repo/codex_shim/server.py` | HTTP/WS server, routing, passthrough, BYOK dispatch, compaction, header forward |
-| `codex_shim_repo/codex_shim/translate.py` | Responses ↔ chat/Anthropic; input validation; tool/reasoning mapping |
-| `codex_shim_repo/codex_shim/settings.py` | Model catalog, provider presets, ChatGPT passthrough slug |
-| `codex_shim_repo/codex_shim/catalog.py` | Generated Codex Desktop catalog (`wire_api = "responses"`) |
-| `codex_shim_repo/codex_shim/response_store.py` | SQLite `previous_response_id` expansion (BYOK only) |
-| `codex_shim_repo/codex_shim/responses_ws.py` | WebSocket transport |
-| `codex_shim_repo/codex_shim/probe.py` | Offline/live fidelity probes |
-| `codex_shim_repo/codex_shim/cursor_cli.py`, `cursor_acp.py` | Cursor subprocess adapters |
-| `codex_shim_repo/tests/` | Unit/integration tests + `fixtures/desktop/*.json` golden turns |
-| `codex_shim_repo/README.md` | Documented behavior, fidelity tiers, env vars |
+| `codex_shim/server.py` | HTTP/WS server, routing, passthrough, BYOK dispatch, compaction, header forward |
+| `codex_shim/translate.py` | Responses ↔ chat/Anthropic; input validation; tool/reasoning mapping |
+| `codex_shim/settings.py` | Model catalog, provider presets, ChatGPT passthrough slug |
+| `codex_shim/catalog.py` | Generated Codex Desktop catalog (`wire_api = "responses"`) |
+| `codex_shim/response_store.py` | SQLite `previous_response_id` expansion (BYOK only) |
+| `codex_shim/responses_ws.py` | WebSocket transport |
+| `codex_shim/probe.py` | Offline/live fidelity probes |
+| `codex_shim/cursor_cli.py`, `cursor_acp.py` | Cursor subprocess adapters |
+| `tests/` | Tests + `fixtures/desktop/*.json` golden turns |
+| `README.md` | Documented behavior, fidelity tiers, env vars |
 
 ---
 

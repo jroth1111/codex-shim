@@ -279,7 +279,7 @@ def test_anthropic_to_response_converts_thinking_text_and_tool_use():
 
     assert out["id"] == "msg_123"
     assert out["model"] == "claude-real"
-    assert out["usage"] == {"input_tokens": 10, "output_tokens": 5}
+    assert out["usage"] == {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
     assert [item["type"] for item in out["output"]] == ["reasoning", "message", "function_call"]
     assert out["output"][0]["summary"] == [{"type": "summary_text", "text": "Plan first."}]
     assert out["output"][0]["encrypted_content"].startswith("anthropic-thinking-v1:")
@@ -508,6 +508,56 @@ def test_chat_completion_to_response_preserves_reasoning_content_for_tool_calls(
     assert [item["type"] for item in out["output"]] == ["reasoning", "message", "function_call"]
     assert out["output"][0]["summary"][0]["text"] == "Need the current date before answering."
     assert out["output"][0]["encrypted_content"].startswith("anthropic-thinking-v1:")
+
+
+def test_chat_completion_to_response_normalizes_cached_usage():
+    payload = {
+        "id": "chatcmpl_1",
+        "choices": [{"message": {"role": "assistant", "content": "Hello"}}],
+        "usage": {
+            "prompt_tokens": 10,
+            "completion_tokens": 2,
+            "total_tokens": 12,
+            "prompt_tokens_details": {"cached_tokens": 8},
+            "completion_tokens_details": {"reasoning_tokens": 1},
+        },
+    }
+
+    out = chat_completion_to_response(payload, "slug")
+
+    assert out["usage"] == {
+        "input_tokens": 10,
+        "output_tokens": 2,
+        "total_tokens": 12,
+        "input_tokens_details": {"cached_tokens": 8},
+        "output_tokens_details": {"reasoning_tokens": 1},
+    }
+
+
+def test_anthropic_to_response_normalizes_cache_usage():
+    payload = {
+        "id": "msg_1",
+        "content": [{"type": "text", "text": "Hello"}],
+        "usage": {
+            "input_tokens": 10,
+            "cache_read_input_tokens": 8,
+            "cache_creation_input_tokens": 2,
+            "output_tokens": 3,
+        },
+    }
+
+    out = anthropic_to_response(payload, "slug")
+
+    assert out["usage"] == {
+        "input_tokens": 10,
+        "output_tokens": 3,
+        "total_tokens": 13,
+        "input_tokens_details": {
+            "cached_tokens": 8,
+            "cache_read_input_tokens": 8,
+            "cache_creation_input_tokens": 2,
+        },
+    }
 
 
 def test_chat_completion_to_response_preserves_minimax_reasoning_details():
