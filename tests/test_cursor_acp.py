@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import sys
 
 from aiohttp.test_utils import TestClient, TestServer
@@ -39,6 +41,10 @@ for line in sys.stdin:
     method = message.get("method")
     request_id = message.get("id")
     params = message.get("params") or {}
+    if os.environ.get("ACP_PID_FILE"):
+        from pathlib import Path
+
+        Path(os.environ["ACP_PID_FILE"]).write_text(str(os.getpid()), encoding="utf-8")
     if method == "initialize":
         send(
             {
@@ -70,6 +76,8 @@ for line in sys.stdin:
     elif method == "session/set_mode" and os.environ.get("ACP_FAIL") == "set_mode_error":
         send({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32000, "message": "mode unavailable"}})
     elif method == "session/prompt":
+        if os.environ.get("ACP_FAIL") == "prompt_timeout":
+            continue
         prompt = params.get("prompt") or []
         text = prompt[0].get("text", "") if prompt and isinstance(prompt[0], dict) else ""
         send(
@@ -152,6 +160,16 @@ def _sse_events(text: str) -> list[dict]:
         if data and data != "[DONE]":
             events.append(json.loads(data))
     return events
+
+
+def _child_pid_gone(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    return False
 
 
 def test_cursor_agent_provider_loads_without_base_url(tmp_path):
@@ -257,6 +275,35 @@ async def test_responses_cursor_acp_set_mode_error_returns_502(tmp_path):
     assert payload["error"]["type"] == "cursor_acp_error"
     assert "session/set_mode failed" in payload["error"]["message"]
     assert "mode unavailable" in payload["error"]["message"]
+
+    await shim_client.close()
+
+
+async def test_responses_cursor_acp_prompt_timeout_returns_502_and_closes_child(tmp_path):
+    pid_file = tmp_path / "acp.pid"
+    settings, _capture = _cursor_settings(
+        tmp_path,
+        extra_env={"ACP_FAIL": "prompt_timeout", "ACP_PID_FILE": str(pid_file)},
+    )
+    data = json.loads(settings.read_text())
+    data["models"][0]["timeoutSeconds"] = 0.2
+    settings.write_text(json.dumps(data))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "default", "input": "hi"})
+
+    assert resp.status == 502
+    payload = await resp.json()
+    assert payload["error"]["type"] == "cursor_acp_error"
+    assert "Timed out waiting for ACP session/prompt response" in payload["error"]["message"]
+    assert pid_file.exists()
+    pid = int(pid_file.read_text())
+    for _ in range(50):
+        if _child_pid_gone(pid):
+            break
+        await asyncio.sleep(0.05)
+    assert _child_pid_gone(pid)
 
     await shim_client.close()
 

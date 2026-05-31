@@ -15,6 +15,7 @@ from .settings import ShimModel
 
 TextCallback = Callable[[str], Awaitable[None]]
 
+
 class CursorCliError(RuntimeError):
     """Raised when the headless Cursor Agent CLI cannot complete a turn."""
 
@@ -72,6 +73,34 @@ async def _run_json(config: CursorCliConfig, prompt: str) -> CursorAcpResult:
     return CursorAcpResult(text=text)
 
 
+async def _terminate_subprocess(proc: asyncio.subprocess.Process, *, grace_seconds: float = 2.0) -> None:
+    if proc.returncode is not None:
+        return
+    try:
+        proc.terminate()
+    except ProcessLookupError:
+        return
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=grace_seconds)
+    except asyncio.TimeoutError:
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            return
+        await proc.wait()
+
+
+async def _finish_stderr_task(stderr_task: asyncio.Task[bytes] | None) -> None:
+    if stderr_task is None:
+        return
+    if not stderr_task.done():
+        stderr_task.cancel()
+    try:
+        await stderr_task
+    except asyncio.CancelledError:
+        pass
+
+
 async def _run_stream_json(config: CursorCliConfig, prompt: str, on_text: TextCallback) -> CursorAcpResult:
     args = _with_output_format(config.args, "stream-json", stream_partial=True)
     env = os.environ.copy()
@@ -93,25 +122,29 @@ async def _run_stream_json(config: CursorCliConfig, prompt: str, on_text: TextCa
     deltas: list[str] = []
     stderr_task = asyncio.create_task(proc.stderr.read()) if proc.stderr is not None else None
     try:
-        await asyncio.wait_for(_consume_stream(proc, events, deltas, on_text), timeout=config.timeout)
-    except asyncio.TimeoutError as exc:
-        proc.kill()
-        await proc.wait()
+        try:
+            await asyncio.wait_for(_consume_stream(proc, events, deltas, on_text), timeout=config.timeout)
+        except asyncio.TimeoutError as exc:
+            raise CursorCliError(
+                f"Timed out waiting for Cursor Agent command {command_display(config, args)}"
+            ) from exc
+
+        stderr_raw = b""
         if stderr_task is not None:
-            stderr_task.cancel()
-        raise CursorCliError(f"Timed out waiting for Cursor Agent command {command_display(config, args)}") from exc
+            stderr_raw = await stderr_task
+        stderr = stderr_raw.decode("utf-8", errors="replace") if stderr_raw else ""
+        if proc.returncode not in (None, 0):
+            excerpt = stderr.strip()[:2000]
+            suffix = f": {excerpt}" if excerpt else ""
+            raise CursorCliError(f"Cursor Agent command exited {proc.returncode}{suffix}")
 
-    stderr_raw = await stderr_task if stderr_task is not None else b""
-    stderr = stderr_raw.decode("utf-8", errors="replace") if stderr_raw else ""
-    if proc.returncode != 0:
-        excerpt = stderr.strip()[:2000]
-        suffix = f": {excerpt}" if excerpt else ""
-        raise CursorCliError(f"Cursor Agent command exited {proc.returncode}{suffix}")
-
-    result = _result_from_events(events)
-    if result is not None:
-        return result
-    return CursorAcpResult(text="".join(deltas), raw_result={"events": events})
+        result = _result_from_events(events)
+        if result is not None:
+            return result
+        return CursorAcpResult(text="".join(deltas), raw_result={"events": events})
+    finally:
+        await _terminate_subprocess(proc)
+        await _finish_stderr_task(stderr_task)
 
 
 async def _consume_stream(
@@ -175,20 +208,24 @@ async def _run(config: CursorCliConfig, prompt: str, *, args: list[str] | None =
         )
     except OSError as exc:
         raise CursorCliError(f"Failed to start Cursor Agent command {command_display(config, argv)}: {exc}") from exc
-    try:
-        stdout_raw, stderr_raw = await asyncio.wait_for(proc.communicate(), timeout=config.timeout)
-    except asyncio.TimeoutError as exc:
-        proc.kill()
-        await proc.wait()
-        raise CursorCliError(f"Timed out waiting for Cursor Agent command {command_display(config, argv)}") from exc
 
-    stdout = stdout_raw.decode("utf-8", errors="replace") if stdout_raw else ""
-    stderr = stderr_raw.decode("utf-8", errors="replace") if stderr_raw else ""
-    if proc.returncode != 0:
-        excerpt = (stderr or stdout).strip()[:2000]
-        suffix = f": {excerpt}" if excerpt else ""
-        raise CursorCliError(f"Cursor Agent command exited {proc.returncode}{suffix}")
-    return stdout, stderr
+    try:
+        try:
+            stdout_raw, stderr_raw = await asyncio.wait_for(proc.communicate(), timeout=config.timeout)
+        except asyncio.TimeoutError as exc:
+            raise CursorCliError(
+                f"Timed out waiting for Cursor Agent command {command_display(config, argv)}"
+            ) from exc
+
+        stdout = stdout_raw.decode("utf-8", errors="replace") if stdout_raw else ""
+        stderr = stderr_raw.decode("utf-8", errors="replace") if stderr_raw else ""
+        if proc.returncode not in (None, 0):
+            excerpt = (stderr or stdout).strip()[:2000]
+            suffix = f": {excerpt}" if excerpt else ""
+            raise CursorCliError(f"Cursor Agent command exited {proc.returncode}{suffix}")
+        return stdout, stderr
+    finally:
+        await _terminate_subprocess(proc)
 
 
 def command_display(config: CursorCliConfig, args: list[str] | None = None) -> str:

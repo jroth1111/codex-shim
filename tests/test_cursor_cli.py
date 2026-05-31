@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 import sys
+from contextlib import suppress
+
+import pytest
 
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim.cursor_cli import cursor_cli_config
+from codex_shim.cursor_cli import cursor_cli_config, run_cursor_cli
 from codex_shim.server import ShimServer
 from codex_shim.settings import ModelSettings, ShimModel
 
@@ -22,6 +27,15 @@ capture = os.environ.get("CURSOR_CLI_CAPTURE")
 if capture:
     with open(capture, "a", encoding="utf-8") as handle:
         handle.write(json.dumps({"argv": sys.argv[1:]}, separators=(",", ":")) + "\n")
+
+if os.environ.get("CURSOR_CLI_PID_FILE"):
+    from pathlib import Path
+
+    Path(os.environ["CURSOR_CLI_PID_FILE"]).write_text(str(os.getpid()), encoding="utf-8")
+
+if os.environ.get("CURSOR_CLI_HANG"):
+    time.sleep(float(os.environ.get("CURSOR_CLI_SLEEP", "60")))
+    raise SystemExit(0)
 
 if os.environ.get("CURSOR_CLI_SLEEP"):
     time.sleep(float(os.environ["CURSOR_CLI_SLEEP"]))
@@ -306,6 +320,115 @@ async def test_compact_routes_to_cursor_agent_cli(tmp_path):
     assert payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
 
     await shim_client.close()
+
+
+def _route_from_settings(settings_path) -> ShimModel:
+    models = ModelSettings(settings_path).load()
+    assert len(models) == 1
+    return models[0]
+
+
+def _child_pid_gone(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    return False
+
+
+@pytest.mark.asyncio
+async def test_cursor_cli_cancel_during_stream_kills_child(tmp_path):
+    pid_file = tmp_path / "child.pid"
+    settings, _capture = _cursor_cli_settings(
+        tmp_path,
+        extra_env={
+            "CURSOR_CLI_PID_FILE": str(pid_file),
+            "CURSOR_CLI_HANG": "1",
+            "CURSOR_CLI_SLEEP": "60",
+        },
+        timeout_seconds=60,
+    )
+    route = _route_from_settings(settings)
+
+    async def noop(_text: str) -> None:
+        return None
+
+    task = asyncio.create_task(run_cursor_cli(route, {"model": "auto", "input": "hi"}, on_text=noop))
+    for _ in range(50):
+        if pid_file.exists():
+            break
+        await asyncio.sleep(0.05)
+    assert pid_file.exists(), "fake cursor CLI did not write child pid file"
+    pid = int(pid_file.read_text())
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+    for _ in range(50):
+        if _child_pid_gone(pid):
+            break
+        await asyncio.sleep(0.05)
+    assert _child_pid_gone(pid), f"child process {pid} still running after task cancel"
+
+
+@pytest.mark.asyncio
+async def test_cursor_cli_cancel_during_json_kills_child(tmp_path):
+    pid_file = tmp_path / "child.pid"
+    settings, _capture = _cursor_cli_settings(
+        tmp_path,
+        extra_env={
+            "CURSOR_CLI_PID_FILE": str(pid_file),
+            "CURSOR_CLI_HANG": "1",
+            "CURSOR_CLI_SLEEP": "60",
+        },
+        timeout_seconds=60,
+    )
+    route = _route_from_settings(settings)
+
+    task = asyncio.create_task(run_cursor_cli(route, {"model": "auto", "input": "hi"}))
+    for _ in range(50):
+        if pid_file.exists():
+            break
+        await asyncio.sleep(0.05)
+    assert pid_file.exists()
+    pid = int(pid_file.read_text())
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+    for _ in range(50):
+        if _child_pid_gone(pid):
+            break
+        await asyncio.sleep(0.05)
+    assert _child_pid_gone(pid)
+
+
+@pytest.mark.asyncio
+async def test_cursor_cli_timeout_kills_child(tmp_path):
+    pid_file = tmp_path / "child.pid"
+    settings, _capture = _cursor_cli_settings(
+        tmp_path,
+        extra_env={
+            "CURSOR_CLI_PID_FILE": str(pid_file),
+            "CURSOR_CLI_HANG": "1",
+            "CURSOR_CLI_SLEEP": "60",
+        },
+        timeout_seconds=0.2,
+    )
+    route = _route_from_settings(settings)
+
+    from codex_shim.cursor_cli import CursorCliError
+
+    with pytest.raises(CursorCliError, match="Timed out"):
+        await run_cursor_cli(route, {"model": "auto", "input": "hi"})
+
+    assert pid_file.exists()
+    pid = int(pid_file.read_text())
+    for _ in range(50):
+        if _child_pid_gone(pid):
+            break
+        await asyncio.sleep(0.05)
+    assert _child_pid_gone(pid)
 
 
 def test_cursor_cli_output_format_args_are_not_duplicated():

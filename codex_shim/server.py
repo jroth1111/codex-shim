@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+from contextlib import suppress
 import json
 import time
 from pathlib import Path
@@ -76,6 +78,18 @@ from .translate import (
     validate_responses_input,
 )
 
+
+async def _await_cursor_inference(coro):
+    """Run cursor CLI/ACP inference; cancel the child process if the request task is cancelled."""
+    task = asyncio.create_task(coro)
+    try:
+        return await task
+    except asyncio.CancelledError:
+        if not task.done():
+            task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+        raise
 
 
 class ShimServer:
@@ -771,7 +785,7 @@ class ShimServer:
                 async def write_responses_delta(text: str) -> None:
                     await state.write_chat_delta(response, {"choices": [{"delta": {"content": text}}]})
 
-                result = await run_cursor_acp(route, body, on_text=write_responses_delta)
+                result = await _await_cursor_inference(run_cursor_acp(route, body, on_text=write_responses_delta))
                 if result.usage is not None:
                     state.usage = result.usage
                 final_response = await state.finish(response)
@@ -793,7 +807,7 @@ class ShimServer:
                         },
                     )
 
-                await run_cursor_acp(route, body, on_text=write_chat_delta)
+                await _await_cursor_inference(run_cursor_acp(route, body, on_text=write_chat_delta))
                 await _write_sse(
                     response,
                     {
@@ -839,7 +853,7 @@ class ShimServer:
                 async def write_responses_delta(text: str) -> None:
                     await state.write_chat_delta(response, {"choices": [{"delta": {"content": text}}]})
 
-                result = await run_cursor_cli(route, body, on_text=write_responses_delta)
+                result = await _await_cursor_inference(run_cursor_cli(route, body, on_text=write_responses_delta))
                 if result.usage is not None:
                     state.usage = result.usage
                 final_response = await state.finish(response)
@@ -861,7 +875,7 @@ class ShimServer:
                         },
                     )
 
-                await run_cursor_cli(route, body, on_text=write_chat_delta)
+                await _await_cursor_inference(run_cursor_cli(route, body, on_text=write_chat_delta))
                 await _write_sse(
                     response,
                     {

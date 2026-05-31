@@ -279,8 +279,13 @@ class _AcpJsonRpcProcess:
         while True:
             remaining = deadline - loop.time()
             if remaining <= 0:
+                await self.close()
                 raise CursorAcpError(f"Timed out waiting for ACP {method} response from {self.command_display()}")
-            message = await self._read_message(remaining)
+            try:
+                message = await self._read_message(remaining)
+            except asyncio.TimeoutError as exc:
+                await self.close()
+                raise CursorAcpError(f"Timed out waiting for ACP {method} response from {self.command_display()}") from exc
             if message.get("id") == request_id:
                 if "error" in message:
                     raise CursorAcpError(f"ACP {method} failed: {message['error']!r}")
