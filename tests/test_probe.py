@@ -34,10 +34,27 @@ def test_validate_compact_response_accepts_compaction_trigger_plus_context_compa
                     "summary": [{"type": "summary_text", "text": "Task state preserved."}],
                 },
             ],
-        }
+        },
+        expect_trigger=True,
     )
     assert item_type == "context_compaction"
     assert summary == "Task state preserved."
+
+
+def test_validate_compact_response_rejects_missing_trigger_when_expected():
+    with pytest.raises(CompactProbeError, match="compaction_trigger"):
+        validate_compact_response(
+            {
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "context_compaction",
+                        "summary": [{"type": "summary_text", "text": "Task state preserved."}],
+                    }
+                ],
+            },
+            expect_trigger=True,
+        )
 
 
 def test_probe_fidelity_offline():
@@ -52,6 +69,28 @@ def test_probe_all_offline_without_daemon(tmp_path):
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
     assert probe_all(settings, port=59999, live=False) == 0
+
+
+def test_probe_passthrough_skips_without_auth(monkeypatch):
+    from codex_shim.probe import probe_passthrough
+
+    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: False)
+    assert probe_passthrough(8765, live=True) == 0
+
+
+def test_probe_passthrough_skips_without_live_flag(monkeypatch):
+    from codex_shim.probe import probe_passthrough
+
+    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: True)
+    monkeypatch.delenv("CODEX_SHIM_PROBE_PASSTHROUGH", raising=False)
+    assert probe_passthrough(8765, live=False) == 0
+
+
+def test_probe_passthrough_compact_skips_without_auth(monkeypatch):
+    from codex_shim.probe import probe_passthrough_compact
+
+    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: False)
+    assert probe_passthrough_compact(8765, live=True) == 0
 
 
 def test_validate_compact_response_rejects_message_shape():

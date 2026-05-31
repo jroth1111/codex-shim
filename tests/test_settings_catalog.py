@@ -466,6 +466,8 @@ def test_doctor_reports_hidden_reason(monkeypatch, tmp_path, capsys, auth_missin
     assert cli.doctor(settings) == 1
 
     output = capsys.readouterr().out
+    assert "WebSockets (client):" in output
+    assert "Response store:" in output
     assert "Hidden model entries:" in output
     assert "missing API key from ZAI_API_KEY" in output
 

@@ -57,3 +57,18 @@ def test_passthrough_compact_fixture_matches_validator():
     item_type, summary = validate_compact_response(payload)
     assert item_type == "context_compaction"
     assert "Native compact summary" in summary
+
+
+def test_image_generation_call_input_translates():
+    body = {
+        "model": "slug",
+        "input": [{"type": "image_generation_call", "call_id": "call_img", "action": {"prompt": "neon fox"}}],
+    }
+    validate_responses_input(body)
+    out = responses_to_chat(body, "real-model")
+    tool_names = [
+        call["function"]["name"]
+        for message in out["messages"]
+        for call in message.get("tool_calls") or []
+    ]
+    assert tool_names == ["image_generation"]

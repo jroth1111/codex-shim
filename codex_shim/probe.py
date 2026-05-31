@@ -31,12 +31,15 @@ def resolve_compact_probe_slug(settings_path: Path, slug: str | None) -> ShimMod
     return desktop[0]
 
 
-def validate_compact_response(payload: dict[str, Any]) -> tuple[str, str]:
+def validate_compact_response(payload: dict[str, Any], *, expect_trigger: bool = False) -> tuple[str, str]:
     if payload.get("status") != "completed":
         raise CompactProbeError(f"Expected status=completed, got {payload.get('status')!r}")
     output = payload.get("output")
     if not isinstance(output, list) or not output:
         raise CompactProbeError(f"Expected compaction output items, got {type(output)!r}")
+    if expect_trigger:
+        if not isinstance(output[0], dict) or output[0].get("type") != "compaction_trigger":
+            raise CompactProbeError("Expected compaction_trigger as first output item.")
     compaction_items = [
         item for item in output if isinstance(item, dict) and item.get("type") in {"context_compaction", "compaction"}
     ]
@@ -81,6 +84,7 @@ def probe_compact(settings_path: Path, port: int, slug: str | None = None) -> in
     body = {
         "model": route.slug,
         "input": [
+            {"type": "compaction_trigger"},
             {"role": "user", "content": "Summarize this thread for the next turn."},
             {"type": "function_call_output", "call_id": "call_probe", "output": "probe fixture"},
         ],
@@ -102,7 +106,7 @@ def probe_compact(settings_path: Path, port: int, slug: str | None = None) -> in
     except URLError as exc:
         raise CompactProbeError(f"Compact probe request failed: {exc}") from exc
 
-    item_type, summary = validate_compact_response(payload)
+    item_type, summary = validate_compact_response(payload, expect_trigger=True)
     print(f"Compact probe passed for {route.slug} ({route.provider}).")
     print(f"  item_type: {item_type}")
     print(f"  summary: {summary[:160]}{'…' if len(summary) > 160 else ''}")
@@ -143,7 +147,8 @@ def probe_history(settings_path: Path, port: int, slug: str | None = None) -> in
         ],
         "stream": False,
     }
-    first = _post_json(f"http://127.0.0.1:{port}/v1/responses", first_body)
+    session_headers = {"session_id": "probe-history"}
+    first = _post_json(f"http://127.0.0.1:{port}/v1/responses", first_body, headers=session_headers)
     validate_history_response({}, first)
     second_body = {
         "model": route.slug,
@@ -151,7 +156,6 @@ def probe_history(settings_path: Path, port: int, slug: str | None = None) -> in
         "input": [{"role": "user", "content": [{"type": "input_text", "text": "ack"}]}],
         "stream": False,
     }
-    session_headers = {"session_id": "probe-history"}
     second = _post_json(f"http://127.0.0.1:{port}/v1/responses", second_body, headers=session_headers)
     validate_history_response(first, second)
     compact_body = {
@@ -165,10 +169,8 @@ def probe_history(settings_path: Path, port: int, slug: str | None = None) -> in
         compact_body,
         headers=session_headers,
     )
-    item_type, summary = validate_compact_response(compact)
-    output = compact.get("output") or []
-    if output and isinstance(output[0], dict) and output[0].get("type") == "compaction_trigger":
-        print("  compact: compaction_trigger + context_compaction")
+    item_type, summary = validate_compact_response(compact, expect_trigger=True)
+    print("  compact: compaction_trigger + context_compaction")
     print(f"History probe passed for {route.slug} ({route.provider}).")
     print(f"  previous_response_id: {first.get('id')}")
     print(f"  follow_up_items: {len(second.get('output') or [])}")
@@ -207,8 +209,22 @@ def probe_streaming_history(settings_path: Path, port: int, slug: str | None = N
         headers={"session_id": "probe-stream"},
     )
     validate_history_response(first, second)
+    compact_body = {
+        "model": route.slug,
+        "previous_response_id": first.get("id"),
+        "input": [{"type": "compaction_trigger"}],
+        "stream": False,
+    }
+    compact = _post_json(
+        f"http://127.0.0.1:{port}/v1/responses/compact",
+        compact_body,
+        headers={"session_id": "probe-stream"},
+    )
+    item_type, summary = validate_compact_response(compact, expect_trigger=True)
     print(f"Streaming history probe passed for {route.slug} ({route.provider}).")
     print(f"  previous_response_id: {first.get('id')}")
+    print(f"  compact_item_type: {item_type}")
+    print(f"  compact_summary: {summary[:120]}{'…' if len(summary) > 120 else ''}")
     return 0
 
 
@@ -291,7 +307,13 @@ def probe_fidelity() -> int:
             raise CompactProbeError(f"Fidelity probe {label}: no chat messages produced.")
     passthrough_compact = json.loads((fixture_dir / "passthrough_compact.json").read_text())
     validate_compact_response(passthrough_compact)
-    print("Fidelity probe passed (hosted tools, compaction, reasoning, MCP, passthrough compact shape).")
+    image_body = {
+        "model": "probe",
+        "input": [{"type": "image_generation_call", "call_id": "call_img", "action": {"prompt": "probe fox"}}],
+    }
+    validate_responses_input(image_body)
+    responses_to_chat(image_body, "probe-model")
+    print("Fidelity probe passed (hosted tools, compaction, reasoning, MCP, image generation, passthrough compact shape).")
     return 0
 
 

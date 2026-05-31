@@ -721,7 +721,10 @@ codex-shim probe history      # hosted tools + previous_response_id + compact w/
 codex-shim probe streaming-history
 codex-shim probe passthrough --live        # Tier A; requires ~/.codex/auth.json
 codex-shim probe passthrough-compact --live
+# Or set CODEX_SHIM_PROBE_PASSTHROUGH=1 to enable Tier A probes in `probe all` without --live
 ```
+
+**Tier A passthrough headers:** ChatGPT passthrough forwards Desktop metadata headers (`x-codex-*`, `session_id`, `x-client-request-id`, `x-oai-attestation`, `traceparent`, `x-request-id`, `x-trace-id`, `cf-ray`) plus body `metadata.trace_id` / `metadata.request_id`. Client `Authorization` is never forwarded.
 
 Recommended dev loop: `codex-shim enable` → `codex-shim probe all` → `codex-shim test <slug>`.
 

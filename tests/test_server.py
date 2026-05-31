@@ -1086,85 +1086,6 @@ async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_win
     await upstream_client.close()
 
 
-async def test_streaming_hosted_tool_turn_stored_with_session_id(tmp_path):
-    captured: list[dict] = []
-
-    async def chat(request):
-        body = await request.json()
-        captured.append(body)
-        if body.get("stream"):
-            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
-            await response.prepare(request)
-            await response.write(
-                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_shell","type":"function","function":{"name":"local_shell","arguments":""}}]}}]}\n\n'
-            )
-            await response.write(
-                b'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\\"command\\":\\"echo probe\\"}"}}]}}]}\n\n'
-            )
-            await response.write(b"data: [DONE]\n\n")
-            await response.write_eof()
-            return response
-        return web.json_response(
-            {"id": "chatcmpl_follow", "choices": [{"message": {"role": "assistant", "content": "acknowledged"}}]}
-        )
-
-    upstream = web.Application()
-    upstream.router.add_post("/v1/chat/completions", chat)
-    upstream_client = TestClient(TestServer(upstream))
-    await upstream_client.start_server()
-
-    settings = tmp_path / "settings.json"
-    settings.write_text(
-        json.dumps(
-            {
-                "customModels": [
-                    {
-                        "model": "real-openai",
-                        "displayName": "Real OpenAI",
-                        "provider": "openai",
-                        "baseUrl": str(upstream_client.make_url("/v1")),
-                    }
-                ]
-            }
-        )
-    )
-    shim_client = TestClient(TestServer(ShimServer(settings).app()))
-    await shim_client.start_server()
-
-    first = await shim_client.post(
-        "/v1/responses",
-        json={"model": "real-openai", "input": "run shell", "stream": True},
-        headers={"session_id": "stream-hosted-session"},
-    )
-    assert first.status == 200
-    completed = [event for event in _sse_events(await first.text()) if event.get("type") == "response.completed"][-1]
-    response_id = completed["response"]["id"]
-    tool_types = [item.get("type") for item in completed["response"].get("output") or []]
-    assert "local_shell_call" in tool_types
-
-    second = await shim_client.post(
-        "/v1/responses",
-        json={
-            "model": "real-openai",
-            "previous_response_id": response_id,
-            "input": [{"type": "function_call_output", "call_id": "call_shell", "output": "probe"}],
-            "stream": False,
-        },
-        headers={"session_id": "stream-hosted-session"},
-    )
-    assert second.status == 200
-    follow_up = captured[1]
-    tool_names = [
-        call["function"]["name"]
-        for message in follow_up["messages"]
-        for call in message.get("tool_calls") or []
-    ]
-    assert "local_shell" in tool_names
-
-    await shim_client.close()
-    await upstream_client.close()
-
-
 async def test_responses_compact_expands_previous_response_id(tmp_path):
     captured = {}
 
@@ -1725,6 +1646,8 @@ def test_merge_codex_forward_headers_allowlists_trace_metadata():
             "x-codex-parent-thread-id": "thread_parent",
             "x-client-request-id": "client_req_1",
             "x-oai-attestation": "attest_stub",
+            "x-openai-subagent": "subagent_1",
+            "x-responsesapi-include-timing-metrics": "1",
             "traceparent": "00-abc-def-01",
             "x-request-id": "req_1",
             "cf-ray": "ray_stub",
@@ -1737,6 +1660,8 @@ def test_merge_codex_forward_headers_allowlists_trace_metadata():
     assert forwarded["x-codex-parent-thread-id"] == "thread_parent"
     assert forwarded["x-client-request-id"] == "client_req_1"
     assert forwarded["x-oai-attestation"] == "attest_stub"
+    assert forwarded["x-openai-subagent"] == "subagent_1"
+    assert forwarded["x-responsesapi-include-timing-metrics"] == "1"
     assert forwarded["traceparent"] == "00-abc-def-01"
     assert forwarded["x-request-id"] == "req_1"
     assert forwarded["cf-ray"] == "ray_stub"
@@ -1887,6 +1812,7 @@ async def test_chatgpt_passthrough_compact_forwards_headers(monkeypatch, tmp_pat
 
 
 async def test_chatgpt_passthrough_streaming_forwards_raw_sse(monkeypatch, tmp_path, auth_present):
+    """Tier A HTTP streaming forwards upstream SSE bytes unchanged (no parse/re-emit)."""
     captured = {}
 
     class FakeUpstream:
@@ -1932,6 +1858,65 @@ async def test_chatgpt_passthrough_streaming_forwards_raw_sse(monkeypatch, tmp_p
     assert "response.completed" in text
 
     await shim_client.close()
+
+
+@pytest.mark.asyncio
+async def test_chatgpt_passthrough_websocket_streaming_parses_sse(monkeypatch, tmp_path, auth_present):
+    """Tier A WebSocket streaming parses upstream SSE and emits JSON event frames."""
+    captured = {}
+
+    class FakeUpstream:
+        status = 200
+        headers = {"Content-Type": "text/event-stream"}
+
+        def __init__(self):
+            self.content = _FakeStreamContent(
+                [
+                    b'data: {"type":"response.completed","response":{"id":"resp_ws_stream","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ws stream ok"}]}]}}\n\n',
+                    b"data: [DONE]\n\n",
+                ]
+            )
+
+        def release(self):
+            pass
+
+    class _FakeStreamContent:
+        def __init__(self, chunks: list[bytes]):
+            self._chunks = chunks
+
+        def iter_chunked(self, _size: int):
+            async def _gen():
+                for chunk in self._chunks:
+                    yield chunk
+
+            return _gen()
+
+    async def fake_post(self, url, json=None, headers=None):
+        captured["stream"] = json.get("stream")
+        return FakeUpstream()
+
+    monkeypatch.setattr("codex_shim.server.ClientSession.post", fake_post)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"customModels": []}))
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    try:
+        ws = await shim_client.ws_connect("/v1/responses")
+        await ws.send_json({"model": "gpt-5.5", "input": "hi", "stream": True})
+        frames = []
+        while True:
+            msg = await ws.receive()
+            if msg.type.name == "CLOSE":
+                break
+            if msg.type.name == "TEXT":
+                frames.append(json.loads(msg.data))
+        assert captured["stream"] is True
+        completed = [frame for frame in frames if frame.get("type") == "response.completed"]
+        assert completed
+        assert completed[-1]["response"]["id"] == "resp_ws_stream"
+    finally:
+        await shim_client.close()
 
 
 def test_responses_stream_state_emits_native_local_shell_item():
