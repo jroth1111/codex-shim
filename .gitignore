@@ -7,6 +7,11 @@
 codedb.snapshot
 *.asar
 app-asar-work/
+codex-shim-audit-source.zip
+reverse-cursor-agent/
+.antigravitycli/
+.claude/
+.cursor/
 # codex-desktop-decompiled/ is tracked (source-only); see its .gitignore for exclusions
 *-bsLDOISN.js
 hooks-settings-model-*.js

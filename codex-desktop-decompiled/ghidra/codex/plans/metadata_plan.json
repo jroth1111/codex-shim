@@ -1,5 +1,5 @@
 {
-  "analysis_dir": "/Users/gwizz/CascadeProjects/codex_shim/codex-desktop-decompiled/ghidra/codex",
+  "analysis_dir": "codex-desktop-decompiled/ghidra/codex",
   "auto_named_function_count": 0,
   "function_count": 797,
   "high_confidence_count": 0,
