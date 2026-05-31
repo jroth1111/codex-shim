@@ -24,6 +24,27 @@ Optional: maintain a gitignored `codex-desktop-decompiled/` tree (see README). S
 CI runs the same commands on Python 3.11 and 3.12 via
 `.github/workflows/ci.yml`. Match it locally before opening a PR.
 
+## Translation package (`codex_shim/translate/`)
+
+BYOK routing still imports the public surface from `codex_shim.translate`
+(unchanged). Implementation lives in submodules; add regression tests under
+`tests/translate/` beside the code you touch.
+
+| Module | Responsibility |
+|--------|----------------|
+| `input.py` | Validate Responses input; `KNOWN_RESPONSE_INPUT_TYPES` |
+| `messages.py` | Role normalization, thinking/reasoning policy, message merges |
+| `content.py` | Text/image/audio parts, inline media limits, visual feedback |
+| `tool_schema.py` | Responses tools → chat/Anthropic tool schemas and `tool_choice` |
+| `tools.py` | Native tool fallbacks, streaming tool items, hosted-call normalization |
+| `chat.py` | `responses_to_chat`, chat → Responses roundtrip helpers |
+| `anthropic.py` | `responses_to_anthropic`, Anthropic → chat completion bridge |
+| `output.py` | Upstream chat/Anthropic streams → Responses items |
+| `usage.py` | Normalize upstream `usage` for `response.completed` |
+| `common.py` | Shared helpers, `ResponsesInputError` |
+
+Audit-oriented contract notes: `AUDIT_CONTRACTS.md`, `AUDIT_MANIFEST.md`.
+
 ## What kinds of changes are useful
 
 - Translation fixes for tricky tool-call / reasoning streams, with a
@@ -45,7 +66,7 @@ CI runs the same commands on Python 3.11 and 3.12 via
 
 - Match the surrounding file. No new dependencies without a reason.
 - Keep `codex_shim/server.py` translation behavior covered by tests in
-  `tests/test_server.py` or `tests/test_translate.py` — tool-call shape
+  `tests/test_server.py` or `tests/translate/` — tool-call shape
   bugs are easy to miss by eyeballing streams.
 - Don't include API keys, ChatGPT access tokens, or `auth.json` contents
   in fixtures, logs, or test data. Use synthetic tokens (`"stub"`,

@@ -41,7 +41,7 @@ Committed shim evidence: `codex_shim/desktop_contract.py`, `tests/fixtures/deskt
 | Path | Role |
 |------|------|
 | `codex_shim/server.py` | HTTP/WS server, routing, passthrough, BYOK dispatch, compaction, header forward |
-| `codex_shim/translate.py` | Responses ↔ chat/Anthropic; input validation; tool/reasoning mapping |
+| `codex_shim/translate/` | Responses ↔ chat/Anthropic package (`input`, `chat`, `anthropic`, `output`, `tools`, `tool_schema`, `content`, …) |
 | `codex_shim/settings.py` | Model catalog, provider presets, ChatGPT passthrough slug |
 | `codex_shim/catalog.py` | Generated Codex Desktop catalog (`wire_api = "responses"`) |
 | `codex_shim/response_store.py` | SQLite `previous_response_id` expansion (BYOK only) |
@@ -103,7 +103,7 @@ Example capabilities to trace (non-exhaustive — discover more from Desktop sou
 **Shim:**
 
 - Start from `server.py` dispatch: `_dispatch_responses`, `_post_chatgpt_responses`, `_merge_codex_forward_headers`, `_sanitize_chatgpt_passthrough_body`, `_compact_response_payload`.
-- Cross-check `translate.py`: `KNOWN_RESPONSE_INPUT_TYPES`, `responses_to_chat`, `responses_to_anthropic`, stream emitters.
+- Cross-check `codex_shim/translate/`: `KNOWN_RESPONSE_INPUT_TYPES`, `responses_to_chat`, `responses_to_anthropic`, stream emitters.
 
 ### 4. Two routing tiers (do not conflate)
 
@@ -243,6 +243,6 @@ List the most useful Desktop source locations you discovered (file + search term
 - **Quantify** test gaps (e.g., "streaming `tool_search_call` round-trip untested").
 - **Do not** suggest rewriting Codex Desktop or executing tools inside the shim unless Desktop source proves it's necessary.
 
-Begin by reading `AUDIT_MANIFEST.md`, then **`AUDIT_CONTRACTS.md`** (implementation-grounded Tier A vs BYOK contracts with shim source index), then `codex_shim/desktop_contract.py` and any local `CODEX_SHIM_ARCHITECTURE.md` if the RE tree is available. Search Desktop source (local tree or fixtures) for `/v1/responses` and Response item type strings to **verify or falsify each contract row**, then read `codex_shim/server.py` and `translate.py`. Only then write findings.
+Begin by reading `AUDIT_MANIFEST.md`, then **`AUDIT_CONTRACTS.md`** (implementation-grounded Tier A vs BYOK contracts with shim source index), then `codex_shim/desktop_contract.py` and any local `CODEX_SHIM_ARCHITECTURE.md` if the RE tree is available. Search Desktop source (local tree or fixtures) for `/v1/responses` and Response item type strings to **verify or falsify each contract row**, then read `codex_shim/server.py` and `codex_shim/translate/`. Only then write findings.
 
 Your trace matrix must reference `AUDIT_CONTRACTS.md` rows and mark each as **VERIFIED**, **GAP**, or **DESKTOP-EVIDENCE-MISSING**.

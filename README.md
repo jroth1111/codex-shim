@@ -718,7 +718,7 @@ codex-shim probe live-matrix        # CLI: Tier A + BYOK family matrix
 codex-shim probe all --live         # offline fidelity + BYOK probes + full live matrix
 ```
 
-Optional env overrides for BYOK families: `CODEX_SHIM_LIVE_SLUG_OPENAI`, `CODEX_SHIM_LIVE_SLUG_ANTHROPIC`, `CODEX_SHIM_LIVE_SLUG_CURSOR`. Set `ZAI_API_KEY` to auto-configure Z.AI GLM-5.1 Coding Plan for Tier B openai_chat live tests (then `codex-shim restart`).
+Optional env overrides for BYOK families: `CODEX_SHIM_LIVE_SLUG_OPENAI`, `CODEX_SHIM_LIVE_SLUG_ANTHROPIC`, `CODEX_SHIM_LIVE_SLUG_CURSOR`. Set `ZAI_API_KEY` to auto-configure Z.AI GLM-5.1 Coding Plan for Tier B openai_chat live tests (then `codex-shim restart`). When `cursor` is on `PATH`, live tests auto-configure `cursor-auto` (`cursor-agent` CLI) and run the dedicated suite in `tests/live/test_cursor_agent.py`.
 
 Tier A prepare env: `CODEX_SHIM_PASSTHROUGH_KEEP_PREVIOUS_RESPONSE_ID=1` forwards `previous_response_id` (default strips it).
 
@@ -949,7 +949,7 @@ web.run_app(app, host="127.0.0.1", port=8766)
 ```
 
 Then launch Codex with the shim provider URL set to `http://127.0.0.1:8766/v1`
-instead of `8765`. Keep prompt catching outside `codex_shim/translate.py` unless
+instead of `8765`. Keep prompt catching outside `codex_shim/translate/` unless
 you want every BYOK route to share the same mutation policy.
 
 ---
@@ -1233,7 +1233,8 @@ codex-shim start
 ## File layout
 
 ```text
-codex_shim/             python source (server + cli + translation)
+codex_shim/             python source (server + cli)
+codex_shim/translate/   Responses ↔ chat/Anthropic translation package
 bin/codex-shim          main entrypoint
 bin/codex-app           shortcut wrapping `codex-shim app`
 bin/codex-model         shortcut wrapping `codex-shim model …`

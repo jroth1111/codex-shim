@@ -42,7 +42,7 @@ when primary client source cannot be verified.
 2. **`AUDIT_PROMPT.md`**
 3. `README.md`
 4. `codex_shim/desktop_contract.py` (+ local `CODEX_SHIM_ARCHITECTURE.md` if available)
-5. `codex_shim/server.py` + `codex_shim/translate.py`
+5. `codex_shim/server.py` + `codex_shim/translate/`
 
 ## Verify after review
 

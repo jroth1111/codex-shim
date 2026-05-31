@@ -50,9 +50,23 @@ and this project does not yet follow semantic versioning (pre-1.0).
 - Generated Desktop protocol contract constants (from local
   `codex-desktop-decompiled/native-binaries/codex.strings.txt` when regenerating), with
   `codex-shim doctor contract` and CI drift checks against committed `desktop_contract.py`.
+- Live integration suite for the Cursor Agent CLI route
+  (`tests/live/test_cursor_agent.py`): sync/SSE/WebSocket responses, compact,
+  chat completions, desktop input fixtures, and `previous_response_id` history.
+  Auto-configures `cursor-auto` when `cursor` is on `PATH`.
 
 ### Changed
 
+- Cursor Agent CLI streaming now reads stdout in chunks instead of line-at-a-time,
+  so large `stream-json` events are not truncated by asyncio read limits.
+- Split the monolithic `codex_shim/translate.py` module into a
+  `codex_shim/translate/` package (`input`, `chat`, `anthropic`, `output`,
+  `tools`, `tool_schema`, `content`, `messages`, `usage`, `common`). Public
+  imports remain
+  `from codex_shim.translate import …`.
+- Moved translate unit tests from `tests/test_translate.py` into
+  `tests/translate/` (`test_input`, `test_chat`, `test_anthropic`, `test_output`,
+  `test_content`, `test_tools`, `test_messages`, `test_tool_schema`).
 - Reframed the project around a generic all-model Codex shim instead of any
   single upstream app or model store.
 - Made `~/.codex-shim/models.json` the canonical default settings file.

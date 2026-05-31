@@ -107,7 +107,7 @@ Excluded: `authorization`, `host`, `content-length`, `content-type`, `accept`.
 | Upstream auth | API key from model settings (`_openai_headers`, `_anthropic_headers`) — not client Authorization |
 | `/v1/chat/completions` | Direct chat/anthropic/cursor translation without Responses wrapper |
 
-**Allowed input types** (`KNOWN_RESPONSE_INPUT_TYPES`, `translate.py`):
+**Allowed input types** (`KNOWN_RESPONSE_INPUT_TYPES`, `codex_shim/translate/input.py`):
 
 ```
 message, input_text, text, input_image, input_audio, computer_call_output,
@@ -181,8 +181,8 @@ Outbound: upstream assistant output → Responses items via `chat_completion_to_
 | Dispatch fork | `codex_shim/server.py` — `_dispatch_responses`, `responses_compact` |
 | Tier A passthrough | `passthrough.py` — `chatgpt_passthrough`, `chatgpt_compact_passthrough`, `sanitize_chatgpt_passthrough_body`; `passthrough_prepare.py` — `prepare_chatgpt_passthrough_body` |
 | Tier A headers | `passthrough.py` — `merge_codex_forward_headers`, `passthrough_forward_headers`, `metadata_as_forward_headers` |
-| BYOK validation | `translate.py` — `KNOWN_RESPONSE_INPUT_TYPES`, `validate_responses_input` |
-| BYOK translation | `translate.py` — `responses_to_chat`, `responses_to_anthropic`, `chat_completion_to_response`, `anthropic_to_response` |
+| BYOK validation | `codex_shim/translate/` — `input.py` (`KNOWN_RESPONSE_INPUT_TYPES`, `validate_responses_input`) |
+| BYOK translation | `codex_shim/translate/` — `chat.py`, `anthropic.py`, `output.py` (`responses_to_chat`, `responses_to_anthropic`, `chat_completion_to_response`, `anthropic_to_response`) |
 | BYOK streaming | `server.py` — `ResponsesStreamState` |
 | History store | `response_store.py`, `server.py` — `_body_with_previous_response`, `_store_response_history` |
 | BYOK compact | `server.py` — `_compact_response_payload`, `_as_compact_response` |

@@ -12,7 +12,7 @@ labels: enhancement
 ## Proposed change
 
 <!-- What should the shim do? Where in the code does it land
-(translate.py, server.py, cli.py, catalog.py)? -->
+(translate/, server.py, cli.py, catalog.py)? -->
 
 ## Alternatives considered
 
