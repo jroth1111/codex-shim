@@ -1,0 +1,5001 @@
+{
+  "misc": {
+    "count": 396,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "1016fa824",
+        "name": "entry",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8294",
+        "name": "_AudioComponentFindNext",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82a0",
+        "name": "_AudioComponentInstanceDispose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82ac",
+        "name": "_AudioComponentInstanceNew",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82b8",
+        "name": "_AudioConvertHostTimeToNanos",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82c4",
+        "name": "_AudioConverterConvertComplexBuffer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82d0",
+        "name": "_AudioConverterDispose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82dc",
+        "name": "_AudioConverterFillComplexBuffer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82e8",
+        "name": "_AudioConverterNew",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa82f4",
+        "name": "_AudioDeviceCreateIOProcID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8318",
+        "name": "_AudioDeviceStop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8324",
+        "name": "_AudioGetCurrentHostTime",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8330",
+        "name": "_AudioHardwareUnload",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8348",
+        "name": "_AudioObjectGetPropertyData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8354",
+        "name": "_AudioObjectGetPropertyDataSize",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8360",
+        "name": "_AudioObjectHasProperty",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa836c",
+        "name": "_AudioObjectIsPropertySettable",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8384",
+        "name": "_AudioObjectSetPropertyData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa839c",
+        "name": "_AudioOutputUnitStop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83a8",
+        "name": "_AudioUnitGetProperty",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83b4",
+        "name": "_AudioUnitInitialize",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83cc",
+        "name": "_AudioUnitSetProperty",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83d8",
+        "name": "_AudioUnitUninitialize",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8408",
+        "name": "_CACurrentMediaTime",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8420",
+        "name": "_CFArrayAppendValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa842c",
+        "name": "_CFArrayCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8438",
+        "name": "_CFArrayCreateMutable",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8444",
+        "name": "_CFArrayGetCount",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8450",
+        "name": "_CFArrayGetValueAtIndex",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa845c",
+        "name": "_CFArrayInsertValueAtIndex",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8468",
+        "name": "_CFArrayRemoveValueAtIndex",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8474",
+        "name": "_CFBooleanGetValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8480",
+        "name": "_CFBundleGetIdentifier",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa848c",
+        "name": "_CFBundleGetMainBundle",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8498",
+        "name": "_CFDataCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84a4",
+        "name": "_CFDataGetBytePtr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84b0",
+        "name": "_CFDataGetLength",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84bc",
+        "name": "_CFDictionaryContainsKey",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84c8",
+        "name": "_CFDictionaryCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84d4",
+        "name": "_CFDictionaryCreateMutable",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84e0",
+        "name": "_CFDictionaryGetCount",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84ec",
+        "name": "_CFDictionaryGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa84f8",
+        "name": "_CFDictionaryGetValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8504",
+        "name": "_CFDictionaryGetValueIfPresent",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8510",
+        "name": "_CFDictionarySetValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa851c",
+        "name": "_CFEqual",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa854c",
+        "name": "_CFGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8558",
+        "name": "_CFLocaleCopyPreferredLanguages",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8564",
+        "name": "_CFNumberCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8570",
+        "name": "_CFNumberGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa857c",
+        "name": "_CFNumberGetValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85a0",
+        "name": "_CFRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85ac",
+        "name": "_CFRetain",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85b8",
+        "name": "_CFRunLoopAddSource",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85c4",
+        "name": "_CFRunLoopGetCurrent",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85d0",
+        "name": "_CFRunLoopIsWaiting",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85dc",
+        "name": "_CFRunLoopRemoveSource",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85e8",
+        "name": "_CFRunLoopRun",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa85f4",
+        "name": "_CFRunLoopStop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8600",
+        "name": "_CFStringCompare",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa860c",
+        "name": "_CFStringCreateWithBytes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8618",
+        "name": "_CFStringCreateWithBytesNoCopy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8624",
+        "name": "_CFStringFindWithOptions",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8630",
+        "name": "_CFStringGetBytes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa863c",
+        "name": "_CFStringGetCString",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8648",
+        "name": "_CFStringGetCStringPtr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8654",
+        "name": "_CFStringGetLength",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8660",
+        "name": "_CFStringGetMaximumSizeForEncoding",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa866c",
+        "name": "_CFStringGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8684",
+        "name": "_CFTimeZoneGetName",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa872c",
+        "name": "_CGBitmapContextCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8738",
+        "name": "_CGBitmapContextCreateImage",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8744",
+        "name": "_CGColorSpaceCopyICCData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa875c",
+        "name": "_CGContextRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8768",
+        "name": "_CGDataProviderCopyData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8774",
+        "name": "_CGDisplayCreateImage",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8780",
+        "name": "_CGDisplayIsBuiltin",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa878c",
+        "name": "_CGDisplayRegisterReconfigurationCallback",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8798",
+        "name": "_CGDisplayRemoveReconfigurationCallback",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87a4",
+        "name": "_CGDisplayStreamCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87b0",
+        "name": "_CGDisplayStreamGetRunLoopSource",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87c8",
+        "name": "_CGDisplayStreamStop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87d4",
+        "name": "_CGDisplayStreamUpdateGetRects",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8804",
+        "name": "_CGImageGetBitmapInfo",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8810",
+        "name": "_CGImageGetBitsPerComponent",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa881c",
+        "name": "_CGImageGetBitsPerPixel",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8828",
+        "name": "_CGImageGetBytesPerRow",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8834",
+        "name": "_CGImageGetColorSpace",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8840",
+        "name": "_CGImageGetDataProvider",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa884c",
+        "name": "_CGImageGetHeight",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8858",
+        "name": "_CGImageGetWidth",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8864",
+        "name": "_CGImageRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa887c",
+        "name": "_CGRectMakeWithDictionaryRepresentation",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8900",
+        "name": "_CMCopyDictionaryOfAttachments",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8924",
+        "name": "_CMMemoryPoolCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa893c",
+        "name": "_CMMemoryPoolInvalidate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8948",
+        "name": "_CMSampleBufferCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8960",
+        "name": "_CMSampleBufferGetDataBuffer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8978",
+        "name": "_CMSampleBufferGetImageBuffer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8984",
+        "name": "_CMSampleBufferGetNumSamples",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8990",
+        "name": "_CMSampleBufferGetPresentationTimeStamp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa899c",
+        "name": "_CMSampleBufferGetSampleAttachmentsArray",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa89a8",
+        "name": "_CMSampleBufferIsValid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa89b4",
+        "name": "_CMTimeCompare",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa89cc",
+        "name": "_CMTimeMake",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a20",
+        "name": "_CVBufferRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a2c",
+        "name": "_CVBufferRemoveAttachment",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a38",
+        "name": "_CVBufferRetain",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a44",
+        "name": "_CVBufferSetAttachment",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a50",
+        "name": "_CVMetalTextureCacheCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a5c",
+        "name": "_CVMetalTextureCacheCreateTextureFromImage",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a68",
+        "name": "_CVMetalTextureGetTexture",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a74",
+        "name": "_CVPixelBufferCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a80",
+        "name": "_CVPixelBufferGetBaseAddress",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8a98",
+        "name": "_CVPixelBufferGetBytesPerRow",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8aa4",
+        "name": "_CVPixelBufferGetBytesPerRowOfPlane",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ab0",
+        "name": "_CVPixelBufferGetHeight",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8abc",
+        "name": "_CVPixelBufferGetHeightOfPlane",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ac8",
+        "name": "_CVPixelBufferGetIOSurface",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ad4",
+        "name": "_CVPixelBufferGetPixelFormatType",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ae0",
+        "name": "_CVPixelBufferGetWidth",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8aec",
+        "name": "_CVPixelBufferGetWidthOfPlane",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b04",
+        "name": "_CVPixelBufferPoolCreatePixelBuffer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b10",
+        "name": "_CVPixelBufferPoolGetPixelBufferAttributes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b1c",
+        "name": "_CVPixelBufferRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ba0",
+        "name": "_IOPMAssertionCreateWithName",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8bac",
+        "name": "_IOPMAssertionRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8bb8",
+        "name": "_IOSurfaceDecrementUseCount",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8bd0",
+        "name": "_IOSurfaceGetBaseAddress",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8bdc",
+        "name": "_IOSurfaceGetBytesPerElement",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8be8",
+        "name": "_IOSurfaceGetBytesPerRow",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8bf4",
+        "name": "_IOSurfaceGetHeight",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c00",
+        "name": "_IOSurfaceGetWidth",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c0c",
+        "name": "_IOSurfaceIncrementUseCount",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c48",
+        "name": "_MTLCopyAllDevices",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c78",
+        "name": "_NSStringFromClass",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c84",
+        "name": "_NSStringFromRect",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c90",
+        "name": "_SCDynamicStoreCopyProxies",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c9c",
+        "name": "_SCDynamicStoreCreateWithOptions",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8dbc",
+        "name": "_SecIdentityGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8dc8",
+        "name": "_SecItemImport",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8dd4",
+        "name": "_SecKeyGetTypeID",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8dec",
+        "name": "_SecKeychainCopyDomainDefault",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8e1c",
+        "name": "_SecKeychainItemModifyAttributesAndData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f54",
+        "name": "__NSGetEnviron",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f78",
+        "name": "__Unwind_DeleteException",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f84",
+        "name": "__Unwind_GetCFA",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f9c",
+        "name": "__Unwind_GetIP",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fa8",
+        "name": "__Unwind_GetIPInfo",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fb4",
+        "name": "__Unwind_GetLanguageSpecificData",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fcc",
+        "name": "__Unwind_GetTextRelBase",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fd8",
+        "name": "__Unwind_RaiseException",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fe4",
+        "name": "__Unwind_Resume",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ff0",
+        "name": "__Unwind_SetGR",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8ffc",
+        "name": "__Unwind_SetIP",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9014",
+        "name": "__ZNKSt3__16locale9use_facetERNS0_2idE",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9020",
+        "name": "__ZNKSt3__18ios_base6getlocEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9038",
+        "name": "__ZNSt3__112__next_primeEm",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa908c",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9098",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90a4",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEED2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90b0",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90bc",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90c8",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEj",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90d4",
+        "name": "__ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEt",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90e0",
+        "name": "__ZNSt3__114basic_iostreamIcNS_11char_traitsIcEEED2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90ec",
+        "name": "__ZNSt3__115basic_streambufIcNS_11char_traitsIcEEEC2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa90f8",
+        "name": "__ZNSt3__115basic_streambufIcNS_11char_traitsIcEEED2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9128",
+        "name": "__ZNSt3__16__sortIRNS_6__lessIiiEEPiEEvT0_S5_T_",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9134",
+        "name": "__ZNSt3__16__sortIRNS_6__lessIttEEPtEEvT0_S5_T_",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9164",
+        "name": "__ZNSt3__16localeD1Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9188",
+        "name": "__ZNSt3__18ios_base4initEPv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9194",
+        "name": "__ZNSt3__18ios_base5clearEj",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91a0",
+        "name": "__ZNSt3__19basic_iosIcNS_11char_traitsIcEEED2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91ac",
+        "name": "__ZNSt3__19to_stringEi",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91b8",
+        "name": "__ZNSt3__19to_stringEj",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91c4",
+        "name": "__ZNSt3__19to_stringEl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91d0",
+        "name": "__ZNSt3__19to_stringEm",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91e8",
+        "name": "____mb_cur_max_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91f4",
+        "name": "___assert_rtn",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9200",
+        "name": "___cxa_atexit",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9218",
+        "name": "___exp10",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9224",
+        "name": "___exp10f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9230",
+        "name": "___maskrune",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9260",
+        "name": "___sincos_stret",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa926c",
+        "name": "___sincosf_stret",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9278",
+        "name": "___stack_chk_fail",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9284",
+        "name": "___strcpy_chk",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9290",
+        "name": "___strlcat_chk",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa929c",
+        "name": "___strlcpy_chk",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92a8",
+        "name": "___tolower",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92b4",
+        "name": "___toupper",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92c0",
+        "name": "__availability_version_check",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92d8",
+        "name": "__dyld_get_image_name",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92e4",
+        "name": "__dyld_get_image_vmaddr_slide",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92f0",
+        "name": "__dyld_image_count",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa92fc",
+        "name": "__exit",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9308",
+        "name": "__tlv_atexit",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9314",
+        "name": "_abort",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa932c",
+        "name": "_access",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9338",
+        "name": "_acos",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa935c",
+        "name": "_asin",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9374",
+        "name": "_atan",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9380",
+        "name": "_atan2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa938c",
+        "name": "_atanf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9398",
+        "name": "_atoi",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93d4",
+        "name": "_bsearch",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93e0",
+        "name": "_bzero",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9404",
+        "name": "_catgets",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa941c",
+        "name": "_cbrt",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9428",
+        "name": "_ceilf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9434",
+        "name": "_cfmakeraw",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9440",
+        "name": "_chdir",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9458",
+        "name": "_chroot",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9464",
+        "name": "_class_getName",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9470",
+        "name": "_class_isMetaClass",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa94ac",
+        "name": "_confstr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa94e8",
+        "name": "_cos",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa94f4",
+        "name": "_cosf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9530",
+        "name": "_dirfd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9638",
+        "name": "_dlsym",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9644",
+        "name": "_dup",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9650",
+        "name": "_dup2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9674",
+        "name": "_exit",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9680",
+        "name": "_exp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa968c",
+        "name": "_exp2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9698",
+        "name": "_exp2f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96a4",
+        "name": "_expf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96b0",
+        "name": "_expm1",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96ec",
+        "name": "_fcntl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9734",
+        "name": "_fflush",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9758",
+        "name": "_floorf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9764",
+        "name": "_fmod",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9794",
+        "name": "_fputc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa97a0",
+        "name": "_fputs",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa97ac",
+        "name": "_fputwc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa97f4",
+        "name": "_frexp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa980c",
+        "name": "_fsctl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9830",
+        "name": "_fsetattrlist",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9860",
+        "name": "_fsync",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa986c",
+        "name": "_ftell",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9878",
+        "name": "_ftello",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9884",
+        "name": "_ftruncate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9890",
+        "name": "_futimes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98b4",
+        "name": "_getaddrinfo",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98c0",
+        "name": "_getc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98cc",
+        "name": "_getcwd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98d8",
+        "name": "_getentropy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98e4",
+        "name": "_getenv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98f0",
+        "name": "_geteuid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98fc",
+        "name": "_gethostname",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9908",
+        "name": "_gethostuuid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9914",
+        "name": "_getifaddrs",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9920",
+        "name": "_getpeereid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa992c",
+        "name": "_getpeername",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9938",
+        "name": "_getpgid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9944",
+        "name": "_getpid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9950",
+        "name": "_getpwnam",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa995c",
+        "name": "_getpwuid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9968",
+        "name": "_getpwuid_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9974",
+        "name": "_getsectiondata",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9980",
+        "name": "_getsockname",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa998c",
+        "name": "_getsockopt",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9998",
+        "name": "_gettimeofday",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99a4",
+        "name": "_getuid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99b0",
+        "name": "_getwc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99bc",
+        "name": "_gmtime_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99c8",
+        "name": "_hypot",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99d4",
+        "name": "_if_nametoindex",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a28",
+        "name": "_ioctl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a34",
+        "name": "_isatty",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a7c",
+        "name": "_ldexp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a88",
+        "name": "_ldexpf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a94",
+        "name": "_linkat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9aac",
+        "name": "_localtime_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b0c",
+        "name": "_longjmp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b30",
+        "name": "_lutimes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b60",
+        "name": "_mach_absolute_time",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b6c",
+        "name": "_mach_timebase_info",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b78",
+        "name": "_mach_vm_map",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b84",
+        "name": "_madvise",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9bf0",
+        "name": "_mbrlen_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9bfc",
+        "name": "_mbrtowc_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c08",
+        "name": "_mbsnrtowcs_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c14",
+        "name": "_mbsrtowcs_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c20",
+        "name": "_mbtowc_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c2c",
+        "name": "_memchr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c38",
+        "name": "_memcmp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c80",
+        "name": "_mktime",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ca4",
+        "name": "_modf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9cb0",
+        "name": "_modff",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9cd4",
+        "name": "_nan",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ce0",
+        "name": "_nanosleep",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9cec",
+        "name": "_nearbyintf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9cf8",
+        "name": "_nextafter",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d04",
+        "name": "_nextafterf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d28",
+        "name": "_objc_autorelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d34",
+        "name": "_objc_autoreleasePoolPop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d40",
+        "name": "_objc_autoreleasePoolPush",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d4c",
+        "name": "_objc_autoreleaseReturnValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d58",
+        "name": "_objc_begin_catch",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d64",
+        "name": "_objc_copyWeak",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d7c",
+        "name": "_objc_end_catch",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d88",
+        "name": "_objc_enumerationMutation",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9da0",
+        "name": "_objc_getClass",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9dac",
+        "name": "_objc_getProperty",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9db8",
+        "name": "_objc_initWeak",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9dc4",
+        "name": "_objc_loadWeakRetained",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9de8",
+        "name": "_objc_release",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9df4",
+        "name": "_objc_retain",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e00",
+        "name": "_objc_retainAutorelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e0c",
+        "name": "_objc_retainAutoreleasedReturnValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e54",
+        "name": "_objc_storeWeak",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e60",
+        "name": "_object_getClass",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ec0",
+        "name": "_pause",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ed8",
+        "name": "_pipe",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ef0",
+        "name": "_posix_memalign",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f68",
+        "name": "_pow",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f74",
+        "name": "_powf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f98",
+        "name": "_proc_listchildpids",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa214",
+        "name": "_qsort",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2bc",
+        "name": "_rewind",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2d4",
+        "name": "_scalbn",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2e0",
+        "name": "_sched_get_priority_max",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2ec",
+        "name": "_sched_get_priority_min",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2f8",
+        "name": "_sched_yield",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa304",
+        "name": "_sel_getName",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa310",
+        "name": "_sel_registerName",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa388",
+        "name": "_setbuf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa394",
+        "name": "_setenv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3a0",
+        "name": "_setgid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3ac",
+        "name": "_setgroups",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3b8",
+        "name": "_setjmp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3c4",
+        "name": "_setlocale",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3d0",
+        "name": "_setpgid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3dc",
+        "name": "_setsid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3e8",
+        "name": "_setsockopt",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa3f4",
+        "name": "_setuid",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa400",
+        "name": "_setvbuf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa40c",
+        "name": "_shutdown",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa418",
+        "name": "_sigaction",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa424",
+        "name": "_sigaddset",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa430",
+        "name": "_sigaltstack",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa454",
+        "name": "_sigprocmask",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa460",
+        "name": "_sin",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa46c",
+        "name": "_sinf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4d8",
+        "name": "_strcat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4e4",
+        "name": "_strchr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4f0",
+        "name": "_strcmp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4fc",
+        "name": "_strcpy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa508",
+        "name": "_strcspn",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa514",
+        "name": "_strdup",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa538",
+        "name": "_strftime",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa544",
+        "name": "_strftime_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa550",
+        "name": "_strlen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa55c",
+        "name": "_strncat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa568",
+        "name": "_strncmp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa574",
+        "name": "_strncpy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa580",
+        "name": "_strnlen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa58c",
+        "name": "_strrchr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5a4",
+        "name": "_strspn",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5b0",
+        "name": "_strstr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5bc",
+        "name": "_strtod",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5c8",
+        "name": "_strtod_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5d4",
+        "name": "_strtof",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5e0",
+        "name": "_strtof_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5ec",
+        "name": "_strtol",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa5f8",
+        "name": "_strtold_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa604",
+        "name": "_strtoll",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa610",
+        "name": "_strtoul",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa61c",
+        "name": "_strtoull",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa634",
+        "name": "_sys_icache_invalidate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa640",
+        "name": "_sysconf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa64c",
+        "name": "_sysctl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa658",
+        "name": "_sysctlbyname",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa664",
+        "name": "_tan",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa670",
+        "name": "_tanh",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa67c",
+        "name": "_tanhf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa688",
+        "name": "_tcflush",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa694",
+        "name": "_tcgetattr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6a0",
+        "name": "_tcgetpgrp",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6ac",
+        "name": "_tcsetattr",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6c4",
+        "name": "_time",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6dc",
+        "name": "_truncf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6e8",
+        "name": "_ttyname_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6f4",
+        "name": "_tzset",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa700",
+        "name": "_umask",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa70c",
+        "name": "_uname",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa718",
+        "name": "_ungetc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa724",
+        "name": "_ungetwc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa748",
+        "name": "_usleep",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa754",
+        "name": "_utimes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa790",
+        "name": "_wcrtomb_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa79c",
+        "name": "_wcslen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa7a8",
+        "name": "_wcsnrtombs_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa7b4",
+        "name": "_wmemchr",
+        "status": "missing"
+      }
+    ],
+    "reason": "callgraph-propagated",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": []
+  },
+  "subsystems/auth": {
+    "count": 13,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8a8c",
+        "name": "_CVPixelBufferGetBaseAddressOfPlane",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8cfc",
+        "name": "_SSLGetSessionState",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d74",
+        "name": "_SSLSetSessionOption",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8de0",
+        "name": "_SecKeychainAddGenericPassword",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8df8",
+        "name": "_SecKeychainFindGenericPassword",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e94",
+        "name": "_VTCompressionSessionCompleteFrames",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ea0",
+        "name": "_VTCompressionSessionCreate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8eb8",
+        "name": "_VTCompressionSessionGetPixelBufferPool",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ec4",
+        "name": "_VTCompressionSessionInvalidate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8f0c",
+        "name": "_VTSessionCopyProperty",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8f18",
+        "name": "_VTSessionSetProperty",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d94",
+        "name": "_objc_getAssociatedObject",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e24",
+        "name": "_objc_setAssociatedObject",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "auth",
+      "compression",
+      "tls",
+      "fileio",
+      "parser"
+    ]
+  },
+  "subsystems/compression": {
+    "count": 27,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa830c",
+        "name": "_AudioDeviceStart",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8390",
+        "name": "_AudioOutputUnitStart",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83e4",
+        "name": "_BZ2_bzDecompress",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa83f0",
+        "name": "_BZ2_bzDecompressEnd",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa83fc",
+        "name": "_BZ2_bzDecompressInit",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87bc",
+        "name": "_CGDisplayStreamStart",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b70",
+        "name": "_FSEventStreamStart",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8edc",
+        "name": "_VTDecompressionSessionCreate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ee8",
+        "name": "_VTDecompressionSessionDecodeFrame",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ef4",
+        "name": "_VTDecompressionSessionInvalidate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8f00",
+        "name": "_VTDecompressionSessionWaitForAsynchronousFrames",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f3c",
+        "name": "__NSGetArgc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f48",
+        "name": "__NSGetArgv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f90",
+        "name": "__Unwind_GetDataRelBase",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8fc0",
+        "name": "__Unwind_GetRegionStart",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9500",
+        "name": "_deflate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa950c",
+        "name": "_deflateEnd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9518",
+        "name": "_deflateInit2_",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9524",
+        "name": "_deflateReset",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa99f8",
+        "name": "_inflate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a04",
+        "name": "_inflateEnd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a10",
+        "name": "_inflateInit2_",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a1c",
+        "name": "_inflateReset2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b3c",
+        "name": "_lzma_code",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b48",
+        "name": "_lzma_end",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9b54",
+        "name": "_lzma_stream_decoder",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa7d8",
+        "name": "_zlibVersion",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "compression",
+      "auth",
+      "parser",
+      "network",
+      "ui"
+    ]
+  },
+  "subsystems/crypto": {
+    "count": 28,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8300",
+        "name": "_AudioDeviceDestroyIOProcID",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8414",
+        "name": "_CCRandomGenerateBytes",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8528",
+        "name": "_CFErrorCopyDescription",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8894",
+        "name": "_CGWindowListCreateDescriptionFromArray",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa890c",
+        "name": "_CMFormatDescriptionEqual",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8918",
+        "name": "_CMFormatDescriptionGetMediaSubType",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa896c",
+        "name": "_CMSampleBufferGetFormatDescription",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa89d8",
+        "name": "_CMVideoFormatDescriptionCreate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa89e4",
+        "name": "_CMVideoFormatDescriptionCreateFromH264ParameterSets",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa89f0",
+        "name": "_CMVideoFormatDescriptionCreateFromHEVCParameterSets",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa89fc",
+        "name": "_CMVideoFormatDescriptionGetDimensions",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8a08",
+        "name": "_CMVideoFormatDescriptionGetH264ParameterSetAtIndex",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8a14",
+        "name": "_CMVideoFormatDescriptionGetHEVCParameterSetAtIndex",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ce4",
+        "name": "_SSLGetEnabledCiphers",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8cf0",
+        "name": "_SSLGetNumberEnabledCiphers",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d38",
+        "name": "_SSLSetEnabledCiphers",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9104",
+        "name": "__ZNSt3__119__shared_weak_count14__release_weakEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9110",
+        "name": "__ZNSt3__119__shared_weak_count4lockEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa911c",
+        "name": "__ZNSt3__119__shared_weak_countD2Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9350",
+        "name": "_arc4random_buf",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9608",
+        "name": "_div",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9d70",
+        "name": "_objc_destroyWeak",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9f08",
+        "name": "_posix_spawn_file_actions_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9f20",
+        "name": "_posix_spawnattr_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa220",
+        "name": "_rand",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa22c",
+        "name": "_random",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa328",
+        "name": "_semaphore_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4a8",
+        "name": "_srandomdev",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "crypto",
+      "tls",
+      "process",
+      "threading",
+      "fileio"
+    ]
+  },
+  "subsystems/database": {
+    "count": 2,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa917c",
+        "name": "__ZNSt3__18ios_base33__set_badbit_and_consider_rethrowEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa93c8",
+        "name": "_bind",
+        "status": "ok"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "database",
+      "network"
+    ]
+  },
+  "subsystems/fileio": {
+    "count": 76,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa86a8",
+        "name": "_CFURLCopyFileSystemPath",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86b4",
+        "name": "_CFURLCopyLastPathComponent",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86c0",
+        "name": "_CFURLCreateCopyAppendingPathComponent",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86cc",
+        "name": "_CFURLCreateCopyDeletingLastPathComponent",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86d8",
+        "name": "_CFURLCreateFilePathURL",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86e4",
+        "name": "_CFURLCreateFileReferenceURL",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86f0",
+        "name": "_CFURLCreateFromFileSystemRepresentation",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8708",
+        "name": "_CFURLGetFileSystemRepresentation",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87f8",
+        "name": "_CGEventSourceKeyState",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8954",
+        "name": "_CMSampleBufferDataIsReady",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8c3c",
+        "name": "_LSOpenFromURLSpec",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c6c",
+        "name": "_NSSearchPathForDirectoriesInDomains",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ca8",
+        "name": "_SSLClose",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ccc",
+        "name": "_SSLGetBufferedReadSize",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d14",
+        "name": "_SSLRead",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d80",
+        "name": "_SSLWrite",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8f60",
+        "name": "__NSGetExecutablePath",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9170",
+        "name": "__ZNSt3__16thread20hardware_concurrencyEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93f8",
+        "name": "_catclose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9410",
+        "name": "_catopen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa944c",
+        "name": "_chmod",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9494",
+        "name": "_close",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa94a0",
+        "name": "_closedir",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa94c4",
+        "name": "_copyfile_state_alloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa94d0",
+        "name": "_copyfile_state_free",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa94dc",
+        "name": "_copyfile_state_get",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9614",
+        "name": "_dlclose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa962c",
+        "name": "_dlopen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96bc",
+        "name": "_fchmod",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96c8",
+        "name": "_fchown",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96d4",
+        "name": "_fclonefileat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96e0",
+        "name": "_fclose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa96f8",
+        "name": "_fcopyfile",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9704",
+        "name": "_fdopen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9710",
+        "name": "_fdopen$DARWIN_EXTSN",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa971c",
+        "name": "_fdopendir",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9740",
+        "name": "_fileno",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9770",
+        "name": "_fopen",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa97b8",
+        "name": "_fread",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9818",
+        "name": "_fseek",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9824",
+        "name": "_fseeko",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa983c",
+        "name": "_fstat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9848",
+        "name": "_fstatat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9854",
+        "name": "_fstatfs",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa989c",
+        "name": "_fwrite",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a70",
+        "name": "_lchown",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b18",
+        "name": "_lseek",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b24",
+        "name": "_lstat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c74",
+        "name": "_mkdir",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e6c",
+        "name": "_open",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e78",
+        "name": "_openat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e84",
+        "name": "_opendir",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9e90",
+        "name": "_openpty",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9efc",
+        "name": "_posix_spawn_file_actions_adddup2",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9f14",
+        "name": "_posix_spawn_file_actions_init",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f80",
+        "name": "_pread",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9fa4",
+        "name": "_proc_pidpath",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9fe0",
+        "name": "_pthread_attr_setdetachstate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0d0",
+        "name": "_pthread_jit_write_protect_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa238",
+        "name": "_read",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa244",
+        "name": "_readdir",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa250",
+        "name": "_readdir_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa25c",
+        "name": "_readlink",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa268",
+        "name": "_readv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa280",
+        "name": "_realpath$DARWIN_EXTSN",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2b0",
+        "name": "_rename",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2c8",
+        "name": "_rmdir",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4c0",
+        "name": "_stat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4cc",
+        "name": "_statfs",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa628",
+        "name": "_symlink",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6b8",
+        "name": "_thread_info",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa6d0",
+        "name": "_tmpfile",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa730",
+        "name": "_unlink",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa73c",
+        "name": "_unlinkat",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa7c0",
+        "name": "_write",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa7cc",
+        "name": "_writev",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "fileio",
+      "http",
+      "process",
+      "threading",
+      "tls"
+    ]
+  },
+  "subsystems/http": {
+    "count": 8,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa869c",
+        "name": "_CFURLCopyAbsoluteURL",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa86fc",
+        "name": "_CFURLCreateWithBytes",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8714",
+        "name": "_CFURLGetString",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8720",
+        "name": "_CFURLResourceIsReachable",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8c30",
+        "name": "_LSCopyDefaultApplicationURLForURL",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8e04",
+        "name": "_SecKeychainItemDelete",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa92cc",
+        "name": "__dyld_get_image_header",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e48",
+        "name": "_objc_storeStrong",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "http",
+      "parser"
+    ]
+  },
+  "subsystems/logging": {
+    "count": 31,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa8534",
+        "name": "_CFErrorCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8540",
+        "name": "_CFErrorGetCode",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c60",
+        "name": "_NSLog",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8db0",
+        "name": "_SecCopyErrorMessageString",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f6c",
+        "name": "__Unwind_Backtrace",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa902c",
+        "name": "__ZNSt13runtime_errorC1ERKNSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa920c",
+        "name": "___error",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9368",
+        "name": "_asprintf_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93a4",
+        "name": "_backtrace",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93b0",
+        "name": "_backtrace_symbols",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa93bc",
+        "name": "_backtrace_symbols_fd",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9620",
+        "name": "_dlerror",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9728",
+        "name": "_ferror",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9788",
+        "name": "_fprintf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa98a8",
+        "name": "_gai_strerror",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ab8",
+        "name": "_log",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ac4",
+        "name": "_log10",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ad0",
+        "name": "_log10f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9adc",
+        "name": "_log1p",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ae8",
+        "name": "_log2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9af4",
+        "name": "_log2f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9b00",
+        "name": "_logf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ecc",
+        "name": "_perror",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f8c",
+        "name": "_printf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa478",
+        "name": "_snprintf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa484",
+        "name": "_snprintf_l",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa520",
+        "name": "_strerror",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa52c",
+        "name": "_strerror_r",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa760",
+        "name": "_vfprintf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa76c",
+        "name": "_vprintf",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa778",
+        "name": "_vsnprintf",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "logging",
+      "memory",
+      "parser"
+    ]
+  },
+  "subsystems/memory": {
+    "count": 38,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa8930",
+        "name": "_CMMemoryPoolGetAllocator",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8bc4",
+        "name": "_IOSurfaceGetAllocSize",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e10",
+        "name": "_SecKeychainItemFreeContent",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9008",
+        "name": "__ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEPKc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9044",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKcm",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9050",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEmc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa905c",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKcm",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9068",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7reserveEm",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9074",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9push_backEc",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9080",
+        "name": "__ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED1Ev",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa91dc",
+        "name": "__ZNSt3__1plIcNS_11char_traitsIcEENS_9allocatorIcEEEENS_12basic_stringIT_T0_T1_EEPKS6_RKS9_",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa923c",
+        "name": "___memcpy_chk",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9248",
+        "name": "___memmove_chk",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9254",
+        "name": "___memset_chk",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9344",
+        "name": "_aligned_alloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa93ec",
+        "name": "_calloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa97c4",
+        "name": "_free",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa97d0",
+        "name": "_freeaddrinfo",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa97dc",
+        "name": "_freeifaddrs",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa97e8",
+        "name": "_freelocale",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9b90",
+        "name": "_malloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9b9c",
+        "name": "_malloc_create_zone",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9ba8",
+        "name": "_malloc_default_zone",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9bb4",
+        "name": "_malloc_set_zone_name",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9bc0",
+        "name": "_malloc_size",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9bcc",
+        "name": "_malloc_zone_free",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9bd8",
+        "name": "_malloc_zone_malloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9be4",
+        "name": "_malloc_zone_realloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9c44",
+        "name": "_memcpy",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9c50",
+        "name": "_memmove",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9c5c",
+        "name": "_memset",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9c68",
+        "name": "_memset_pattern16",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9c98",
+        "name": "_mmap",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9cbc",
+        "name": "_mprotect",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9cc8",
+        "name": "_munmap",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9d10",
+        "name": "_objc_alloc",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9d1c",
+        "name": "_objc_alloc_init",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa274",
+        "name": "_realloc",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "memory"
+    ]
+  },
+  "subsystems/network": {
+    "count": 21,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa833c",
+        "name": "_AudioObjectAddPropertyListener",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8378",
+        "name": "_AudioObjectRemovePropertyListener",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8cd8",
+        "name": "_SSLGetConnection",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d2c",
+        "name": "_SSLSetConnection",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9320",
+        "name": "_accept",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa94b8",
+        "name": "_connect",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa99e0",
+        "name": "_inet_ntop",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa99ec",
+        "name": "_inet_pton",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9a64",
+        "name": "_kqueue",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9aa0",
+        "name": "_listen",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9dd0",
+        "name": "_objc_msgSend",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9ddc",
+        "name": "_objc_msgSendSuper2",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ee4",
+        "name": "_poll",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa28c",
+        "name": "_recv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa298",
+        "name": "_recvfrom",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa2a4",
+        "name": "_recvmsg",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa364",
+        "name": "_send",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa370",
+        "name": "_sendmsg",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa37c",
+        "name": "_sendto",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa490",
+        "name": "_socket",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa49c",
+        "name": "_socketpair",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "network",
+      "tls",
+      "ui",
+      "threading"
+    ]
+  },
+  "subsystems/parser": {
+    "count": 4,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8eac",
+        "name": "_VTCompressionSessionEncodeFrame",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8ed0",
+        "name": "_VTCompressionSessionPrepareToEncodeFrames",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9800",
+        "name": "_fscanf",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa4b4",
+        "name": "_sscanf",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "parser",
+      "auth",
+      "compression"
+    ]
+  },
+  "subsystems/process": {
+    "count": 22,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8678",
+        "name": "_CFTimeZoneCopySystem",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8690",
+        "name": "_CFTimeZoneResetSystem",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8870",
+        "name": "_CGRectIsEmpty",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8c54",
+        "name": "_MTLCreateSystemDefaultDevice",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa914c",
+        "name": "__ZNSt3__16chrono12system_clock11from_time_tEl",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9158",
+        "name": "__ZNSt3__16chrono12system_clock3nowEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa965c",
+        "name": "_execv",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9668",
+        "name": "_execvp",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa977c",
+        "name": "_fork",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9a4c",
+        "name": "_kill",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9a58",
+        "name": "_killpg",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f2c",
+        "name": "_posix_spawnattr_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f38",
+        "name": "_posix_spawnattr_setflags",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f44",
+        "name": "_posix_spawnattr_setpgroup",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f50",
+        "name": "_posix_spawnattr_setsigdefault",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9f5c",
+        "name": "_posix_spawnp",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa334",
+        "name": "_semaphore_signal",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa340",
+        "name": "_semaphore_signal_all",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa43c",
+        "name": "_sigemptyset",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa448",
+        "name": "_signal",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa598",
+        "name": "_strsignal",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa784",
+        "name": "_waitpid",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "process",
+      "threading"
+    ]
+  },
+  "subsystems/registry": {
+    "count": 2,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa8588",
+        "name": "_CFPreferencesCopyAppValue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8594",
+        "name": "_CFPreferencesGetAppBooleanValue",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "registry"
+    ]
+  },
+  "subsystems/serialization": {
+    "count": 2,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8d5c",
+        "name": "_SSLSetProtocolVersionMax",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d68",
+        "name": "_SSLSetProtocolVersionMin",
+        "status": "ok"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "serialization",
+      "tls"
+    ]
+  },
+  "subsystems/threading": {
+    "count": 93,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa88b8",
+        "name": "_CMBlockBufferCreateContiguous",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88c4",
+        "name": "_CMBlockBufferCreateWithMemoryBlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88d0",
+        "name": "_CMBlockBufferGetDataLength",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88dc",
+        "name": "_CMBlockBufferGetDataPointer",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88e8",
+        "name": "_CMBlockBufferIsRangeContiguous",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88f4",
+        "name": "_CMBlockBufferReplaceDataBytes",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa89c0",
+        "name": "_CMTimeGetSeconds",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8af8",
+        "name": "_CVPixelBufferLockBaseAddress",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b28",
+        "name": "_CVPixelBufferUnlockBaseAddress",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c18",
+        "name": "_IOSurfaceLock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8c24",
+        "name": "_IOSurfaceUnlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f24",
+        "name": "__Block_object_assign",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8f30",
+        "name": "__Block_object_dispose",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9140",
+        "name": "__ZNSt3__16chrono12steady_clock3nowEv",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa947c",
+        "name": "_clock_gettime",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9488",
+        "name": "_clock_gettime_nsec_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa953c",
+        "name": "_dispatch_after_f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9548",
+        "name": "_dispatch_async",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9554",
+        "name": "_dispatch_async_f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9560",
+        "name": "_dispatch_get_global_queue",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa956c",
+        "name": "_dispatch_once",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9578",
+        "name": "_dispatch_once_f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9584",
+        "name": "_dispatch_queue_create",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9590",
+        "name": "_dispatch_queue_create_with_target$V2",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa959c",
+        "name": "_dispatch_queue_get_label",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95a8",
+        "name": "_dispatch_release",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95b4",
+        "name": "_dispatch_semaphore_create",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa95c0",
+        "name": "_dispatch_semaphore_signal",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95cc",
+        "name": "_dispatch_semaphore_wait",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95d8",
+        "name": "_dispatch_set_context",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95e4",
+        "name": "_dispatch_set_finalizer_f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95f0",
+        "name": "_dispatch_sync_f",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa95fc",
+        "name": "_dispatch_time",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa974c",
+        "name": "_flock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9c8c",
+        "name": "_mlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e18",
+        "name": "_objc_retainBlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e30",
+        "name": "_objc_setProperty_atomic",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e3c",
+        "name": "_objc_setProperty_nonatomic_copy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9e9c",
+        "name": "_os_unfair_lock_lock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ea8",
+        "name": "_os_unfair_lock_trylock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9eb4",
+        "name": "_os_unfair_lock_unlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9fb0",
+        "name": "_pthread_atfork",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa9fbc",
+        "name": "_pthread_attr_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9fc8",
+        "name": "_pthread_attr_getstacksize",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9fd4",
+        "name": "_pthread_attr_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9fec",
+        "name": "_pthread_attr_setschedpolicy",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9ff8",
+        "name": "_pthread_attr_setscope",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa004",
+        "name": "_pthread_attr_setstacksize",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa010",
+        "name": "_pthread_cond_broadcast",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa01c",
+        "name": "_pthread_cond_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa028",
+        "name": "_pthread_cond_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa034",
+        "name": "_pthread_cond_signal",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa040",
+        "name": "_pthread_cond_timedwait",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa04c",
+        "name": "_pthread_cond_timedwait_relative_np",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa058",
+        "name": "_pthread_cond_wait",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa064",
+        "name": "_pthread_condattr_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa070",
+        "name": "_pthread_condattr_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa07c",
+        "name": "_pthread_create",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa088",
+        "name": "_pthread_detach",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa094",
+        "name": "_pthread_equal",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0a0",
+        "name": "_pthread_get_stackaddr_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0ac",
+        "name": "_pthread_get_stacksize_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0b8",
+        "name": "_pthread_getschedparam",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0c4",
+        "name": "_pthread_getspecific",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0dc",
+        "name": "_pthread_join",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa0e8",
+        "name": "_pthread_key_create",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa0f4",
+        "name": "_pthread_kill",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa100",
+        "name": "_pthread_mach_thread_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa10c",
+        "name": "_pthread_mutex_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa118",
+        "name": "_pthread_mutex_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa124",
+        "name": "_pthread_mutex_lock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa130",
+        "name": "_pthread_mutex_trylock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa13c",
+        "name": "_pthread_mutex_unlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa148",
+        "name": "_pthread_mutexattr_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa154",
+        "name": "_pthread_mutexattr_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa160",
+        "name": "_pthread_mutexattr_setpolicy_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa16c",
+        "name": "_pthread_mutexattr_settype",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa178",
+        "name": "_pthread_once",
+        "status": "missing"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aaa184",
+        "name": "_pthread_rwlock_destroy",
+        "status": "ok"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa190",
+        "name": "_pthread_rwlock_init",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa19c",
+        "name": "_pthread_rwlock_rdlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1a8",
+        "name": "_pthread_rwlock_unlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1b4",
+        "name": "_pthread_rwlock_wrlock",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1c0",
+        "name": "_pthread_self",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1cc",
+        "name": "_pthread_set_qos_class_self_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1d8",
+        "name": "_pthread_setname_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1e4",
+        "name": "_pthread_setschedparam",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1f0",
+        "name": "_pthread_setspecific",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa1fc",
+        "name": "_pthread_sigmask",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa208",
+        "name": "_pthread_threadid_np",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa31c",
+        "name": "_semaphore_create",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa34c",
+        "name": "_semaphore_timedwait",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aaa358",
+        "name": "_semaphore_wait",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "threading",
+      "fileio",
+      "crypto",
+      "process",
+      "compression"
+    ]
+  },
+  "subsystems/tls": {
+    "count": 18,
+    "functions": [
+      {
+        "confidence": "medium",
+        "entry": "108aa8cb4",
+        "name": "_SSLCopyPeerTrust",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8cc0",
+        "name": "_SSLCreateContext",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d08",
+        "name": "_SSLHandshake",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d20",
+        "name": "_SSLSetCertificate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d44",
+        "name": "_SSLSetIOFuncs",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d50",
+        "name": "_SSLSetPeerDomainName",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d8c",
+        "name": "_SecCertificateCopyData",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8d98",
+        "name": "_SecCertificateCreateWithData",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8da4",
+        "name": "_SecCertificateGetTypeID",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e28",
+        "name": "_SecPolicyCreateSSL",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e34",
+        "name": "_SecTrustEvaluate",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e40",
+        "name": "_SecTrustGetCertificateAtIndex",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e4c",
+        "name": "_SecTrustGetCertificateCount",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e58",
+        "name": "_SecTrustSetAnchorCertificates",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e64",
+        "name": "_SecTrustSetAnchorCertificatesOnly",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e70",
+        "name": "_SecTrustSetPolicies",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e7c",
+        "name": "_SecTrustSettingsCopyCertificates",
+        "status": "ok"
+      },
+      {
+        "confidence": "medium",
+        "entry": "108aa8e88",
+        "name": "_SecTrustSettingsCopyTrustSettings",
+        "status": "ok"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "tls",
+      "crypto"
+    ]
+  },
+  "subsystems/ui": {
+    "count": 16,
+    "functions": [
+      {
+        "confidence": "low",
+        "entry": "108aa83c0",
+        "name": "_AudioUnitRender",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8750",
+        "name": "_CGContextDrawImage",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87e0",
+        "name": "_CGEventCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa87ec",
+        "name": "_CGEventGetLocation",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8888",
+        "name": "_CGWindowListCopyWindowInfo",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88a0",
+        "name": "_CGWindowListCreateImage",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa88ac",
+        "name": "_CGWindowListCreateImageFromArray",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b34",
+        "name": "_FSEventStreamCreate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b40",
+        "name": "_FSEventStreamGetDeviceBeingWatched",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b4c",
+        "name": "_FSEventStreamInvalidate",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b58",
+        "name": "_FSEventStreamRelease",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b64",
+        "name": "_FSEventStreamScheduleWithRunLoop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b7c",
+        "name": "_FSEventStreamStop",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b88",
+        "name": "_FSEventsGetCurrentEventId",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa8b94",
+        "name": "_FSEventsPurgeEventsForDeviceUpToEventId",
+        "status": "missing"
+      },
+      {
+        "confidence": "low",
+        "entry": "108aa9a40",
+        "name": "_kevent",
+        "status": "missing"
+      }
+    ],
+    "reason": "subsystem",
+    "top_imports": [],
+    "top_strings": [],
+    "top_tags": [
+      "ui"
+    ]
+  }
+}

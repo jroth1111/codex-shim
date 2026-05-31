@@ -1,0 +1,21 @@
+
+undefined8 FUN_100237970(void)
+
+{
+  int iVar1;
+  ulong uVar2;
+  undefined8 uVar3;
+  code *unaff_x23;
+  
+  iVar1 = __ZN4core3fmt5write17h64810b21425781ecE();
+  if ((iVar1 == 0) &&
+     (uVar2 = __ZN68__LT_core__fmt__builders__PadAdapter_u20_as_u20_core__fmt__Write_GT_9write_str17h0a67632c7cefcdb4E
+                        (), (uVar2 & 1) == 0)) {
+    uVar3 = (*unaff_x23)();
+  }
+  else {
+    uVar3 = 1;
+  }
+  return uVar3;
+}
+

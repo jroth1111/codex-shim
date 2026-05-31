@@ -1,0 +1,3296 @@
+{
+  "count": 36752,
+  "new": 35752,
+  "samples": [
+    {
+      "pc": "0x100025ca8",
+      "strings": [
+        "utils/rustls-provider/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x100025cc4",
+      "strings": [
+        "utils/rustls-provider/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x1000885a4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100089650",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1000896ec",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1000b8380",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1000bf1ec",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1000f721c",
+      "strings": [
+        "utils/rustls-provider/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x100112990",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/app-server-transport/src/transport/remot",
+        "2connected to app-server remote control websocket: \ufffd\u0002, \ufffd"
+      ]
+    },
+    {
+      "pc": "0x10013bf08",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x100156730",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156768",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1001567a0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1001567d8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10015680c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156854",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156894",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1001568d4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156938",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156cd0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x100156d08",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10015fca8",
+      "strings": [
+        "utils/rustls-provider/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x10015fcc4",
+      "strings": [
+        "utils/rustls-provider/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x100216694",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100222f38",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100222f48",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100222fdc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100223150",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002231f4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100223228",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022336c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022338c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100223464",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022360c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002236c4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100223714",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100224a10",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100224f70",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10022666c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10022ea6c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022eac0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022eaf0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10022fc24",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100230a28",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002378dc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x100237970",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x100239fa8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x10024d750",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x10024d86c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x10024ec2c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x10024ecb8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x100255dcc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10025c5f8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10025d144",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10025d19c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10025d594",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10025d5c0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10025d600",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10025d930",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10025d9bc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10025da0c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026006c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002602e4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100262578",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002633e0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100264760",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100264830",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026526c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x100265844",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002666ac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x100267090",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100267180",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026746c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026759c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002676c4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100267820",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100267dbc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100267e88",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026aaac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026ac48",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026af68",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026b0e8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026cb5c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026cc58",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026ce80",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026d280",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026d4f4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026d59c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026d79c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026d8f0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026df44",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026e0bc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026e148",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10026e318",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100270f78",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100271704",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002718cc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/installation_id.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/state_db_bridge.rs"
+      ]
+    },
+    {
+      "pc": "0x100273034",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100273158",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100274074",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100274260",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100274794",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002748a4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100274b64",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100274dc0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002753d0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100277974",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100277a70",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100279024",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100279044",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10027a87c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10027ab1c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10027dc60",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10027e6a8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100280634",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002808ac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100280a8c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002842c0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002842dc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100284368",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100284384",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002845a4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002845c4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100284eac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100286760",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100286ce4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100287dc0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100289fb8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10028a0ec",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10028a2ac",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10028a3fc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10028a5b4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10028aa10",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10028ae34",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10028b208",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x10028c94c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10028ca4c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10028e6f8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10028f844",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x10028fe88",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100290664",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002909dc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100290bc8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100290fd8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100291280",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002913f0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100291740",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100291b64",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100291cac",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100291dc0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100291e54",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100291ffc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002920d4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100292278",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x10029260c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100292734",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100292ad0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100292bfc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100296390",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100296534",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100296658",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002967f8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x100296ac4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100296c74",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100296dc4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100296ffc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100297244",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100297384",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100299178",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002993a4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100299bb4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100299d10",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10029d550",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10029d678",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002a1bdc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a1d48",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a1ec0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a2038",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a21d8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002a22c4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a2328",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a2434",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002a2748",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a283c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a2bf0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a2d84",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a463c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a4888",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a7920",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a7aa8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a8084",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002a8178",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002b2dac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002b2f28",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002b8134",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x1002b81b4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x1002b9794",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002b9978",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002b9d58",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002b9e3c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002bc760",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x1002c0f1c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/app-server-transport/src/transport/remot",
+        "2connected to app-server remote control websocket: \ufffd\u0002, \ufffd"
+      ]
+    },
+    {
+      "pc": "0x1002c8b48",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002c9a1c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002c9b04",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002c9cac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002c9d4c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002cb0e4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002cbc08",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x1002cfa00",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002d0270",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002d0cfc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d0d58",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002d0d88",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002d0dc8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d0e30",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002d2ef8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-webpki"
+      ]
+    },
+    {
+      "pc": "0x1002d881c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d884c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d8b9c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d916c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002d919c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002da690",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002da8c0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002da8f0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002da92c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002dbd3c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002dd2b8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002dd2d8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ddbd0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002de200",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002de3dc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002df3bc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002df3f4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e02d0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e04bc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e0618",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e0d7c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e0f90",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e1520",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e2ecc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e3060",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1002e5da0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7b60",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7bb0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7bd8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7c8c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7d1c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7d4c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7d94",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7dbc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7e10",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e7e68",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e9c0c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002e9c58",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea168",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea3c0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea518",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea5b8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea658",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea6f8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea798",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea838",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ea8d8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002eb164",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002eb298",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ebe80",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ec664",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ec86c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f0908",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f0bc0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f1fe0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f215c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f2dc0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f2e4c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f3190",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f339c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f348c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f3908",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f40e8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002f41e8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fc280",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fc604",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fce7c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fcf8c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fd1b8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fd3c4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fe0b4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002fe2ac",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ffbe4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1002ffd7c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100300058",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003000d0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003040b0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003041d8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100307fc4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10030829c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100312e28",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100324764",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003249c8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10032589c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003259b4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100325b50",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x100325cec",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10032bcbc",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10033a84c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x10034533c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10034b0d4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rama-tls-rust",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/connect_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x10034cb70",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x100355910",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x10035f034",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10035f064",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10035f0a0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10035f7a8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035f7d4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035f88c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035f964",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035fa64",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035fa90",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10035fb44",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x100360384",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x100360d58",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x10036122c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/goals.rs",
+        "/Users/runner/work/codex/codex/codex-rs/state/src/runtime/threads.rs"
+      ]
+    },
+    {
+      "pc": "0x1003618b8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003619a4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x10038f9e4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003a32d4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003b5d7c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/installation_id.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/state_db_bridge.rs"
+      ]
+    },
+    {
+      "pc": "0x1003bd240",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rama-tls-rust",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/connect_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1003cfeb0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003cff8c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003d007c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003d1360",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003d13ec",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003d14f4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/config/edit.rs"
+      ]
+    },
+    {
+      "pc": "0x1003e2b44",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1003e2c00",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1003e2ce4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/git-utils/src/info.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/executor_process_transpo"
+      ]
+    },
+    {
+      "pc": "0x1003f1b0c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f1c28",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f2428",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003f257c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003f28dc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f2aa0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f2f3c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f335c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f3480",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f37e4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f4430",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.3"
+      ]
+    },
+    {
+      "pc": "0x1003f44bc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/regular.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f44e8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/compact.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/regular.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f4528",
+      "strings": [
+        "&failed to enqueue app-server request: \ufffd",
+        "+failed to enqueue app-server notification: \ufffd"
+      ]
+    },
+    {
+      "pc": "0x1003f71e4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003f746c",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003f83f8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f8538",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f87d4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f89e0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f8fa0",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x1003f9328",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/http_client_adapter.rs",
+        "/Users/runner/work/codex/codex/codex-rs/rollout/src/state_db.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f94d0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1003f95e4",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-smithy-ht",
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-"
+      ]
+    },
+    {
+      "pc": "0x100417dc4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x100417e08",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x100417e4c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x100417e8c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x100417fcc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/app-server/src/request_processors/plugin",
+        "/Users/runner/work/codex/codex/codex-rs/app-server/src/request_processors/search"
+      ]
+    },
+    {
+      "pc": "0x10041ab0c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x10041ac48",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/elicitation_client_servi",
+        "/Users/runner/work/codex/codex/codex-rs/rmcp-client/src/stdio_server_launcher.rs"
+      ]
+    },
+    {
+      "pc": "0x10041dfd8",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-",
+        "/Users/runner/work/codex/codex/codex-rs/feedback/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x10041e128",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-",
+        "/Users/runner/work/codex/codex/codex-rs/feedback/src/lib.rs"
+      ]
+    },
+    {
+      "pc": "0x100421784",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1004221a8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/tasks/user_shell.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/network_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x100422234",
+      "strings": [
+        "/Users/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rama-tls-rust",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/connect_policy.rs"
+      ]
+    },
+    {
+      "pc": "0x1004239d8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/chatgpt/src/connectors.rs",
+        "/Users/runner/work/codex/codex/codex-rs/network-proxy/src/upstream.rs"
+      ]
+    },
+    {
+      "pc": "0x10042a178",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042a22c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042a7c0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042a924",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/app-server/src/fuzzy_file_search.rs",
+        "/Users/runner/work/codex/codex/codex-rs/app-server/src/message_processor.rs"
+      ]
+    },
+    {
+      "pc": "0x10042ccc0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042cd48",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042d0f4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042d158",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042dbcc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042dc88",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042dcd0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042e2b4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042e30c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042e364",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042e3d0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042ed98",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042eeb8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042f2a0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042f300",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042f348",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10042fcb0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004303d8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100430724",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100430780",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100430f88",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043101c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004313bc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100431424",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100431c70",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100431fbc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100432018",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100432a1c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100432ac8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100432fe4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433030",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433078",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004330e0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433a20",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433ab4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433e20",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100433e80",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004346a8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004349ec",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100434a48",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100435210",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100435294",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043558c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100435654",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100435e98",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100435f00",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100436234",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043627c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100436a34",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100436a90",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100436dd8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100436e30",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043765c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004376b8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100437a00",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100437a58",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100438398",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043844c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043848c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100438828",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043888c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004388dc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004390dc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100439428",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100439484",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100439f38",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043a67c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043a6f0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043a74c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043a7a8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043b1b0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043b244",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043b5b0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043b610",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043c7b0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043c840",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043cbcc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043cc34",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043d450",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043d518",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043d7c0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043d808",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043dfb8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043e014",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043e350",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043e3a8",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043ec14",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043ec8c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043efc4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043f0b4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043f938",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043f9cc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043fd38",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10043fd98",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100440608",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10044069c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100440a08",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100440a68",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004412a4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004412f4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004415f4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x10044164c",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100441e28",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100441e78",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100442178",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004421d0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100442b34",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100442c08",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100442c68",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004431d0",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100443220",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100443270",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004432c4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100443c70",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100443cf4",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100444078",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x1004440dc",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100444990",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100444a14",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100444d88",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    },
+    {
+      "pc": "0x100444dec",
+      "strings": [
+        "/Users/runner/work/codex/codex/codex-rs/core/src/agents_md.rs",
+        "/Users/runner/work/codex/codex/codex-rs/core/src/guardian/review_session.rs"
+      ]
+    }
+  ]
+}

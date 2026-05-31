@@ -1,0 +1,268 @@
+{
+  "auto_named_function_count": 0,
+  "clusters": {
+    "misc": 396,
+    "subsystems/auth": 13,
+    "subsystems/compression": 27,
+    "subsystems/crypto": 28,
+    "subsystems/database": 2,
+    "subsystems/fileio": 76,
+    "subsystems/http": 8,
+    "subsystems/logging": 31,
+    "subsystems/memory": 38,
+    "subsystems/network": 21,
+    "subsystems/parser": 4,
+    "subsystems/process": 22,
+    "subsystems/registry": 2,
+    "subsystems/serialization": 2,
+    "subsystems/threading": 93,
+    "subsystems/tls": 18,
+    "subsystems/ui": 16
+  },
+  "decompiled_failed": 0,
+  "decompiled_ok": 150,
+  "decompiled_target_count": 150,
+  "function_count": 797,
+  "high_value_targets": [
+    {
+      "decomp_status": "missing",
+      "entry": "108aa8588",
+      "imports": [],
+      "name": "_CFPreferencesCopyAppValue",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "registry"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa8594",
+      "imports": [],
+      "name": "_CFPreferencesGetAppBooleanValue",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "registry"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa914c",
+      "imports": [],
+      "name": "__ZNSt3__16chrono12system_clock11from_time_tEl",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "process",
+        "threading"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa9158",
+      "imports": [],
+      "name": "__ZNSt3__16chrono12system_clock3nowEv",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "process",
+        "threading"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa9284",
+      "imports": [],
+      "name": "___strcpy_chk",
+      "score": 9,
+      "strings": [],
+      "tags": []
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa9d94",
+      "imports": [],
+      "name": "_objc_getAssociatedObject",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa9e24",
+      "imports": [],
+      "name": "_objc_setAssociatedObject",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa28c",
+      "imports": [],
+      "name": "_recv",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa298",
+      "imports": [],
+      "name": "_recvfrom",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa2a4",
+      "imports": [],
+      "name": "_recvmsg",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa364",
+      "imports": [],
+      "name": "_send",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa370",
+      "imports": [],
+      "name": "_sendmsg",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa37c",
+      "imports": [],
+      "name": "_sendto",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa490",
+      "imports": [],
+      "name": "_socket",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa49c",
+      "imports": [],
+      "name": "_socketpair",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "network"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa4b4",
+      "imports": [],
+      "name": "_sscanf",
+      "score": 9,
+      "strings": [],
+      "tags": [
+        "parser"
+      ]
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aaa4fc",
+      "imports": [],
+      "name": "_strcpy",
+      "score": 9,
+      "strings": [],
+      "tags": []
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "1016fa824",
+      "imports": [],
+      "name": "entry",
+      "score": 5,
+      "strings": [],
+      "tags": []
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa8294",
+      "imports": [],
+      "name": "_AudioComponentFindNext",
+      "score": 5,
+      "strings": [],
+      "tags": []
+    },
+    {
+      "decomp_status": "missing",
+      "entry": "108aa82a0",
+      "imports": [],
+      "name": "_AudioComponentInstanceDispose",
+      "score": 5,
+      "strings": [],
+      "tags": []
+    }
+  ],
+  "language_info": {
+    "language": "objc",
+    "scores": {
+      "c": 0,
+      "cpp": 6,
+      "go": 0,
+      "objc": 8,
+      "rust": 0,
+      "swift": 6
+    },
+    "secondary": [
+      "cpp",
+      "swift"
+    ],
+    "signals": {
+      "cpp": [
+        "C++ namespaces / RTTI / vtable indicators"
+      ],
+      "objc": [
+        "Objective-C selectors / Cocoa frameworks"
+      ],
+      "swift": [
+        "Swift mangling / runtime indicators"
+      ]
+    }
+  },
+  "language_mode": "objc",
+  "packed_or_obfuscated_suspected": true
+}

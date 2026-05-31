@@ -1,0 +1,9 @@
+{
+  "binary": "/Users/gwizz/CascadeProjects/codex_shim/codex-desktop-decompiled/native-binaries/codex",
+  "decomp_target_count": 150,
+  "output_dir": "/Users/gwizz/CascadeProjects/codex_shim/codex-desktop-decompiled/ghidra/codex",
+  "phase": "decomp",
+  "program_name": "codex",
+  "project_dir": "/Users/gwizz/CascadeProjects/codex_shim/codex-desktop-decompiled/ghidra/codex/ghidra-projects",
+  "project_name": "codex_cli_recon"
+}

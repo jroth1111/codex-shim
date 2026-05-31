@@ -7,7 +7,7 @@
 codedb.snapshot
 *.asar
 app-asar-work/
-codex-desktop-decompiled/
+# codex-desktop-decompiled/ is tracked (source-only); see its .gitignore for exclusions
 *-bsLDOISN.js
 hooks-settings-model-*.js
 model-queries-*.js

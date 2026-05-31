@@ -20,14 +20,10 @@ Clone or browse with GitHub MCP. Treat repo files as the **authoritative shim co
 ├── codex_shim/                   # Shim implementation (Python)
 ├── tests/                        # Unit/integration tests + fixtures/desktop/
 ├── README.md                     # Documented behavior, fidelity tiers
-└── codex-desktop-decompiled/     # NOT in git — see below
+└── codex-desktop-decompiled/     # Desktop client evidence (source-only; see its .gitignore)
 ```
 
 ### Desktop source (expectations / ground truth)
-
-**Important:** `codex-desktop-decompiled/` is **gitignored** and not on GitHub. If the operator provides it separately (local path, second repo, or tarball), use it as Desktop ground truth. Otherwise search what *is* in the repo: `README.md`, `CODEX_SHIM_ARCHITECTURE.md` references, and test fixtures under `tests/fixtures/desktop/`.
-
-When Desktop decomp **is** available locally:
 
 | Path | Use for |
 |------|---------|
@@ -35,7 +31,8 @@ When Desktop decomp **is** available locally:
 | `codex-desktop-decompiled/ghidra/codex/decomp-rust/` | Native Rust CLI pseudo-C decompilation |
 | `codex-desktop-decompiled/ghidra/codex/recovered-src/` | Recovered source clusters |
 | `codex-desktop-decompiled/native-binaries/codex.strings.txt` | String evidence from native CLI |
-| `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` | Integration map (repo copy if present) |
+| `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` | Integration map |
+| `codex-desktop-decompiled/README.md` | Extraction provenance (Codex 26.519.81530, codex-cli 0.133.0) |
 
 ### Shim source (implementation under audit)
 

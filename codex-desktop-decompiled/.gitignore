@@ -1,0 +1,18 @@
+# Ghidra project DBs (regeneratable, not source)
+ghidra/codex/ghidra-projects/
+*.lock
+
+# Analysis logs and preflight dumps
+ghidra/codex/logs/
+ghidra/codex/preflight/
+
+# Large fact exports (strings.json alone is ~97 MB)
+ghidra/codex/facts/
+
+# Native Mach-O binaries — strings dump is tracked instead
+native-binaries/codex
+native-binaries/codex_chronicle
+native-binaries/Codex-launcher
+
+# Empty failed extraction attempt
+codex-cli-bun-attempt/
