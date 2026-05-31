@@ -1176,11 +1176,15 @@ def _passthrough_forward_headers(request: web.Request, body: dict[str, Any]) -> 
 
 
 
+_ERROR_PASSTHROUGH_KEYS = frozenset(("code", "param", "doc_url", "help_url"))
+
+
 async def _error_response(upstream, *, slug: str | None = None) -> web.Response:
     text = await upstream.text()
     status = upstream.status
     message = text.strip() or f"Upstream request failed with status {status}"
     error_type = "upstream_error"
+    extras: dict[str, str] = {}
     if slug:
         print(
             f"[err] upstream {slug} returned {status}: {text[:500]}",
@@ -1195,10 +1199,13 @@ async def _error_response(upstream, *, slug: str | None = None) -> web.Response:
         if isinstance(nested, dict):
             message = str(nested.get("message") or message)
             error_type = str(nested.get("type") or error_type)
+            extras = {k: str(v) for k, v in nested.items() if k in _ERROR_PASSTHROUGH_KEYS and v is not None}
         elif payload.get("message"):
             message = str(payload.get("message") or message)
             error_type = str(payload.get("type") or error_type)
-    return web.json_response({"error": {"type": error_type, "message": message}}, status=status)
+    envelope: dict[str, Any] = {"type": error_type, "message": message}
+    envelope.update(extras)
+    return web.json_response({"error": envelope}, status=status)
 
 
 def _chatgpt_openai_beta_header() -> str:
