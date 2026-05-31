@@ -68,6 +68,44 @@ def _configure_zai_coding_plan(settings_path: Path) -> bool:
     return True
 
 
+def _configure_cursor_agent_cli(settings_path: Path) -> bool:
+    if shutil.which("cursor") is None:
+        return False
+    os.environ.setdefault("CODEX_SHIM_LIVE_SLUG_CURSOR", "cursor-auto")
+    row = {
+        "id": "cursor-auto",
+        "model": "auto",
+        "display_name": "Cursor Auto",
+        "provider": "cursor-agent",
+        "command": "cursor",
+        "args": ["agent", "--print", "--trust", "--yolo", "--model", "auto"],
+        "enabled": True,
+    }
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    if settings_path.exists():
+        data = json.loads(settings_path.read_text())
+        if not isinstance(data, dict):
+            data = {"models": []}
+    else:
+        data = {"models": []}
+    rows = data.setdefault("models", [])
+    if not isinstance(rows, list):
+        rows = []
+        data["models"] = rows
+    replaced = False
+    for index, existing in enumerate(rows):
+        if not isinstance(existing, dict):
+            continue
+        if str(existing.get("id") or "") == row["id"]:
+            rows[index] = row
+            replaced = True
+            break
+    if not replaced:
+        rows.append(row)
+    settings_path.write_text(json.dumps(data, indent=2) + "\n")
+    return True
+
+
 @pytest.fixture(scope="session", autouse=True)
 def live_enabled():
     if not _live_enabled():
@@ -93,7 +131,12 @@ def _codex_shim_cmd(*args: str) -> list[str]:
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_live_byok(settings_path: Path, shim_port: int):
-    if _configure_zai_coding_plan(settings_path):
+    if not _live_enabled():
+        return
+    configured_zai = _configure_zai_coding_plan(settings_path)
+    configured_cursor = _configure_cursor_agent_cli(settings_path)
+    configured = configured_zai or configured_cursor
+    if configured:
         subprocess.run(
             [*_codex_shim_cmd("--port", str(shim_port), "restart")],
             check=False,
@@ -114,6 +157,38 @@ def tier_a_available() -> bool:
 @pytest.fixture(scope="session")
 def byok_matrix(settings_path: Path) -> dict[str, object]:
     return harness.resolve_live_byok_matrix(settings_path)
+
+
+def _restart_shim_if_needed(shim_port: int) -> None:
+    if harness.shim_reachable(shim_port):
+        return
+    subprocess.run(
+        [*_codex_shim_cmd("--port", str(shim_port), "restart")],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(60):
+        if harness.shim_reachable(shim_port):
+            return
+        time.sleep(0.5)
+
+
+@pytest.fixture(autouse=True)
+def recover_shim_between_cursor_tests(shim_port: int, request):
+    """Restart the shim only when a prior cursor live test left the daemon down."""
+    if request.node.get_closest_marker("live") is None:
+        return
+    module = getattr(request.node, "module", None)
+    module_name = getattr(module, "__name__", "") if module is not None else ""
+    if not module_name.endswith("test_cursor_agent"):
+        return
+    if request.node.name in {
+        "test_cursor_auto_configured_in_settings",
+        "test_cursor_agent_visible_in_model_settings",
+    }:
+        return
+    _restart_shim_if_needed(shim_port)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -226,14 +226,23 @@ def validate_accepted_response(payload: dict[str, Any]) -> None:
         raise IntegrationHarnessError(f"Expected status=completed, got {payload.get('status')!r}")
 
 
+def _default_http_timeout() -> int:
+    raw = os.environ.get("CODEX_SHIM_HTTP_TIMEOUT", "").strip()
+    if raw.isdigit():
+        return max(30, int(raw))
+    return 600
+
+
 def post_json(
     url: str,
     body: dict[str, Any],
     headers: dict[str, str] | None = None,
     *,
     label: str = "Request",
-    timeout: int = 120,
+    timeout: int | None = None,
 ) -> dict[str, Any]:
+    if timeout is None:
+        timeout = _default_http_timeout()
     merged = {"Content-Type": "application/json", "Accept": "application/json"}
     if headers:
         merged.update(headers)
@@ -253,27 +262,7 @@ def post_json(
     return payload
 
 
-def post_json_streaming(
-    url: str,
-    body: dict[str, Any],
-    headers: dict[str, str] | None = None,
-    *,
-    label: str = "Streaming request",
-    collect_output_text: bool = False,
-    timeout: int = 120,
-) -> dict[str, Any]:
-    merged = {"Content-Type": "application/json", "Accept": "text/event-stream"}
-    if headers:
-        merged.update(headers)
-    request = Request(url, data=json.dumps(body).encode("utf-8"), headers=merged, method="POST")
-    try:
-        with urlopen(request, timeout=timeout) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise IntegrationHarnessError(f"{label} failed: HTTP {exc.code}: {detail[:500]}") from exc
-    except URLError as exc:
-        raise IntegrationHarnessError(f"{label} request failed: {exc}") from exc
+def _parse_sse_response(raw: str, *, label: str, collect_output_text: bool) -> dict[str, Any]:
     completed: dict[str, Any] | None = None
     output_text = ""
     for block in raw.split("\n\n"):
@@ -299,6 +288,72 @@ def post_json_streaming(
     if collect_output_text:
         completed = {**completed, PROBE_OUTPUT_TEXT_KEY: output_text}
     return completed
+
+
+async def _post_json_streaming_async(
+    url: str,
+    body: dict[str, Any],
+    headers: dict[str, str] | None = None,
+    *,
+    label: str = "Streaming request",
+    collect_output_text: bool = False,
+    timeout: int = 120,
+) -> dict[str, Any]:
+    import aiohttp
+
+    merged = {"Content-Type": "application/json", "Accept": "text/event-stream"}
+    if headers:
+        merged.update(headers)
+    chunks: list[str] = []
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                url,
+                json=body,
+                headers=merged,
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as resp:
+                if resp.status >= 400:
+                    detail = await resp.text()
+                    raise IntegrationHarnessError(
+                        f"{label} failed: HTTP {resp.status}: {detail[:500]}"
+                    )
+                async for part in resp.content.iter_any():
+                    chunks.append(part.decode("utf-8", errors="replace"))
+    except aiohttp.ClientPayloadError as exc:
+        raw = "".join(chunks)
+        if raw.strip():
+            try:
+                return _parse_sse_response(raw, label=label, collect_output_text=collect_output_text)
+            except IntegrationHarnessError:
+                pass
+        raise IntegrationHarnessError(f"{label} request failed: {exc}") from exc
+    except aiohttp.ClientError as exc:
+        raise IntegrationHarnessError(f"{label} request failed: {exc}") from exc
+    return _parse_sse_response("".join(chunks), label=label, collect_output_text=collect_output_text)
+
+
+def post_json_streaming(
+    url: str,
+    body: dict[str, Any],
+    headers: dict[str, str] | None = None,
+    *,
+    label: str = "Streaming request",
+    collect_output_text: bool = False,
+    timeout: int | None = None,
+) -> dict[str, Any]:
+    if timeout is None:
+        timeout = _default_http_timeout()
+    return asyncio.run(
+        _post_json_streaming_async(
+            url,
+            body,
+            headers,
+            label=label,
+            collect_output_text=collect_output_text,
+            timeout=timeout,
+        )
+    )
 
 
 def responses_url(port: int | None = None) -> str:
@@ -380,6 +435,7 @@ def post_fixture_turn(
     stream: bool = False,
     session_id: str = "live-fixture",
     extra_input: list[dict[str, Any]] | None = None,
+    timeout: int = 120,
 ) -> dict[str, Any]:
     fixture = load_desktop_fixture(fixture_name)
     input_items = list(fixture.get("input") or [])
@@ -397,12 +453,14 @@ def post_fixture_turn(
             body,
             headers=headers,
             label=f"Fixture {fixture_name}",
+            timeout=timeout,
         )
     return post_json(
         responses_url(port),
         body,
         headers=headers,
         label=f"Fixture {fixture_name}",
+        timeout=timeout,
     )
 
 
@@ -461,7 +519,8 @@ def run_tier_a_previous_response_id_stripped(port: int) -> str:
     return first_id
 
 
-def run_byok_simple_turn(port: int, route: ShimModel) -> dict[str, Any]:
+def run_byok_simple_turn(port: int, route: ShimModel, *, timeout: int | None = None) -> dict[str, Any]:
+    timeout = _byok_timeout(route, timeout)
     require_shim(port)
     body = {
         "model": route.slug,
@@ -474,12 +533,14 @@ def run_byok_simple_turn(port: int, route: ShimModel) -> dict[str, Any]:
         body,
         headers={"session_id": f"live-byok-{route.slug}"},
         label=f"BYOK simple turn ({route.slug})",
+        timeout=timeout,
     )
     validate_completed_response(payload)
     return payload
 
 
-def run_byok_history(port: int, route: ShimModel) -> dict[str, str]:
+def run_byok_history(port: int, route: ShimModel, *, timeout: int | None = None) -> dict[str, str]:
+    timeout = _byok_timeout(route, timeout)
     require_shim(port)
     session_headers = {"session_id": f"live-history-{route.slug}"}
     first_body = {
@@ -491,7 +552,13 @@ def run_byok_history(port: int, route: ShimModel) -> dict[str, str]:
         ],
         "stream": False,
     }
-    first = post_json(responses_url(port), first_body, headers=session_headers, label="BYOK history first")
+    first = post_json(
+        responses_url(port),
+        first_body,
+        headers=session_headers,
+        label="BYOK history first",
+        timeout=timeout,
+    )
     validate_history_response({}, first)
     second = post_json(
         responses_url(port),
@@ -503,6 +570,7 @@ def run_byok_history(port: int, route: ShimModel) -> dict[str, str]:
         },
         headers=session_headers,
         label="BYOK history second",
+        timeout=timeout,
     )
     validate_history_response(first, second)
     compact = post_json(
@@ -515,6 +583,7 @@ def run_byok_history(port: int, route: ShimModel) -> dict[str, str]:
         },
         headers=session_headers,
         label="BYOK history compact",
+        timeout=timeout,
     )
     item_type, summary = validate_compact_response(compact, expect_trigger=True)
     return {
@@ -524,18 +593,27 @@ def run_byok_history(port: int, route: ShimModel) -> dict[str, str]:
     }
 
 
-def run_byok_streaming_history(port: int, route: ShimModel) -> dict[str, str]:
+def _byok_timeout(route: ShimModel, timeout: int | None) -> int:
+    if timeout is not None:
+        return timeout
+    return 600 if route.is_cursor_cli else 120
+
+
+def run_byok_streaming_history(port: int, route: ShimModel, *, timeout: int | None = None) -> dict[str, str]:
+    timeout = _byok_timeout(route, timeout)
     require_shim(port)
     session_headers = {"session_id": f"live-stream-history-{route.slug}"}
     first = post_json_streaming(
         responses_url(port),
         {
             "model": route.slug,
-            "input": [{"role": "user", "content": [{"type": "input_text", "text": "stream probe"}]}],
+            "input": [{"role": "user", "content": [{"type": "input_text", "text": "Reply with exactly: OK"}]}],
             "stream": True,
+            "max_output_tokens": 32,
         },
         headers=session_headers,
         label="BYOK streaming history first",
+        timeout=timeout,
     )
     validate_history_response({}, first)
     second = post_json(
@@ -548,6 +626,7 @@ def run_byok_streaming_history(port: int, route: ShimModel) -> dict[str, str]:
         },
         headers=session_headers,
         label="BYOK streaming history second",
+        timeout=timeout,
     )
     validate_history_response(first, second)
     compact = post_json(
@@ -560,6 +639,7 @@ def run_byok_streaming_history(port: int, route: ShimModel) -> dict[str, str]:
         },
         headers=session_headers,
         label="BYOK streaming history compact",
+        timeout=timeout,
     )
     item_type, summary = validate_compact_response(compact, expect_trigger=True)
     return {
@@ -569,7 +649,8 @@ def run_byok_streaming_history(port: int, route: ShimModel) -> dict[str, str]:
     }
 
 
-def run_byok_compact(port: int, route: ShimModel) -> tuple[str, str]:
+def run_byok_compact(port: int, route: ShimModel, *, timeout: int | None = None) -> tuple[str, str]:
+    timeout = _byok_timeout(route, timeout)
     require_shim(port)
     if route.capabilities.compact_behavior == "unsupported":
         raise IntegrationHarnessError(f"{route.slug} does not support /v1/responses/compact")
@@ -586,11 +667,14 @@ def run_byok_compact(port: int, route: ShimModel) -> tuple[str, str]:
         },
         headers={"session_id": f"live-compact-{route.slug}"},
         label="BYOK compact",
+        timeout=timeout,
     )
     return validate_compact_response(payload, expect_trigger=True)
 
 
-async def run_ws_streaming_async(port: int, route: ShimModel, *, require_deltas: bool = True) -> None:
+async def run_ws_streaming_async(
+    port: int, route: ShimModel, *, require_deltas: bool = True, timeout: int = 120
+) -> None:
     import aiohttp
 
     require_shim(port)
@@ -608,7 +692,7 @@ async def run_ws_streaming_async(port: int, route: ShimModel, *, require_deltas:
             "stream": True,
         }
     async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(url, timeout=aiohttp.ClientWSTimeout(ws_receive=120)) as ws:
+        async with session.ws_connect(url, timeout=aiohttp.ClientWSTimeout(ws_receive=timeout)) as ws:
             await ws.send_json(payload)
             completed = None
             saw_delta = False
@@ -628,8 +712,11 @@ async def run_ws_streaming_async(port: int, route: ShimModel, *, require_deltas:
                 raise IntegrationHarnessError("WS streaming probe did not receive response.completed.")
 
 
-def run_ws_streaming(port: int, route: ShimModel, *, require_deltas: bool = True) -> None:
-    asyncio.run(run_ws_streaming_async(port, route, require_deltas=require_deltas))
+def run_ws_streaming(
+    port: int, route: ShimModel, *, require_deltas: bool = True, timeout: int | None = None
+) -> None:
+    timeout = _byok_timeout(route, timeout)
+    asyncio.run(run_ws_streaming_async(port, route, require_deltas=require_deltas, timeout=timeout))
 
 
 @dataclass(frozen=True)

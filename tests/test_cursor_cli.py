@@ -44,6 +44,11 @@ if output_format == "stream-json":
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
     if stream_style == "invalid-before-result":
         print("not json")
+    if stream_style == "long-line":
+        long_text = "x" * 70000
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": long_text}]}, "session_id": session_id, "timestamp_ms": 1}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": long_text, "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
     print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor CLI"}]}, "session_id": session_id}))
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "Cursor CLI", "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
     raise SystemExit(0)
@@ -204,6 +209,23 @@ async def test_streaming_responses_ignores_malformed_cursor_cli_lines(tmp_path):
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     assert completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI"
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_accepts_long_cursor_cli_json_lines(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="long-line")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    assert resp.status == 200
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    text = completed["response"]["output"][0]["content"][0]["text"]
+    assert len(text) == 70000
+    assert text == "x" * 70000
 
     await shim_client.close()
 

@@ -15,7 +15,6 @@ from .settings import ShimModel
 
 TextCallback = Callable[[str], Awaitable[None]]
 
-
 class CursorCliError(RuntimeError):
     """Raised when the headless Cursor Agent CLI cannot complete a turn."""
 
@@ -123,25 +122,40 @@ async def _consume_stream(
 ) -> None:
     if proc.stdout is None:
         raise CursorCliError("Cursor Agent subprocess stdout is unavailable")
+    pending = b""
     while True:
-        line = await proc.stdout.readline()
-        if not line:
+        chunk = await proc.stdout.read(262144)
+        if not chunk:
             break
-        event = _json_event(line)
-        if event is None:
-            continue
-        events.append(event)
-        if event.get("type") != "assistant":
-            continue
-        text = _assistant_event_text(event)
-        if not text:
-            continue
-        if "timestamp_ms" in event:
-            deltas.append(text)
-            await on_text(text)
-        elif not deltas:
-            deltas.append(text)
-            await on_text(text)
+        pending += chunk
+        while b"\n" in pending:
+            line, pending = pending.split(b"\n", 1)
+            if not line.strip():
+                continue
+            event = _json_event(line + b"\n")
+            if event is None:
+                continue
+            events.append(event)
+            if event.get("type") != "assistant":
+                continue
+            text = _assistant_event_text(event)
+            if not text:
+                continue
+            if "timestamp_ms" in event:
+                deltas.append(text)
+                await on_text(text)
+            elif not deltas:
+                deltas.append(text)
+                await on_text(text)
+    if pending.strip():
+        event = _json_event(pending)
+        if event is not None:
+            events.append(event)
+            if event.get("type") == "assistant":
+                text = _assistant_event_text(event)
+                if text and (("timestamp_ms" in event) or not deltas):
+                    deltas.append(text)
+                    await on_text(text)
     await proc.wait()
 
 
