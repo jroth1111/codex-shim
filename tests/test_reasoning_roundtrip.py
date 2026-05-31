@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 from codex_shim.translate import (
-    _responses_input_to_messages,
     anthropic_to_response,
     chat_completion_to_response,
     responses_to_anthropic,
     responses_to_chat,
+    responses_input_to_messages,
     validate_responses_input,
 )
 
@@ -215,7 +215,7 @@ def test_encrypted_content_preserved_in_reasoning_only():
         {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Q"}]},
     ]
 
-    messages = _responses_input_to_messages(input_items)
+    messages = responses_input_to_messages(input_items)
     reasoning_msgs = [message for message in messages if message.get("_reasoning_only")]
     assert len(reasoning_msgs) == 1
     assert reasoning_msgs[0]["encrypted_content"] == encrypted
