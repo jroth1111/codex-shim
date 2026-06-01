@@ -15,11 +15,14 @@ python3 -m pip install -e ".[dev]"
 python3 -m pytest tests/ -q
 python3 -m compileall codex_shim/ -q
 python3 scripts/generate_desktop_contract.py --check   # skips if no local RE tree
-python3 scripts/check_desktop_patch_needles.py         # same
+python3 scripts/check_desktop_patch_needles.py         # exits 1 if RE tree exists but needles drift
 ```
 
-Optional: maintain a gitignored `codex-desktop-decompiled/` tree (see README). Set
-`CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` to fail those checks when the tree is absent.
+Optional: maintain a gitignored `codex-desktop-decompiled/` tree (see README). The
+patch-needle **script** fails when the tree exists but needles are missing; the
+**pytest** `test_decompiled_bundle_patch_needles_match_specs` skips when the tree is
+incomplete. Set `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` to fail both when the tree
+is absent.
 
 CI runs the same commands on Python 3.11 and 3.12 via
 `.github/workflows/ci.yml`. Match it locally before opening a PR.

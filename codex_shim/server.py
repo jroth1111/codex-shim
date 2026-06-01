@@ -38,7 +38,6 @@ from .passthrough import (
     merge_codex_forward_headers as _merge_codex_forward_headers,
     metadata_as_forward_headers as _metadata_as_forward_headers,
     passthrough_forward_headers as _passthrough_forward_headers,
-    responses_items_from_input as _responses_items_from_input,
     rewrite_response_model as _rewrite_response_model,
     sanitize_chatgpt_passthrough_body as _sanitize_chatgpt_passthrough_body,
 )
@@ -47,6 +46,12 @@ from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
 from .picker import restart_codex_app as _restart_codex_app
 from .picker import set_active_model as _set_active_model
+from .responses_request import (
+    PreparedResponsesRequest,
+    prepare_byok_responses_request,
+    responses_items_from_input as _responses_items_from_input,
+    should_persist_instructions,
+)
 from .responses_ws import WsStreamResponse, handle_responses_websocket
 from .response_store import ResponseStore, default_store_path
 from .settings import (
@@ -245,85 +250,114 @@ class ShimServer:
                 ws_stream=ws_stream,
             )
         try:
-            session_id = request.headers.get("session_id", "") or ""
-            body = self._body_with_previous_response(body, session_id)
-            body["_shim_session_id"] = session_id
+            prepared = prepare_byok_responses_request(self.response_store, request, body)
         except KeyError as exc:
             return web.json_response(
                 {"error": {"type": "not_found", "message": f"Unknown previous_response_id: {exc.args[0]}"}},
                 status=404,
             )
         try:
-            validate_responses_input(body)
-            stream_target = ws_stream if ws_stream is not None else None
-            if route.is_openai_chat:
-                forwarded = responses_to_chat(body, route.model, route.provider, thinking_behavior=route.thinking_behavior)
-                return await self._post_openai_chat(
-                    request,
-                    route,
-                    forwarded,
-                    as_responses=True,
-                    responses_body=body,
-                    stream_response=stream_target,
-                )
-            if route.is_anthropic:
-                forwarded = responses_to_anthropic(body, route.model, route.max_output_tokens)
-                return await self._post_anthropic(
-                    request,
-                    route,
-                    forwarded,
-                    as_responses=True,
-                    responses_body=body,
-                    stream_response=stream_target,
-                )
-            if route.is_cursor_acp:
-                return await self._post_cursor_acp(
-                    request,
-                    route,
-                    body,
-                    as_responses=True,
-                    responses_body=body,
-                    stream_response=stream_target,
-                )
-            if route.is_cursor_cli:
-                return await self._post_cursor_cli(
-                    request,
-                    route,
-                    body,
-                    as_responses=True,
-                    responses_body=body,
-                    stream_response=stream_target,
-                )
+            validate_responses_input(prepared.body)
+            return await self._forward_byok_responses(
+                request,
+                route,
+                prepared,
+                ws_stream=ws_stream,
+            )
         except ResponsesInputError as exc:
             return _invalid_request_error_response(exc)
         raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
 
-    def _body_with_previous_response(self, body: dict[str, Any], session_id: str = "") -> dict[str, Any]:
-        previous_response_id = body.get("previous_response_id")
-        if not previous_response_id:
-            return body
-        previous_items = self.response_store.get(str(previous_response_id), session_id)
-        if previous_items is None:
-            raise KeyError(str(previous_response_id))
-        combined = dict(body)
-        combined.pop("previous_response_id", None)
-        combined["input"] = previous_items + _responses_items_from_input(body.get("input"))
-        combined["_shim_chained_from_previous"] = True
-        return combined
+    async def _forward_byok_responses(
+        self,
+        request: web.Request,
+        route: ShimModel,
+        prepared: PreparedResponsesRequest,
+        *,
+        ws_stream: WsStreamResponse | None = None,
+        force_non_stream: bool = False,
+        compact_body_for_wrap: dict[str, Any] | None = None,
+    ) -> web.StreamResponse | web.Response:
+        stream_target = ws_stream if ws_stream is not None else None
+        body = prepared.body
+        chained = prepared.chained_from_previous
+        if route.is_openai_chat:
+            forwarded = responses_to_chat(
+                body,
+                route.model,
+                route.provider,
+                thinking_behavior=route.thinking_behavior,
+                chained_from_previous=chained,
+            )
+            if force_non_stream:
+                forwarded["stream"] = False
+            result = await self._post_openai_chat(
+                request,
+                route,
+                forwarded,
+                as_responses=True,
+                prepared=prepared,
+                stream_response=stream_target,
+            )
+        elif route.is_anthropic:
+            forwarded = responses_to_anthropic(
+                body,
+                route.model,
+                route.max_output_tokens,
+                chained_from_previous=chained,
+            )
+            if force_non_stream:
+                forwarded["stream"] = False
+            result = await self._post_anthropic(
+                request,
+                route,
+                forwarded,
+                as_responses=True,
+                prepared=prepared,
+                stream_response=stream_target,
+            )
+        elif route.is_cursor_acp:
+            dispatch_body = dict(body)
+            if force_non_stream:
+                dispatch_body["stream"] = False
+            result = await self._post_cursor_acp(
+                request,
+                route,
+                dispatch_body,
+                as_responses=True,
+                prepared=prepared,
+                stream_response=stream_target,
+            )
+        elif route.is_cursor_cli:
+            dispatch_body = dict(body)
+            if force_non_stream:
+                dispatch_body["stream"] = False
+            result = await self._post_cursor_cli(
+                request,
+                route,
+                dispatch_body,
+                as_responses=True,
+                prepared=prepared,
+                stream_response=stream_target,
+            )
+        else:
+            raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
+        if compact_body_for_wrap is not None:
+            return await _as_compact_response(result, route.slug, compact_body_for_wrap)
+        return result
 
     def _store_response_history(
         self,
-        request_body: dict[str, Any],
+        prepared: PreparedResponsesRequest,
         response_payload: dict[str, Any],
     ) -> None:
-        """Persist completed turn items; session id comes from _shim_session_id on request_body."""
+        """Persist completed turn items for multi-turn BYOK / passthrough history."""
         response_id = str(response_payload.get("id") or "")
         if not response_id:
             return
-        session_id = str(request_body.get("_shim_session_id") or "")
         items: list[dict[str, Any]] = []
-        instructions = request_body.get("instructions")
-        if instructions and not request_body.get("_shim_chained_from_previous"):
+        if should_persist_instructions(prepared):
+            instructions = prepared.body.get("instructions")
             items.append(
                 {
                     "type": "message",
@@ -331,22 +365,16 @@ class ShimServer:
                     "content": [{"type": "input_text", "text": self._content_to_debug_text(instructions)}],
                 }
             )
-        items.extend(_responses_items_from_input(request_body.get("input")))
+        items.extend(_responses_items_from_input(prepared.body.get("input")))
         output = response_payload.get("output")
         if isinstance(output, list):
             items.extend(item for item in output if isinstance(item, dict))
         self.response_store.put(
             response_id,
             items,
-            session_id=session_id,
-            model=str(request_body.get("model") or response_payload.get("model") or ""),
+            session_id=prepared.session_id,
+            model=str(prepared.body.get("model") or response_payload.get("model") or ""),
         )
-
-    def _store_body_with_session(self, body: dict[str, Any], request: web.Request) -> dict[str, Any]:
-        session_id = request.headers.get("session_id", "") or ""
-        store_body = dict(body)
-        store_body["_shim_session_id"] = session_id
-        return store_body
 
     async def responses_compact(self, request: web.Request) -> web.StreamResponse:
         body = await request.json()
@@ -356,40 +384,28 @@ class ShimServer:
             return await chatgpt_compact_passthrough(self, request, route, body)
         if route.capabilities.compact_behavior == COMPACT_UNSUPPORTED:
             return _unsupported_compact_response(route)
-        session_id = request.headers.get("session_id", "") or ""
         try:
-            body = self._body_with_previous_response(body, session_id)
+            prepared = prepare_byok_responses_request(self.response_store, request, body)
         except KeyError as exc:
             return web.json_response(
                 {"error": {"type": "not_found", "message": f"Unknown previous_response_id: {exc.args[0]}"}},
                 status=404,
             )
-        compact_body = _compact_request_body(body, route.model)
+        compact_body = _compact_request_body(prepared.body, route.model)
         try:
             validate_responses_input(compact_body)
-            if route.is_openai_chat:
-                forwarded = responses_to_chat(
-                    compact_body,
-                    route.model,
-                    route.provider,
-                    thinking_behavior=route.thinking_behavior,
-                )
-                forwarded["stream"] = False
-                response = await self._post_openai_chat(request, route, forwarded, as_responses=True)
-                return await _as_compact_response(response, route.slug, compact_body)
-            if route.is_anthropic:
-                forwarded = responses_to_anthropic(compact_body, route.model, route.max_output_tokens)
-                forwarded["stream"] = False
-                response = await self._post_anthropic(request, route, forwarded, as_responses=True)
-                return await _as_compact_response(response, route.slug, compact_body)
-            if route.is_cursor_acp:
-                compact_body["stream"] = False
-                response = await self._post_cursor_acp(request, route, compact_body, as_responses=True)
-                return await _as_compact_response(response, route.slug, compact_body)
-            if route.is_cursor_cli:
-                compact_body["stream"] = False
-                response = await self._post_cursor_cli(request, route, compact_body, as_responses=True)
-                return await _as_compact_response(response, route.slug, compact_body)
+            compact_prepared = PreparedResponsesRequest(
+                body=compact_body,
+                session_id=prepared.session_id,
+                chained_from_previous=prepared.chained_from_previous,
+            )
+            return await self._forward_byok_responses(
+                request,
+                route,
+                compact_prepared,
+                force_non_stream=True,
+                compact_body_for_wrap=compact_body,
+            )
         except ResponsesInputError as exc:
             return _invalid_request_error_response(exc)
         raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
@@ -424,7 +440,7 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = time.monotonic()
@@ -442,7 +458,7 @@ class ShimServer:
                     started_at,
                     stream=bool(body.get("stream")),
                     error="upstream_error",
-                    request_body=responses_body or body,
+                    request_body=prepared.body if prepared is not None else body,
                     provider_ms=_elapsed_ms(provider_started_at),
                 )
                 return await _error_response(upstream, slug=route.slug)
@@ -452,7 +468,7 @@ class ShimServer:
                     upstream,
                     route,
                     as_responses,
-                    responses_body=responses_body,
+                    prepared=prepared,
                     started_at=started_at,
                     stream_response=stream_response,
                 )
@@ -460,8 +476,8 @@ class ShimServer:
             provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
             response_payload = chat_completion_to_response(payload, route.slug)
-            if responses_body is not None:
-                self._store_response_history(responses_body, response_payload)
+            if prepared is not None:
+                self._store_response_history(prepared, response_payload)
             _log_access(
                 request,
                 route,
@@ -469,7 +485,7 @@ class ShimServer:
                 started_at,
                 payload=response_payload,
                 stream=False,
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
             return web.json_response(response_payload)
@@ -482,7 +498,7 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = time.monotonic()
@@ -499,7 +515,7 @@ class ShimServer:
                     started_at,
                     stream=bool(body.get("stream")),
                     error="upstream_error",
-                    request_body=responses_body or body,
+                    request_body=prepared.body if prepared is not None else body,
                     provider_ms=_elapsed_ms(provider_started_at),
                 )
                 return await _error_response(upstream)
@@ -509,7 +525,7 @@ class ShimServer:
                     upstream,
                     route,
                     as_responses,
-                    responses_body=responses_body,
+                    prepared=prepared,
                     started_at=started_at,
                     stream_response=stream_response,
                 )
@@ -517,8 +533,8 @@ class ShimServer:
             provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
             response_payload = anthropic_to_response(payload, route.slug)
-            if responses_body is not None:
-                self._store_response_history(responses_body, response_payload)
+            if prepared is not None:
+                self._store_response_history(prepared, response_payload)
             _log_access(
                 request,
                 route,
@@ -526,7 +542,7 @@ class ShimServer:
                 started_at,
                 payload=response_payload,
                 stream=False,
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
             return web.json_response(response_payload)
@@ -549,7 +565,7 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = time.monotonic()
@@ -559,13 +575,16 @@ class ShimServer:
                 route,
                 body,
                 as_responses,
-                responses_body=responses_body,
+                prepared=prepared,
                 started_at=started_at,
                 stream_response=stream_response,
             )
         provider_started_at = time.monotonic()
         try:
-            result = await _await_cursor_inference(run_cursor_acp(route, body))
+            chained = prepared.chained_from_previous if prepared is not None else False
+            result = await _await_cursor_inference(
+                run_cursor_acp(route, body, chained_from_previous=chained)
+            )
         except CursorAcpError as exc:
             _log_access(
                 request,
@@ -574,15 +593,15 @@ class ShimServer:
                 started_at,
                 stream=False,
                 error="cursor_acp_error",
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=_elapsed_ms(provider_started_at),
             )
             return _cursor_acp_error_response(exc)
         provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
             response_payload = cursor_acp_response_payload(result, route.slug)
-            if responses_body is not None:
-                self._store_response_history(responses_body, response_payload)
+            if prepared is not None:
+                self._store_response_history(prepared, response_payload)
             _log_access(
                 request,
                 route,
@@ -590,7 +609,7 @@ class ShimServer:
                 started_at,
                 payload=response_payload,
                 stream=False,
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
             return web.json_response(response_payload)
@@ -613,7 +632,7 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = time.monotonic()
@@ -623,13 +642,16 @@ class ShimServer:
                 route,
                 body,
                 as_responses,
-                responses_body=responses_body,
+                prepared=prepared,
                 started_at=started_at,
                 stream_response=stream_response,
             )
         provider_started_at = time.monotonic()
         try:
-            result = await _await_cursor_inference(run_cursor_cli(route, body))
+            chained = prepared.chained_from_previous if prepared is not None else False
+            result = await _await_cursor_inference(
+                run_cursor_cli(route, body, chained_from_previous=chained)
+            )
         except CursorCliError as exc:
             _log_access(
                 request,
@@ -638,15 +660,15 @@ class ShimServer:
                 started_at,
                 stream=False,
                 error="cursor_cli_error",
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=_elapsed_ms(provider_started_at),
             )
             return _cursor_agent_error_response(exc, "cursor_cli_error")
         provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
             response_payload = cursor_acp_response_payload(result, route.slug)
-            if responses_body is not None:
-                self._store_response_history(responses_body, response_payload)
+            if prepared is not None:
+                self._store_response_history(prepared, response_payload)
             _log_access(
                 request,
                 route,
@@ -654,7 +676,7 @@ class ShimServer:
                 started_at,
                 payload=response_payload,
                 stream=False,
-                request_body=responses_body or body,
+                request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
             return web.json_response(response_payload)
@@ -677,14 +699,14 @@ class ShimServer:
         upstream,
         route: ShimModel,
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         started_at: float | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
         if as_responses:
-            state = ResponsesStreamState(route.slug, tools=(responses_body or {}).get("tools"))
+            state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools"))
         try:
             if as_responses:
                 await state.start(response)
@@ -701,8 +723,8 @@ class ShimServer:
                     await _write_sse(response, event)
             if as_responses:
                 final_response = await state.finish(response)
-                if responses_body is not None:
-                    self._store_response_history(responses_body, final_response)
+                if prepared is not None:
+                    self._store_response_history(prepared, final_response)
                 _log_access(request, route, 200, started_at, payload=final_response, stream=True)
             else:
                 await _safe_write(response, b"data: [DONE]\n\n")
@@ -723,14 +745,14 @@ class ShimServer:
         upstream,
         route: ShimModel,
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         started_at: float | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
         if as_responses:
-            state = ResponsesStreamState(route.slug, tools=(responses_body or {}).get("tools"))
+            state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools"))
         try:
             if as_responses:
                 await state.start(response)
@@ -747,8 +769,8 @@ class ShimServer:
                     await _write_sse(response, _anthropic_stream_to_chat_chunk(event, route.slug))
             if as_responses:
                 final_response = await state.finish(response)
-                if responses_body is not None:
-                    self._store_response_history(responses_body, final_response)
+                if prepared is not None:
+                    self._store_response_history(prepared, final_response)
                 _log_access(request, route, 200, started_at, payload=final_response, stream=True)
             else:
                 await _safe_write(response, b"data: [DONE]\n\n")
@@ -769,13 +791,14 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         started_at: float | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
-        state = ResponsesStreamState(route.slug, tools=(responses_body or {}).get("tools")) if as_responses else None
+        state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools")) if as_responses else None
+        chained = prepared.chained_from_previous if prepared is not None else False
         try:
             if state is not None:
                 await state.start(response)
@@ -783,12 +806,14 @@ class ShimServer:
                 async def write_responses_delta(text: str) -> None:
                     await state.write_chat_delta(response, {"choices": [{"delta": {"content": text}}]})
 
-                result = await _await_cursor_inference(run_cursor_acp(route, body, on_text=write_responses_delta))
+                result = await _await_cursor_inference(
+                    run_cursor_acp(route, body, on_text=write_responses_delta, chained_from_previous=chained)
+                )
                 if result.usage is not None:
                     state.usage = result.usage
                 final_response = await state.finish(response)
-                if responses_body is not None:
-                    self._store_response_history(responses_body, final_response)
+                if prepared is not None:
+                    self._store_response_history(prepared, final_response)
                 _log_access(request, route, 200, started_at, payload=final_response, stream=True)
             else:
                 created = int(time.time())
@@ -805,7 +830,9 @@ class ShimServer:
                         },
                     )
 
-                await _await_cursor_inference(run_cursor_acp(route, body, on_text=write_chat_delta))
+                await _await_cursor_inference(
+                    run_cursor_acp(route, body, on_text=write_chat_delta, chained_from_previous=chained)
+                )
                 await _write_sse(
                     response,
                     {
@@ -837,13 +864,14 @@ class ShimServer:
         route: ShimModel,
         body: dict[str, Any],
         as_responses: bool,
-        responses_body: dict[str, Any] | None = None,
+        prepared: PreparedResponsesRequest | None = None,
         started_at: float | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
-        state = ResponsesStreamState(route.slug, tools=(responses_body or {}).get("tools")) if as_responses else None
+        state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools")) if as_responses else None
+        chained = prepared.chained_from_previous if prepared is not None else False
         try:
             if state is not None:
                 await state.start(response)
@@ -851,12 +879,14 @@ class ShimServer:
                 async def write_responses_delta(text: str) -> None:
                     await state.write_chat_delta(response, {"choices": [{"delta": {"content": text}}]})
 
-                result = await _await_cursor_inference(run_cursor_cli(route, body, on_text=write_responses_delta))
+                result = await _await_cursor_inference(
+                    run_cursor_cli(route, body, on_text=write_responses_delta, chained_from_previous=chained)
+                )
                 if result.usage is not None:
                     state.usage = result.usage
                 final_response = await state.finish(response)
-                if responses_body is not None:
-                    self._store_response_history(responses_body, final_response)
+                if prepared is not None:
+                    self._store_response_history(prepared, final_response)
                 _log_access(request, route, 200, started_at, payload=final_response, stream=True)
             else:
                 created = int(time.time())
@@ -873,7 +903,9 @@ class ShimServer:
                         },
                     )
 
-                await _await_cursor_inference(run_cursor_cli(route, body, on_text=write_chat_delta))
+                await _await_cursor_inference(
+                    run_cursor_cli(route, body, on_text=write_chat_delta, chained_from_previous=chained)
+                )
                 await _write_sse(
                     response,
                     {

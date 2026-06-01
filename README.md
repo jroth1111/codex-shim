@@ -537,6 +537,12 @@ The current patch needles target Codex Desktop **26.519.81530** /
 `python scripts/check_desktop_patch_needles.py` to verify drift before patching (skips
 when the local RE tree is absent unless `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1`).
 
+Needle checks intentionally differ by entry point: the script exits **1** when
+`app-asar-extracted/` exists but required needles are missing (useful in CI when the
+tree is present), while `tests/test_settings_catalog.py` skips the equivalent pytest
+when the RE tree is incomplete. Set `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` to
+fail both paths when the tree is absent.
+
 > Back up `app.asar` and `Info.plist` before patching.
 
 ```bash

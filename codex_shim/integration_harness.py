@@ -199,23 +199,35 @@ def validate_passthrough_compact_response(payload: dict[str, Any]) -> tuple[str,
     return item_type, summary_text
 
 
-def validate_history_response(first: dict[str, Any], second: dict[str, Any]) -> None:
+def validate_first_turn_payload(payload: dict[str, Any]) -> None:
+    response_id = str(payload.get("id") or "")
+    if not response_id:
+        raise IntegrationHarnessError("First response missing id for previous_response_id probe.")
+    if payload.get("status") != "completed":
+        raise IntegrationHarnessError(f"First response status={payload.get('status')!r}")
+    output = payload.get("output")
+    if not isinstance(output, list) or not output:
+        raise IntegrationHarnessError("First response has no output items.")
+
+
+def validate_follow_up_turn(first: dict[str, Any], second: dict[str, Any]) -> None:
     first_id = str(first.get("id") or "")
     if not first_id:
-        response_id = str(second.get("id") or "")
-        if not response_id:
-            raise IntegrationHarnessError("First response missing id for previous_response_id probe.")
-        if second.get("status") != "completed":
-            raise IntegrationHarnessError(f"First response status={second.get('status')!r}")
-        output = second.get("output")
-        if not isinstance(output, list) or not output:
-            raise IntegrationHarnessError("First response has no output items.")
-        return
+        raise IntegrationHarnessError("Follow-up probe requires first response id.")
     if second.get("status") != "completed":
         raise IntegrationHarnessError(f"Follow-up response status={second.get('status')!r}")
     output = second.get("output")
     if not isinstance(output, list) or not output:
         raise IntegrationHarnessError("Follow-up response has no output items.")
+
+
+def validate_history_response(first: dict[str, Any], second: dict[str, Any]) -> None:
+    """Validate first and/or follow-up history probe payloads (compat wrapper)."""
+    first_id = str(first.get("id") or "")
+    if not first_id:
+        validate_first_turn_payload(second)
+        return
+    validate_follow_up_turn(first, second)
 
 
 def validate_completed_response(payload: dict[str, Any]) -> None:
@@ -564,7 +576,7 @@ def run_byok_history(port: int, route: ShimModel, *, timeout: int | None = None)
         label="BYOK history first",
         timeout=timeout,
     )
-    validate_history_response({}, first)
+    validate_first_turn_payload(first)
     second = post_json(
         responses_url(port),
         {
@@ -577,7 +589,7 @@ def run_byok_history(port: int, route: ShimModel, *, timeout: int | None = None)
         label="BYOK history second",
         timeout=timeout,
     )
-    validate_history_response(first, second)
+    validate_follow_up_turn(first, second)
     compact = post_json(
         compact_url(port),
         {
@@ -620,7 +632,7 @@ def run_byok_streaming_history(port: int, route: ShimModel, *, timeout: int | No
         label="BYOK streaming history first",
         timeout=timeout,
     )
-    validate_history_response({}, first)
+    validate_first_turn_payload(first)
     second = post_json(
         responses_url(port),
         {
@@ -633,7 +645,7 @@ def run_byok_streaming_history(port: int, route: ShimModel, *, timeout: int | No
         label="BYOK streaming history second",
         timeout=timeout,
     )
-    validate_history_response(first, second)
+    validate_follow_up_turn(first, second)
     compact = post_json(
         compact_url(port),
         {

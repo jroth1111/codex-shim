@@ -28,10 +28,12 @@ def responses_to_chat(
     upstream_model: str,
     provider: str = "generic-chat-completion-api",
     thinking_behavior: str | None = None,
+    *,
+    chained_from_previous: bool = False,
 ) -> dict[str, Any]:
     messages = []
     instructions = body.get("instructions")
-    if instructions and not body.get("_shim_chained_from_previous"):
+    if instructions and not chained_from_previous:
         messages.append({"role": "system", "content": content_to_text(instructions)})
     has_reasoning_content = False
     pending_reasoning: list[str] = []

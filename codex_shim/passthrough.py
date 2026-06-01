@@ -179,8 +179,10 @@ async def chatgpt_passthrough(
             payload = await upstream.json(content_type=None)
             provider_ms = _elapsed_ms(provider_started_at)
             rewrite_response_model(payload, response_model_override)
-            store_body = shim._store_body_with_session(body, request)
-            shim._store_response_history(store_body, payload)
+            from .responses_request import prepare_passthrough_store_request
+
+            prepared = prepare_passthrough_store_request(request, body)
+            shim._store_response_history(prepared, payload)
             _log_access(
                 request,
                 route,
@@ -286,18 +288,6 @@ async def chatgpt_compact_passthrough(
 
 
 def responses_items_from_input(value: Any) -> list[dict[str, Any]]:
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": value}]}]
-    if isinstance(value, dict):
-        return [deepcopy(value)]
-    if isinstance(value, list):
-        items: list[dict[str, Any]] = []
-        for item in value:
-            if isinstance(item, str):
-                items.append({"type": "message", "role": "user", "content": [{"type": "input_text", "text": item}]})
-            elif isinstance(item, dict):
-                items.append(deepcopy(item))
-        return items
-    return [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": str(value)}]}]
+    from .responses_request import responses_items_from_input as _items_from_input
+
+    return _items_from_input(value)

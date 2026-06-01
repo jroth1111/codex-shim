@@ -45,9 +45,16 @@ async def run_cursor_acp(
     body: dict[str, Any],
     *,
     on_text: TextCallback | None = None,
+    chained_from_previous: bool = False,
 ) -> CursorAcpResult:
     config = cursor_acp_config(route)
-    prompt = responses_to_acp_prompt(body, route.model, provider=route.provider, thinking_behavior=route.thinking_behavior)
+    prompt = responses_to_acp_prompt(
+        body,
+        route.model,
+        provider=route.provider,
+        thinking_behavior=route.thinking_behavior,
+        chained_from_previous=chained_from_previous,
+    )
     collected: list[str] = []
 
     async def collect(text: str) -> None:
@@ -151,8 +158,16 @@ def responses_to_acp_prompt(
     upstream_model: str,
     provider: str = "generic-chat-completion-api",
     thinking_behavior: str | None = None,
+    *,
+    chained_from_previous: bool = False,
 ) -> str:
-    chat = responses_to_chat(body, upstream_model, provider, thinking_behavior=thinking_behavior)
+    chat = responses_to_chat(
+        body,
+        upstream_model,
+        provider,
+        thinking_behavior=thinking_behavior,
+        chained_from_previous=chained_from_previous,
+    )
     parts: list[str] = []
     for message in chat.get("messages") or []:
         if not isinstance(message, dict):

@@ -17,6 +17,7 @@ import asyncio
 from urllib.request import urlopen
 
 from .catalog import _toml_escape, catalog_entry, codex_config_overrides, websockets_enabled, write_catalog, write_config, write_direct_responses_config
+from .config_redaction import REDACTED_VALUE, export_config_file
 from .settings import (
     CHATGPT_MODEL_SLUG,
     DEFAULT_SETTINGS,
@@ -810,42 +811,8 @@ def _display_name_from_model(model: str, *, suffix: str) -> str:
     return f"{title} ({suffix})"
 
 
-SENSITIVE_CONFIG_KEYS = {
-    "api_key",
-    "apikey",
-    "api-key",
-    "bearertoken",
-    "bearer_token",
-    "authorization",
-    "x-api-key",
-    "secret",
-    "token",
-}
-REDACTED_VALUE = "***REDACTED***"
-_CREDENTIAL_TOKEN_KEY = re.compile(r"(access|refresh|bearer|id)token$")
-
-
-def _is_sensitive_config_key(normalized: str) -> bool:
-    if normalized in SENSITIVE_CONFIG_KEYS:
-        return True
-    if "apikey" in normalized or "secret" in normalized:
-        return True
-    return _CREDENTIAL_TOKEN_KEY.search(normalized) is not None
-
-
 def export_config(settings_path: Path, output_path: Path, *, redact: bool = True) -> int:
-    source = Path(settings_path).expanduser()
-    if not source.exists():
-        raise SystemExit(f"Settings file not found: {source}")
-    data = json.loads(source.read_text())
-    if redact:
-        data = _redact_config(data)
-    output = Path(output_path).expanduser()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(data, indent=2) + "\n")
-    mode = "redacted" if redact else "unredacted"
-    print(f"Exported {mode} config to {output}.")
-    return 0
+    return export_config_file(settings_path, output_path, redact=redact)
 
 
 def import_config(settings_path: Path, source_path: Path) -> int:
@@ -867,21 +834,6 @@ def import_config(settings_path: Path, source_path: Path) -> int:
     output.write_text(json.dumps(data, indent=2) + "\n")
     print(f"Imported config from {source} into {output}.")
     return 0
-
-
-def _redact_config(value):
-    if isinstance(value, list):
-        return [_redact_config(item) for item in value]
-    if isinstance(value, dict):
-        redacted = {}
-        for key, item in value.items():
-            normalized = re.sub(r"[^a-z0-9]+", "", str(key).lower())
-            if _is_sensitive_config_key(normalized):
-                redacted[key] = REDACTED_VALUE if item else item
-            else:
-                redacted[key] = _redact_config(item)
-        return redacted
-    return value
 
 
 def start(settings_path: Path, port: int) -> int:

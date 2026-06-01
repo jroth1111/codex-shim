@@ -9,10 +9,16 @@ from .content import chat_content_to_anthropic_blocks, chat_content_to_anthropic
 from .input import responses_input_to_messages
 from .tool_schema import responses_tools_to_anthropic_tools
 
-def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens: int | None) -> dict[str, Any]:
+def responses_to_anthropic(
+    body: dict[str, Any],
+    upstream_model: str,
+    max_tokens: int | None,
+    *,
+    chained_from_previous: bool = False,
+) -> dict[str, Any]:
     system_parts: list[str] = []
     instructions = body.get("instructions")
-    if instructions and not body.get("_shim_chained_from_previous"):
+    if instructions and not chained_from_previous:
         system_parts.append(content_to_text(instructions))
 
     messages: list[dict[str, Any]] = []

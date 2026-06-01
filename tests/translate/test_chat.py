@@ -18,6 +18,12 @@ def test_responses_to_chat_text_input():
     assert out["messages"] == [{"role": "system", "content": "System"}, {"role": "user", "content": "Hello"}]
 
 
+def test_responses_to_chat_skips_instructions_when_chained_from_previous():
+    body = {"model": "slug", "instructions": "System", "input": "Hello"}
+    out = responses_to_chat(body, "real-model", chained_from_previous=True)
+    assert out["messages"] == [{"role": "user", "content": "Hello"}]
+
+
 def test_responses_to_chat_preserves_reasoning_and_effort_for_deepseek():
     body = {
         "model": "slug",

@@ -1,3 +1,9 @@
+"""Persist /v1/responses turn history for previous_response_id expansion.
+
+Session scope (default) stores rows under ``{session_id}::{response_id}``.
+An empty session id uses ``::{response_id}``. Global scope uses bare ``response_id``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -52,6 +58,7 @@ class ResponseStore:
             """
         )
         self._ensure_v2_schema()
+        self._migrate_session_scope_storage_keys()
         self._conn.commit()
 
     def _ensure_v2_schema(self) -> None:
@@ -67,26 +74,28 @@ class ResponseStore:
             "CREATE INDEX IF NOT EXISTS idx_responses_session_created ON responses(session_id, created_at)"
         )
 
+    def _migrate_session_scope_storage_keys(self) -> None:
+        if self.scope != "session":
+            return
+        self._conn.execute(
+            """
+            UPDATE responses
+            SET id = '::' || id
+            WHERE id NOT LIKE '%::%'
+            """
+        )
+
     def _storage_id(self, response_id: str, session_id: str = "") -> str:
         if self.scope == "session":
             return f"{session_id}::{response_id}"
         return response_id
 
-    def _lookup_storage_ids(self, response_id: str, session_id: str = "") -> tuple[str, ...]:
-        primary = self._storage_id(response_id, session_id)
-        if self.scope == "session" and session_id == "" and primary != response_id:
-            return (primary, response_id)
-        return (primary,)
-
     def get(self, response_id: str, session_id: str = "") -> list[dict[str, Any]] | None:
-        row = None
-        for storage_id in self._lookup_storage_ids(response_id, session_id):
-            row = self._conn.execute(
-                "SELECT items_json, id FROM responses WHERE id = ?",
-                (storage_id,),
-            ).fetchone()
-            if row is not None:
-                break
+        storage_id = self._storage_id(response_id, session_id)
+        row = self._conn.execute(
+            "SELECT items_json, id FROM responses WHERE id = ?",
+            (storage_id,),
+        ).fetchone()
         if row is None:
             return None
         self._conn.execute(
@@ -109,8 +118,6 @@ class ResponseStore:
         storage_id = self._storage_id(response_id, session_id)
         scoped_session = session_id if self.scope == "session" and session_id else ""
         payload = json.dumps(items, separators=(",", ":"))
-        if self.scope == "session" and session_id == "" and storage_id != response_id:
-            self._conn.execute("DELETE FROM responses WHERE id = ?", (response_id,))
         self._conn.execute(
             """
             INSERT INTO responses (id, items_json, created_at, session_id, model)

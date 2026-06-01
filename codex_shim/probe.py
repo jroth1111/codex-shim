@@ -18,6 +18,8 @@ tier_a_compact_body = harness.tier_a_compact_body
 validate_compact_response = harness.validate_compact_response
 validate_passthrough_streaming_response = harness.validate_passthrough_streaming_response
 validate_passthrough_compact_response = harness.validate_passthrough_compact_response
+validate_first_turn_payload = harness.validate_first_turn_payload
+validate_follow_up_turn = harness.validate_follow_up_turn
 validate_history_response = harness.validate_history_response
 
 _post_json = harness.post_json

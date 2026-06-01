@@ -51,29 +51,31 @@ def test_response_store_session_scope_has_no_global_fallback(tmp_path, monkeypat
     store.close()
 
 
-def test_response_store_session_scope_reads_legacy_bare_id(tmp_path, monkeypatch):
+def test_response_store_migrates_legacy_bare_id_on_open(tmp_path, monkeypatch):
     import json
+    import sqlite3
     import time
 
     monkeypatch.delenv("CODEX_SHIM_RESPONSE_STORE_SCOPE", raising=False)
     db = tmp_path / "store.sqlite"
-    store = ResponseStore(path=db)
+    bootstrap = ResponseStore(path=db)
+    bootstrap.close()
+
     now = time.time()
-    store._conn.execute(
+    conn = sqlite3.connect(db)
+    conn.execute(
         """
         INSERT INTO responses (id, items_json, created_at, session_id, model)
         VALUES (?, ?, ?, ?, ?)
         """,
         ("resp_1", json.dumps([{"id": "legacy"}]), now, "", ""),
     )
-    store._conn.commit()
+    conn.commit()
+    conn.close()
+
+    store = ResponseStore(path=db)
     assert store.get("resp_1", "") == [{"id": "legacy"}]
-    store.put("resp_1", [{"id": "migrated"}])
-    assert store.get("resp_1", "") == [{"id": "migrated"}]
-    assert (
-        store._conn.execute("SELECT COUNT(*) FROM responses WHERE id = ?", ("resp_1",)).fetchone()[0]
-        == 0
-    )
+    assert store._conn.execute("SELECT id FROM responses").fetchall() == [("::resp_1",)]
     store.close()
 
 

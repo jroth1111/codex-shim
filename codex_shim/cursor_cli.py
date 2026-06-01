@@ -34,9 +34,16 @@ async def run_cursor_cli(
     body: dict[str, Any],
     *,
     on_text: TextCallback | None = None,
+    chained_from_previous: bool = False,
 ) -> CursorAcpResult:
     config = cursor_cli_config(route)
-    prompt = responses_to_acp_prompt(body, route.model, provider=route.provider, thinking_behavior=route.thinking_behavior)
+    prompt = responses_to_acp_prompt(
+        body,
+        route.model,
+        provider=route.provider,
+        thinking_behavior=route.thinking_behavior,
+        chained_from_previous=chained_from_previous,
+    )
     if on_text is not None:
         return await _run_stream_json(config, prompt, on_text)
     return await _run_json(config, prompt)
