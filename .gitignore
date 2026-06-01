@@ -1,4 +1,5 @@
 # Generated runtime + user state
+.autoreview/
 .codex-shim/
 *.log
 *.pid

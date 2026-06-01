@@ -29,12 +29,7 @@ def main() -> int:
             path_note = f" ({report['path']})" if report.get("path") else ""
             print(f"  {report['label']}: {report['status']}{path_note}")
         if _inspection_has_missing_patch(inspection):
-            print(
-                "skip patch needle check (local RE tree present but required needles missing; "
-                f"version {desktop_version})",
-                file=sys.stderr,
-            )
-            continue
+            exit_code = 1
     return exit_code
 
 

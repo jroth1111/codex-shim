@@ -502,6 +502,28 @@ def test_export_config_redacts_secrets_by_default(tmp_path):
     assert row["model"] == "secret-model"
 
 
+def test_export_config_preserves_non_secret_token_limit_fields(tmp_path):
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "model": "m",
+                        "display_name": "M",
+                        "provider": "openai",
+                        "base_url": "http://x/v1",
+                        "max_tokens": 8192,
+                    }
+                ]
+            }
+        )
+    )
+    output = tmp_path / "export.json"
+    assert cli.export_config(settings, output) == 0
+    assert json.loads(output.read_text())["models"][0]["max_tokens"] == 8192
+
+
 def test_export_config_can_include_secrets(tmp_path):
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": [{"model": "m", "provider": "openai", "base_url": "http://x/v1", "api_key": "sk"}]}))
@@ -611,6 +633,40 @@ def test_default_model_slug_skips_chatgpt_when_include_chatgpt_false(tmp_path, a
     )
     models = ModelSettings(settings).desktop_models()
     assert default_model_slug(models, include_chatgpt=False) == "byok-1"
+
+
+def test_default_model_slug_falls_back_to_chatgpt_when_only_passthrough(tmp_path, auth_present):
+    from codex_shim.settings import CHATGPT_MODEL_SLUG, default_model_slug
+
+    settings = tmp_path / "models.json"
+    settings.write_text(json.dumps({"models": []}))
+    models = ModelSettings(settings).desktop_models()
+    assert default_model_slug(models, include_chatgpt=False) == CHATGPT_MODEL_SLUG
+
+
+def test_by_slug_or_model_prefers_chatgpt_passthrough_over_catalog_slug(tmp_path, auth_present, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "gpt-5.5",
+                        "model": "gpt-4o-mini",
+                        "displayName": "Fake GPT",
+                        "provider": "openai",
+                        "baseUrl": "http://127.0.0.1:9/v1",
+                        "apiKeyEnv": "OPENAI_API_KEY",
+                    }
+                ]
+            }
+        )
+    )
+    resolved = ModelSettings(settings).by_slug_or_model("gpt-5.5")
+    assert resolved is not None
+    assert resolved.is_chatgpt is True
+    assert resolved.provider == "chatgpt"
 
 
 def test_desktop_models_include_chatgpt_synthetic_model_when_auth_present(tmp_path, auth_present):

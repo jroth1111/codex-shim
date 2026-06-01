@@ -50,7 +50,7 @@ def _assert_fixture_live(shim_port: int, slug: str, fixture_name: str, *, stream
             headers={"session_id": f"live-fixture-{fixture_name}"},
             label=f"Fixture {fixture_name}",
         )
-        harness.validate_accepted_response(completed)
+        harness.validate_completed_response(completed)
     else:
         payload = harness.post_json(
             harness.responses_url(shim_port),
@@ -58,7 +58,7 @@ def _assert_fixture_live(shim_port: int, slug: str, fixture_name: str, *, stream
             headers={"session_id": f"live-fixture-{fixture_name}"},
             label=f"Fixture {fixture_name}",
         )
-        harness.validate_accepted_response(payload)
+        harness.validate_completed_response(payload)
 
 
 @pytest.fixture(params=harness.DESKTOP_INPUT_FIXTURES)

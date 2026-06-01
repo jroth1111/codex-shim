@@ -785,7 +785,9 @@ def _write_configured_row(settings_path: Path, row: dict) -> int:
         existing_key = str(existing.get("id") or existing.get("slug") or "")
         same_identity = existing.get("provider") == row.get("provider") and existing.get("model") == row.get("model")
         if (key and existing_key == key) or same_identity:
-            rows[index] = row
+            merged = dict(existing)
+            merged.update(row)
+            rows[index] = merged
             replaced = True
             break
     if not replaced:
@@ -865,7 +867,7 @@ def _redact_config(value):
         redacted = {}
         for key, item in value.items():
             normalized = re.sub(r"[^a-z0-9]+", "", str(key).lower())
-            if normalized in SENSITIVE_CONFIG_KEYS or any(marker in normalized for marker in ("apikey", "token", "secret")):
+            if normalized in SENSITIVE_CONFIG_KEYS or "apikey" in normalized or "secret" in normalized:
                 redacted[key] = REDACTED_VALUE if item else item
             else:
                 redacted[key] = _redact_config(item)

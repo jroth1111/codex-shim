@@ -365,6 +365,9 @@ class ModelSettings:
         models = self.load() if include_unavailable else self.desktop_models()
         requested = normalize_chatgpt_model_request(requested)
         by_slug = {m.slug: m for m in models}
+        chatgpt_model = chatgpt_passthrough_model()
+        if chatgpt_model is not None:
+            by_slug[CHATGPT_MODEL_SLUG] = chatgpt_model
         if requested in by_slug:
             return by_slug[requested]
         matches = [m for m in models if m.model == requested]
@@ -669,6 +672,8 @@ def default_model_slug(models: list[ShimModel], include_chatgpt: bool | None = N
     ]
     if visible_models:
         return visible_models[0].slug
+    if chatgpt_passthrough_available():
+        return CHATGPT_MODEL_SLUG
     raise ValueError(
         "No usable codex-shim models: add models to ~/.codex-shim/models.json, run `codex login`, "
         "or unset CODEX_SHIM_DISABLE_CHATGPT if ChatGPT passthrough should be used."

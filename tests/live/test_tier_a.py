@@ -34,7 +34,7 @@ def test_passthrough_fixture_tool_heavy_accepts(require_tier_a, shim_port: int):
         headers={"session_id": "live-tier-a-tool-heavy"},
         label="Tier A tool_heavy",
     )
-    harness.validate_accepted_response(completed)
+    harness.validate_completed_response(completed)
 
 
 def test_passthrough_previous_response_id_stripped(require_tier_a, shim_port: int):

@@ -42,11 +42,20 @@ INSPECTION_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
 KNOWN_DESKTOP_VERSIONS = tuple(sorted(PATCH_SPECS_BY_VERSION.keys(), reverse=True))
 
 
+def _version_matches_known_major(version: str, known: str) -> bool:
+    prefix = known.split(".", 1)[0]
+    if not version.startswith(prefix):
+        return False
+    if len(version) == len(prefix):
+        return True
+    return version[len(prefix)] == "."
+
+
 def patch_specs_for_version(version: str) -> list[PatchSpec]:
     if version in PATCH_SPECS_BY_VERSION:
         return list(PATCH_SPECS_BY_VERSION[version])
     for known in KNOWN_DESKTOP_VERSIONS:
-        if version.startswith(known.split(".")[0]):
+        if _version_matches_known_major(version, known):
             return list(PATCH_SPECS_BY_VERSION[known])
     if KNOWN_DESKTOP_VERSIONS:
         return list(PATCH_SPECS_BY_VERSION[KNOWN_DESKTOP_VERSIONS[0]])
@@ -57,7 +66,7 @@ def inspection_specs_for_version(version: str) -> list[PatchSpec]:
     if version in INSPECTION_SPECS_BY_VERSION:
         return list(INSPECTION_SPECS_BY_VERSION[version])
     for known in KNOWN_DESKTOP_VERSIONS:
-        if version.startswith(known.split(".")[0]):
+        if _version_matches_known_major(version, known):
             return list(INSPECTION_SPECS_BY_VERSION.get(known, patch_specs_for_version(version)))
     if KNOWN_DESKTOP_VERSIONS:
         return list(INSPECTION_SPECS_BY_VERSION.get(KNOWN_DESKTOP_VERSIONS[0], patch_specs_for_version(version)))

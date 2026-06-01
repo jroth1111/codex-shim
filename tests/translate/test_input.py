@@ -4,9 +4,31 @@ import pytest
 
 from codex_shim.translate import (
     ResponsesInputError,
+    responses_input_to_messages,
     responses_to_chat,
     validate_responses_input,
 )
+
+
+def test_responses_input_preserves_chat_format_tool_history():
+    messages = responses_input_to_messages(
+        [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": "lookup", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "call_1", "content": "ok"},
+        ]
+    )
+    assert messages[0]["tool_calls"][0]["id"] == "call_1"
+    assert messages[1] == {"role": "tool", "tool_call_id": "call_1", "content": "ok"}
 
 
 def test_validate_responses_input_rejects_unknown_item_type():

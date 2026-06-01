@@ -68,7 +68,14 @@ async def handle_responses_websocket(
             return ws
 
         if body.get("stream"):
-            await dispatch(request, body, ws_stream=WsStreamResponse(ws))
+            result = await dispatch(request, body, ws_stream=WsStreamResponse(ws))
+            if isinstance(result, web.Response) and result.status >= 400:
+                raw = result.body if isinstance(result.body, (bytes, bytearray)) else b"{}"
+                try:
+                    payload = json.loads(raw.decode())
+                except json.JSONDecodeError:
+                    payload = {"type": "error", "error": {"message": "Request failed"}}
+                await ws.send_json(payload)
         else:
             result = await dispatch(request, body)
             if isinstance(result, web.StreamResponse) and getattr(result, "text", None) is not None:

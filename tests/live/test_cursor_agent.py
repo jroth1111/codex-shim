@@ -94,7 +94,7 @@ def _assert_cursor_fixture_live(shim_port: int, slug: str, fixture_name: str) ->
         label=f"Cursor fixture {fixture_name}",
         timeout=CURSOR_TIMEOUT,
     )
-    harness.validate_accepted_response(payload)
+    harness.validate_completed_response(payload)
 
 
 def test_cursor_auto_configured_in_settings(settings_path, cursor_route):

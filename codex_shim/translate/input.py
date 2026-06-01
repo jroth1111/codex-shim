@@ -75,6 +75,25 @@ def responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             role = item.get("role", "user")
             if role == "developer":
                 role = "system"
+            if role == "tool":
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": item.get("tool_call_id"),
+                        "content": responses_content_to_chat_content(item.get("content", "")),
+                    }
+                )
+                continue
+            tool_calls = item.get("tool_calls")
+            if role == "assistant" and isinstance(tool_calls, list) and tool_calls:
+                content = item.get("content")
+                message: dict[str, Any] = {"role": "assistant", "tool_calls": tool_calls}
+                if content is not None and content != "":
+                    message["content"] = responses_content_to_chat_content(content)
+                else:
+                    message["content"] = None
+                messages.append(message)
+                continue
             messages.append({"role": role, "content": responses_content_to_chat_content(item.get("content", ""))})
         elif item_type in {"input_text", "text", "input_image", "input_audio"}:
             flush_pending_assistant_tool_calls()
