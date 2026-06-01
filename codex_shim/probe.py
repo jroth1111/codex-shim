@@ -202,8 +202,10 @@ def probe_all(settings_path: Path, port: int, slug: str | None = None, *, live: 
     if exit_code != 0:
         return exit_code
     if not harness.shim_reachable(port):
-        print("Shim daemon not reachable; skipping live probes.")
-        print("  Start with: codex-shim serve")
+        print("Shim daemon not reachable; skipping live probes.", file=sys.stderr)
+        print("  Start with: codex-shim serve", file=sys.stderr)
+        if live:
+            return 1
         return 0
     for label, runner in (
         ("history", lambda: probe_history(settings_path, port, slug)),

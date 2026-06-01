@@ -47,6 +47,7 @@ def test_response_store_session_scope_has_no_global_fallback(tmp_path, monkeypat
     store = ResponseStore(path=db)
     store.put("resp_1", [{"id": "global"}])
     assert store.get("resp_1", "sess-a") is None
+    assert store.get("resp_1", "") == [{"id": "global"}]
     store.close()
 
 

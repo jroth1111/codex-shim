@@ -588,6 +588,31 @@ def test_chatgpt_passthrough_available_requires_access_token(tmp_path):
     assert chatgpt_passthrough_available(valid) is True
 
 
+def test_default_model_slug_skips_chatgpt_when_include_chatgpt_false(tmp_path, auth_present, monkeypatch):
+    from codex_shim.settings import default_model_slug
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "byok-1",
+                        "model": "gpt-4o-mini",
+                        "displayName": "BYOK",
+                        "provider": "openai",
+                        "baseUrl": "http://127.0.0.1:9/v1",
+                        "apiKeyEnv": "OPENAI_API_KEY",
+                    }
+                ]
+            }
+        )
+    )
+    models = ModelSettings(settings).desktop_models()
+    assert default_model_slug(models, include_chatgpt=False) == "byok-1"
+
+
 def test_desktop_models_include_chatgpt_synthetic_model_when_auth_present(tmp_path, auth_present):
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))

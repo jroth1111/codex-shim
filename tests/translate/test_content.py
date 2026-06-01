@@ -7,6 +7,18 @@ from codex_shim.translate import (
     responses_to_anthropic,
     responses_to_chat,
 )
+from codex_shim.translate.content import chat_parts_from_content
+
+
+def test_chat_parts_from_content_handles_nested_visual_output():
+    parts = chat_parts_from_content(
+        {
+            "output": [{"type": "input_image", "image_url": "data:image/png;base64,BBB"}],
+        }
+    )
+    assert parts == [
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,BBB"}},
+    ]
 
 
 def test_responses_to_chat_preserves_input_images_for_vision_models():

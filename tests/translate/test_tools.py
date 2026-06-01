@@ -63,7 +63,7 @@ def test_normalize_web_search_action_find_in_page_from_find_key():
     from codex_shim.translate import normalize_web_search_action
 
     action = normalize_web_search_action({"find": "TODO"}, "")
-    assert action["type"] == "find_in_page"
+    assert action == {"type": "find_in_page", "pattern": "TODO"}
 
 
 def test_normalize_web_search_action_defaults_to_search_for_unknown_dict():
@@ -72,6 +72,18 @@ def test_normalize_web_search_action_defaults_to_search_for_unknown_dict():
     action = normalize_web_search_action({"query": "weather"}, "")
     assert action["type"] == "search"
     assert action["query"] == "weather"
+
+
+def test_normalize_web_search_action_strips_unknown_fields_for_known_type():
+    from codex_shim.desktop_validate import assert_web_search_action
+    from codex_shim.translate import normalize_web_search_action
+
+    action = normalize_web_search_action(
+        {"type": "search", "query": "docs", "metadata": {"source": "desktop"}},
+        "",
+    )
+    assert action == {"type": "search", "query": "docs"}
+    assert_web_search_action(action)
 
 
 def test_normalize_web_search_action_falls_back_to_search_from_raw_args():

@@ -247,8 +247,7 @@ class ShimServer:
         try:
             session_id = request.headers.get("session_id", "") or ""
             body = self._body_with_previous_response(body, session_id)
-            if session_id:
-                body["_shim_session_id"] = session_id
+            body["_shim_session_id"] = session_id
         except KeyError as exc:
             return web.json_response(
                 {"error": {"type": "not_found", "message": f"Unknown previous_response_id: {exc.args[0]}"}},
@@ -309,6 +308,7 @@ class ShimServer:
         combined = dict(body)
         combined.pop("previous_response_id", None)
         combined["input"] = previous_items + _responses_items_from_input(body.get("input"))
+        combined["_shim_chained_from_previous"] = True
         return combined
 
     def _store_response_history(
@@ -323,7 +323,7 @@ class ShimServer:
         session_id = str(request_body.get("_shim_session_id") or "")
         items: list[dict[str, Any]] = []
         instructions = request_body.get("instructions")
-        if instructions:
+        if instructions and not request_body.get("_shim_chained_from_previous"):
             items.append(
                 {
                     "type": "message",
@@ -344,8 +344,6 @@ class ShimServer:
 
     def _store_body_with_session(self, body: dict[str, Any], request: web.Request) -> dict[str, Any]:
         session_id = request.headers.get("session_id", "") or ""
-        if not session_id:
-            return body
         store_body = dict(body)
         store_body["_shim_session_id"] = session_id
         return store_body
@@ -567,7 +565,7 @@ class ShimServer:
             )
         provider_started_at = time.monotonic()
         try:
-            result = await run_cursor_acp(route, body)
+            result = await _await_cursor_inference(run_cursor_acp(route, body))
         except CursorAcpError as exc:
             _log_access(
                 request,
@@ -631,7 +629,7 @@ class ShimServer:
             )
         provider_started_at = time.monotonic()
         try:
-            result = await run_cursor_cli(route, body)
+            result = await _await_cursor_inference(run_cursor_cli(route, body))
         except CursorCliError as exc:
             _log_access(
                 request,

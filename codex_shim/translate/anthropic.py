@@ -12,7 +12,7 @@ from .tool_schema import responses_tools_to_anthropic_tools
 def responses_to_anthropic(body: dict[str, Any], upstream_model: str, max_tokens: int | None) -> dict[str, Any]:
     system_parts: list[str] = []
     instructions = body.get("instructions")
-    if instructions:
+    if instructions and not body.get("_shim_chained_from_previous"):
         system_parts.append(content_to_text(instructions))
 
     messages: list[dict[str, Any]] = []

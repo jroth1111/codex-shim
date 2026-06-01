@@ -205,6 +205,11 @@ def validate_history_response(first: dict[str, Any], second: dict[str, Any]) -> 
         response_id = str(second.get("id") or "")
         if not response_id:
             raise IntegrationHarnessError("First response missing id for previous_response_id probe.")
+        if second.get("status") != "completed":
+            raise IntegrationHarnessError(f"First response status={second.get('status')!r}")
+        output = second.get("output")
+        if not isinstance(output, list) or not output:
+            raise IntegrationHarnessError("First response has no output items.")
         return
     if second.get("status") != "completed":
         raise IntegrationHarnessError(f"Follow-up response status={second.get('status')!r}")

@@ -662,7 +662,11 @@ def default_model_slug(models: list[ShimModel], include_chatgpt: bool | None = N
         include_chatgpt = chatgpt_passthrough_available()
     if include_chatgpt:
         return CHATGPT_MODEL_SLUG
-    visible_models = [model for model in models if getattr(model, "visible", True)]
+    visible_models = [
+        model
+        for model in models
+        if getattr(model, "visible", True) and model.slug != CHATGPT_MODEL_SLUG
+    ]
     if visible_models:
         return visible_models[0].slug
     raise ValueError(

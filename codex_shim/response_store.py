@@ -68,7 +68,7 @@ class ResponseStore:
         )
 
     def _storage_id(self, response_id: str, session_id: str = "") -> str:
-        if self.scope == "session" and session_id:
+        if self.scope == "session":
             return f"{session_id}::{response_id}"
         return response_id
 

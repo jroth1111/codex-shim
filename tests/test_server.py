@@ -562,6 +562,116 @@ async def test_responses_previous_response_id_replays_stored_window(tmp_path):
     await upstream_client.close()
 
 
+async def test_responses_previous_response_id_requires_consistent_session_id(tmp_path):
+    async def chat(request):
+        return web.json_response(
+            {"id": "chatcmpl_first", "choices": [{"message": {"role": "assistant", "content": "first answer"}}]}
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    first = await shim_client.post("/v1/responses", json={"model": "real-openai", "input": "first"})
+    assert first.status == 200
+    first_payload = await first.json()
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "previous_response_id": first_payload["id"], "input": "second"},
+        headers={"session_id": "later-session"},
+    )
+    assert second.status == 404
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_chained_turn_does_not_duplicate_instructions(tmp_path):
+    captured: list[dict] = []
+
+    async def chat(request):
+        body = await request.json()
+        captured.append(body)
+        turn = len(captured)
+        return web.json_response(
+            {
+                "id": "chatcmpl_first" if turn == 1 else "chatcmpl_second",
+                "choices": [{"message": {"role": "assistant", "content": "ok"}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    instructions = "Stay concise."
+    first = await shim_client.post(
+        "/v1/responses",
+        json={"model": "real-openai", "input": "first", "instructions": instructions},
+        headers={"session_id": "instr-session"},
+    )
+    assert first.status == 200
+    first_payload = await first.json()
+
+    second = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "real-openai",
+            "previous_response_id": first_payload["id"],
+            "input": "second",
+            "instructions": instructions,
+        },
+        headers={"session_id": "instr-session"},
+    )
+    assert second.status == 200
+
+    system_messages = [message for message in captured[1]["messages"] if message.get("role") == "system"]
+    assert len(system_messages) == 1
+    assert system_messages[0]["content"] == instructions
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
 async def test_responses_previous_response_id_unknown_returns_404(tmp_path):
     settings = tmp_path / "settings.json"
     settings.write_text(

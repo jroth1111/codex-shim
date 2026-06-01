@@ -5,6 +5,7 @@ from typing import Any
 
 from ..desktop_contract import (
     DESKTOP_LOCAL_SHELL_ACTION_FIELDS,
+    DESKTOP_WEB_SEARCH_ACTION_FIELDS,
     DESKTOP_WEB_SEARCH_ACTION_TYPES,
 )
 from ..desktop_validate import assert_image_generation_action, assert_local_shell_action, assert_web_search_action
@@ -21,19 +22,32 @@ NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME = {
 WEB_SEARCH_ACTION_TYPES = DESKTOP_WEB_SEARCH_ACTION_TYPES
 
 
+def _filtered_web_search_action(action_type: str, parsed: dict[str, Any]) -> dict[str, Any]:
+    allowed = DESKTOP_WEB_SEARCH_ACTION_FIELDS.get(action_type, frozenset())
+    return {
+        key: parsed[key]
+        for key in parsed
+        if key == "type" or key in allowed
+    }
+
+
 def normalize_web_search_action(parsed: dict[str, Any] | None, arguments: str) -> dict[str, Any]:
     if isinstance(parsed, dict):
         action_type = parsed.get("type")
         if action_type in WEB_SEARCH_ACTION_TYPES:
-            return dict(parsed)
+            return _filtered_web_search_action(str(action_type), parsed)
         if "url" in parsed and action_type != "search":
-            return {"type": "open_page", **parsed}
+            merged = {"type": "open_page", **parsed}
+            return _filtered_web_search_action("open_page", merged)
         if "pattern" in parsed or "find" in parsed:
             merged = dict(parsed)
             merged.setdefault("type", "find_in_page")
-            return merged
+            if "find" in merged and "pattern" not in merged:
+                merged["pattern"] = merged.pop("find")
+            return _filtered_web_search_action("find_in_page", merged)
         if parsed:
-            return {"type": "search", **parsed}
+            merged = {"type": "search", **parsed}
+            return _filtered_web_search_action("search", merged)
     query = arguments.strip()
     return {"type": "search", "query": query}
 

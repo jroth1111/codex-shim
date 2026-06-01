@@ -481,14 +481,19 @@ def doctor_patch() -> int:
     if workdir is None:
         print("Could not inspect app.asar bundles.")
         return 1
-    inspection = _inspect_codex_desktop_bundles(workdir, version=version)
-    ok = True
-    for report in inspection:
-        path_note = f" ({report['path']})" if report.get("path") else ""
-        print(f"  {report['label']}: {report['status']}{path_note}")
-        if report["status"] in {"missing", "mixed"} and report.get("optional", "false") != "true":
-            ok = False
-    return 0 if ok else 1
+    try:
+        inspection = _inspect_codex_desktop_bundles(workdir, version=version)
+        ok = True
+        for report in inspection:
+            path_note = f" ({report['path']})" if report.get("path") else ""
+            print(f"  {report['label']}: {report['status']}{path_note}")
+            if report["status"] in {"missing", "mixed"} and report.get("optional", "false") != "true":
+                ok = False
+        return 0 if ok else 1
+    finally:
+        import shutil
+
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 def doctor_contract() -> int:

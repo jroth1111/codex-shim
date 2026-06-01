@@ -67,7 +67,7 @@ def chat_parts_from_content(content: Any) -> list[dict[str, Any]]:
             return [image] if image else []
         if content_type == "computer_call_output":
             return chat_parts_from_content(content.get("output"))
-        if "output" in content and _has_visual_content(content.get("output")):
+        if "output" in content and has_visual_content(content.get("output")):
             return chat_parts_from_content(content.get("output"))
         if "content" in content:
             return chat_parts_from_content(content["content"])
