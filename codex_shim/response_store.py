@@ -72,12 +72,21 @@ class ResponseStore:
             return f"{session_id}::{response_id}"
         return response_id
 
+    def _lookup_storage_ids(self, response_id: str, session_id: str = "") -> tuple[str, ...]:
+        primary = self._storage_id(response_id, session_id)
+        if self.scope == "session" and session_id == "" and primary != response_id:
+            return (primary, response_id)
+        return (primary,)
+
     def get(self, response_id: str, session_id: str = "") -> list[dict[str, Any]] | None:
-        storage_id = self._storage_id(response_id, session_id)
-        row = self._conn.execute(
-            "SELECT items_json, id FROM responses WHERE id = ?",
-            (storage_id,),
-        ).fetchone()
+        row = None
+        for storage_id in self._lookup_storage_ids(response_id, session_id):
+            row = self._conn.execute(
+                "SELECT items_json, id FROM responses WHERE id = ?",
+                (storage_id,),
+            ).fetchone()
+            if row is not None:
+                break
         if row is None:
             return None
         self._conn.execute(
@@ -100,6 +109,8 @@ class ResponseStore:
         storage_id = self._storage_id(response_id, session_id)
         scoped_session = session_id if self.scope == "session" and session_id else ""
         payload = json.dumps(items, separators=(",", ":"))
+        if self.scope == "session" and session_id == "" and storage_id != response_id:
+            self._conn.execute("DELETE FROM responses WHERE id = ?", (response_id,))
         self._conn.execute(
             """
             INSERT INTO responses (id, items_json, created_at, session_id, model)
