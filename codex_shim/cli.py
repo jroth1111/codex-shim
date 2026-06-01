@@ -822,6 +822,15 @@ SENSITIVE_CONFIG_KEYS = {
     "token",
 }
 REDACTED_VALUE = "***REDACTED***"
+_CREDENTIAL_TOKEN_KEY = re.compile(r"(access|refresh|bearer|id)token$")
+
+
+def _is_sensitive_config_key(normalized: str) -> bool:
+    if normalized in SENSITIVE_CONFIG_KEYS:
+        return True
+    if "apikey" in normalized or "secret" in normalized:
+        return True
+    return _CREDENTIAL_TOKEN_KEY.search(normalized) is not None
 
 
 def export_config(settings_path: Path, output_path: Path, *, redact: bool = True) -> int:
@@ -867,7 +876,7 @@ def _redact_config(value):
         redacted = {}
         for key, item in value.items():
             normalized = re.sub(r"[^a-z0-9]+", "", str(key).lower())
-            if normalized in SENSITIVE_CONFIG_KEYS or "apikey" in normalized or "secret" in normalized:
+            if _is_sensitive_config_key(normalized):
                 redacted[key] = REDACTED_VALUE if item else item
             else:
                 redacted[key] = _redact_config(item)

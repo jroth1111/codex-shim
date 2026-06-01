@@ -502,6 +502,31 @@ def test_export_config_redacts_secrets_by_default(tmp_path):
     assert row["model"] == "secret-model"
 
 
+def test_export_config_redacts_credential_token_fields(tmp_path):
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "model": "m",
+                        "display_name": "M",
+                        "provider": "openai",
+                        "base_url": "http://x/v1",
+                        "access_token": "live-access",
+                        "refresh_token": "live-refresh",
+                    }
+                ]
+            }
+        )
+    )
+    output = tmp_path / "export.json"
+    assert cli.export_config(settings, output) == 0
+    row = json.loads(output.read_text())["models"][0]
+    assert row["access_token"] == cli.REDACTED_VALUE
+    assert row["refresh_token"] == cli.REDACTED_VALUE
+
+
 def test_export_config_preserves_non_secret_token_limit_fields(tmp_path):
     settings = tmp_path / "models.json"
     settings.write_text(
