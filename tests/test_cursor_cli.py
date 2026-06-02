@@ -15,6 +15,11 @@ from codex_shim.server import ShimServer
 from codex_shim.settings import ModelSettings, ShimModel
 
 
+def _check(condition: bool, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 FAKE_CURSOR_CLI = r'''
 from __future__ import annotations
 
@@ -70,6 +75,10 @@ if output_format == "stream-json":
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
     if stream_style == "invalid-before-result":
         print("not json")
+    if stream_style == "unknown-events":
+        print(json.dumps({"type": "new_event_type", "payload": {"v": 1}, "session_id": session_id}))
+        print(json.dumps({"type": "thinking", "subtype": "completed", "session_id": session_id}))
+        print(json.dumps({"type": "thinking", "subtype": "completed", "session_id": session_id}))
     if stream_style == "long-line":
         long_text = "x" * 70000
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": long_text}]}, "session_id": session_id, "timestamp_ms": 1}))
@@ -148,8 +157,8 @@ def test_cursor_agent_provider_defaults_to_forkandflag_cli_flags():
 
     config = cursor_cli_config(model)
 
-    assert config.command == "cursor"
-    assert config.args == ["agent", "--print", "--trust", "--yolo", "--model", "auto"]
+    _check(config.command == "cursor")
+    _check(config.args == ["agent", "--print", "--trust", "--yolo", "--model", "auto"])
 
 
 def test_cursor_agent_provider_loads_without_base_url(tmp_path):
@@ -157,10 +166,10 @@ def test_cursor_agent_provider_loads_without_base_url(tmp_path):
 
     [model] = ModelSettings(settings).load()
 
-    assert model.provider == "cursor-agent"
-    assert model.base_url == ""
-    assert model.is_cursor_cli is True
-    assert model.is_cursor_acp is False
+    _check(model.provider == "cursor-agent")
+    _check(model.base_url == "")
+    _check(model.is_cursor_cli is True)
+    _check(model.is_cursor_acp is False)
 
 
 async def test_responses_routes_to_cursor_agent_cli(tmp_path):
@@ -173,16 +182,17 @@ async def test_responses_routes_to_cursor_agent_cli(tmp_path):
         json={"model": "auto", "instructions": "Be terse.", "input": [{"role": "user", "content": "Say hello."}]},
     )
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     payload = await resp.json()
-    assert payload["model"] == "auto"
-    assert payload["output"][0]["content"][0]["text"] == "Cursor CLI"
-    assert payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+    _check(payload["model"] == "auto")
+    _check(payload["output"][0]["content"][0]["text"] == "Cursor CLI")
+    _check(payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})
+    _check(payload["metadata"]["shim_route"]["transport"] == "cursor_cli")
     argv = _capture(capture)[0]["argv"]
-    assert argv[:6] == ["agent", "--print", "--trust", "--yolo", "--model", "auto"]
-    assert argv[6:8] == ["--output-format", "json"]
-    assert "SYSTEM:\nBe terse." in argv[-1]
-    assert "USER:\nSay hello." in argv[-1]
+    _check(argv[:6] == ["agent", "--print", "--trust", "--yolo", "--model", "auto"])
+    _check(argv[6:8] == ["--output-format", "json"])
+    _check("SYSTEM:\nBe terse." in argv[-1])
+    _check("USER:\nSay hello." in argv[-1])
 
     await shim_client.close()
 
@@ -194,15 +204,15 @@ async def test_streaming_responses_routes_to_cursor_agent_cli(tmp_path):
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     deltas = [event["delta"] for event in events if event.get("type") == "response.output_text.delta"]
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
-    assert deltas == ["Cursor ", "CLI"]
-    assert completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI"
-    assert completed["response"]["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+    _check(deltas == ["Cursor ", "CLI"])
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI")
+    _check(completed["response"]["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})
     argv = _capture(capture)[0]["argv"]
-    assert argv[6:9] == ["--output-format", "stream-json", "--stream-partial-output"]
+    _check(argv[6:9] == ["--output-format", "stream-json", "--stream-partial-output"])
 
     await shim_client.close()
 
@@ -214,12 +224,12 @@ async def test_streaming_responses_uses_aggregate_cursor_event_when_partials_are
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     deltas = [event["delta"] for event in events if event.get("type") == "response.output_text.delta"]
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
-    assert deltas == ["Cursor CLI"]
-    assert completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI"
+    _check(deltas == ["Cursor CLI"])
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI")
 
     await shim_client.close()
 
@@ -231,10 +241,28 @@ async def test_streaming_responses_ignores_malformed_cursor_cli_lines(tmp_path):
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
-    assert completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI"
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI")
+    _check(completed["response"]["metadata"]["shim_anomalies"]["malformed_cursor_events"] >= 1)
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_reports_unknown_cursor_events_in_metadata(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="unknown-events")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    _check(resp.status == 200)
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    anomalies = completed["response"]["metadata"]["shim_anomalies"]
+    _check("new_event_type" in anomalies["unknown_cursor_event_types"])
+    _check(anomalies["duplicate_reasoning_completed"] >= 1)
 
     await shim_client.close()
 
@@ -246,12 +274,12 @@ async def test_streaming_responses_accepts_long_cursor_cli_json_lines(tmp_path):
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     text = completed["response"]["output"][0]["content"][0]["text"]
-    assert len(text) == 70000
-    assert text == "x" * 70000
+    _check(len(text) == 70000)
+    _check(text == "x" * 70000)
 
     await shim_client.close()
 
@@ -263,12 +291,12 @@ async def test_streaming_responses_emits_tool_items_from_cursor_cli_events(tmp_p
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     opened = [event for event in events if event.get("type") == "response.output_item.added"]
     completed = [event for event in events if event.get("type") == "response.output_item.done"]
-    assert any(event["item"].get("type") == "local_shell_call" for event in opened)
-    assert any(event["item"].get("type") == "local_shell_call" for event in completed)
+    _check(any(event["item"].get("type") == "local_shell_call" for event in opened))
+    _check(any(event["item"].get("type") == "local_shell_call" for event in completed))
 
     await shim_client.close()
 
@@ -280,12 +308,12 @@ async def test_streaming_responses_maps_cursor_tool_case_to_native_call(tmp_path
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     tool_items = [item for item in completed["response"]["output"] if item.get("type") == "local_shell_call"]
-    assert tool_items
-    assert tool_items[0]["action"]["command"] == "pwd"
+    _check(bool(tool_items))
+    _check(tool_items[0]["action"]["command"] == "pwd")
 
     await shim_client.close()
 
@@ -300,11 +328,11 @@ async def test_responses_cursor_cli_nonzero_exit_returns_502(tmp_path):
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi"})
 
-    assert resp.status == 502
+    _check(resp.status == 502)
     payload = await resp.json()
-    assert payload["error"]["type"] == "cursor_cli_error"
-    assert "exited 42" in payload["error"]["message"]
-    assert "plan limit reached" in payload["error"]["message"]
+    _check(payload["error"]["type"] == "cursor_cli_error")
+    _check("exited 42" in payload["error"]["message"])
+    _check("plan limit reached" in payload["error"]["message"])
 
     await shim_client.close()
 
@@ -320,10 +348,10 @@ async def test_responses_cursor_cli_timeout_returns_502(tmp_path):
 
     resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi"})
 
-    assert resp.status == 502
+    _check(resp.status == 502)
     payload = await resp.json()
-    assert payload["error"]["type"] == "cursor_cli_error"
-    assert "Timed out waiting for Cursor Agent command" in payload["error"]["message"]
+    _check(payload["error"]["type"] == "cursor_cli_error")
+    _check("Timed out waiting for Cursor Agent command" in payload["error"]["message"])
 
     await shim_client.close()
 
@@ -338,14 +366,14 @@ async def test_chat_completions_stream_routes_to_cursor_agent_cli(tmp_path):
         json={"model": "auto", "messages": [{"role": "user", "content": "hi"}], "stream": True},
     )
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     events = _sse_events(await resp.text())
     deltas = [event["choices"][0]["delta"].get("content") for event in events if event["choices"][0]["delta"]]
     done = [event for event in events if event["choices"][0]["finish_reason"] == "stop"][-1]
-    assert deltas == ["Cursor ", "CLI"]
-    assert done["model"] == "auto"
+    _check(deltas == ["Cursor ", "CLI"])
+    _check(done["model"] == "auto")
     argv = _capture(capture)[0]["argv"]
-    assert argv[6:9] == ["--output-format", "stream-json", "--stream-partial-output"]
+    _check(argv[6:9] == ["--output-format", "stream-json", "--stream-partial-output"])
 
     await shim_client.close()
 
@@ -357,20 +385,20 @@ async def test_compact_routes_to_cursor_agent_cli(tmp_path):
 
     resp = await shim_client.post("/v1/responses/compact", json={"model": "auto", "input": "old state", "stream": True})
 
-    assert resp.status == 200
+    _check(resp.status == 200)
     payload = await resp.json()
-    assert payload["status"] == "completed"
-    assert payload["model"] == "auto"
-    assert payload["output"][-1]["type"] == "context_compaction"
-    assert payload["output"][-1]["summary"][0]["text"] == "Cursor CLI"
-    assert payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+    _check(payload["status"] == "completed")
+    _check(payload["model"] == "auto")
+    _check(payload["output"][-1]["type"] == "context_compaction")
+    _check(payload["output"][-1]["summary"][0]["text"] == "Cursor CLI")
+    _check(payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})
 
     await shim_client.close()
 
 
 def _route_from_settings(settings_path) -> ShimModel:
     models = ModelSettings(settings_path).load()
-    assert len(models) == 1
+    _check(len(models) == 1)
     return models[0]
 
 
@@ -406,7 +434,7 @@ async def test_cursor_cli_cancel_during_stream_kills_child(tmp_path):
         if pid_file.exists():
             break
         await asyncio.sleep(0.05)
-    assert pid_file.exists(), "fake cursor CLI did not write child pid file"
+    _check(pid_file.exists(), "fake cursor CLI did not write child pid file")
     pid = int(pid_file.read_text())
     task.cancel()
     with suppress(asyncio.CancelledError):
@@ -415,7 +443,7 @@ async def test_cursor_cli_cancel_during_stream_kills_child(tmp_path):
         if _child_pid_gone(pid):
             break
         await asyncio.sleep(0.05)
-    assert _child_pid_gone(pid), f"child process {pid} still running after task cancel"
+    _check(_child_pid_gone(pid), f"child process {pid} still running after task cancel")
 
 
 @pytest.mark.asyncio
@@ -437,7 +465,7 @@ async def test_cursor_cli_cancel_during_json_kills_child(tmp_path):
         if pid_file.exists():
             break
         await asyncio.sleep(0.05)
-    assert pid_file.exists()
+    _check(pid_file.exists())
     pid = int(pid_file.read_text())
     task.cancel()
     with suppress(asyncio.CancelledError):
@@ -446,7 +474,7 @@ async def test_cursor_cli_cancel_during_json_kills_child(tmp_path):
         if _child_pid_gone(pid):
             break
         await asyncio.sleep(0.05)
-    assert _child_pid_gone(pid)
+    _check(_child_pid_gone(pid))
 
 
 @pytest.mark.asyncio
@@ -468,13 +496,13 @@ async def test_cursor_cli_timeout_kills_child(tmp_path):
     with pytest.raises(CursorCliError, match="Timed out"):
         await run_cursor_cli(route, {"model": "auto", "input": "hi"})
 
-    assert pid_file.exists()
+    _check(pid_file.exists())
     pid = int(pid_file.read_text())
     for _ in range(50):
         if _child_pid_gone(pid):
             break
         await asyncio.sleep(0.05)
-    assert _child_pid_gone(pid)
+    _check(_child_pid_gone(pid))
 
 
 def test_cursor_cli_output_format_args_are_not_duplicated():
@@ -482,10 +510,10 @@ def test_cursor_cli_output_format_args_are_not_duplicated():
 
     args = ["agent", "--print", "--output-format", "json"]
 
-    assert _with_output_format(args, "stream-json", stream_partial=True) == [
+    _check(_with_output_format(args, "stream-json", stream_partial=True) == [
         "agent",
         "--print",
         "--output-format",
         "stream-json",
         "--stream-partial-output",
-    ]
+    ])
