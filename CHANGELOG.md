@@ -7,6 +7,10 @@ and this project does not yet follow semantic versioning (pre-1.0).
 
 ## Unreleased
 
+### Notes
+
+- Verified parity with four downstream `origin` feature branches (`feat/compact-native-tools`, `feat/model-picker-web-ui`, `fix/streaming-usage-compaction-main`, `fix/visual-feedback-passthrough`); see [`docs/DOWNSTREAM_PARITY.md`](docs/DOWNSTREAM_PARITY.md). No additional code ports required beyond the modular fork refactor.
+
 ### Added
 
 - `POST /v1/responses/compact` support. ChatGPT passthrough forwards to the
