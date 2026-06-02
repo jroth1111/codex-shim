@@ -29,6 +29,25 @@ hooks-settings-model-*.js
 model-queries-*.js
 normalize-model-settings-*.js
 
+# Decompiled/reverse-engineering artifacts
+decompile/
+decompiled/
+decompilation/
+decompilation-output/
+decompiler-output/
+reverse-engineering/
+reverse-engineered/
+ghidra_projects/
+ghidra_project/
+jadx-output/
+jadx-project/
+jd-gui-output/
+apktool-output/
+*.jadx
+*.dex2jar
+*.smali
+*.jasm
+
 # Python
 __pycache__/
 *.pyc
