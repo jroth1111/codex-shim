@@ -21,6 +21,14 @@ class CursorCliError(RuntimeError):
     """Raised when the headless Cursor Agent CLI cannot complete a turn."""
 
 
+def _base_subprocess_env(overrides: dict[str, str]) -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(overrides)
+    # Some wrapper installs run with `set -u` and assume HOME is always present.
+    env.setdefault("HOME", str(Path.home()))
+    return env
+
+
 @dataclass(frozen=True)
 class CursorCliConfig:
     command: str = "cursor"
@@ -118,8 +126,7 @@ async def _run_stream_json(
     on_event: EventCallback | None = None,
 ) -> CursorAcpResult:
     args = _with_output_format(config.args, "stream-json", stream_partial=True)
-    env = os.environ.copy()
-    env.update(config.env)
+    env = _base_subprocess_env(config.env)
     try:
         proc = await asyncio.create_subprocess_exec(
             config.command,
@@ -219,8 +226,7 @@ async def _consume_stream(
 
 async def _run(config: CursorCliConfig, prompt: str, *, args: list[str] | None = None) -> tuple[str, str]:
     argv = args or config.args
-    env = os.environ.copy()
-    env.update(config.env)
+    env = _base_subprocess_env(config.env)
     try:
         proc = await asyncio.create_subprocess_exec(
             config.command,
