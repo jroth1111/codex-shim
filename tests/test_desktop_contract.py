@@ -6,6 +6,8 @@ from codex_shim.desktop_contract import (
     DESKTOP_IMAGE_GENERATION_ACTION_FIELDS,
     DESKTOP_LOCAL_SHELL_ACTION_FIELDS,
     DESKTOP_RESPONSE_ITEM_TYPES,
+    DESKTOP_THREAD_SETTINGS_FIELDS,
+    DESKTOP_THREAD_START_PARAM_FIELDS,
     DESKTOP_WEB_SEARCH_ACTION_FIELDS,
     DESKTOP_WEB_SEARCH_ACTION_TYPES,
     SHIM_EXTRA_RESPONSE_INPUT_TYPES,
@@ -24,6 +26,11 @@ def test_generated_desktop_contract_covers_known_response_items():
     assert "local_shell_call" in DESKTOP_RESPONSE_ITEM_TYPES
     assert "image_generation_call" in DESKTOP_RESPONSE_ITEM_TYPES
     assert "mcp_tool_call" in SHIM_EXTRA_RESPONSE_INPUT_TYPES
+
+
+def test_generated_desktop_contract_covers_thread_metadata_fields():
+    assert "sandboxPolicy" in DESKTOP_THREAD_SETTINGS_FIELDS
+    assert DESKTOP_THREAD_START_PARAM_FIELDS
 
 
 def test_generated_desktop_contract_covers_hosted_tool_action_shapes():

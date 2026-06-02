@@ -498,12 +498,20 @@ def doctor_patch() -> int:
 
 
 def doctor_contract() -> int:
-    script = PROJECT_ROOT / "scripts" / "generate_desktop_contract.py"
-    if not script.exists():
-        print(f"Desktop contract generator not found: {script}", file=sys.stderr)
-        return 1
-    result = subprocess.run([sys.executable, str(script), "--check"], cwd=PROJECT_ROOT)
-    return result.returncode
+    scripts = (
+        PROJECT_ROOT / "scripts" / "generate_desktop_contract.py",
+        PROJECT_ROOT / "scripts" / "generate_desktop_app_server_contract.py",
+    )
+    exit_code = 0
+    for script in scripts:
+        if not script.exists():
+            print(f"Desktop contract generator not found: {script}", file=sys.stderr)
+            exit_code = 1
+            continue
+        result = subprocess.run([sys.executable, str(script), "--check"], cwd=PROJECT_ROOT)
+        if result.returncode != 0:
+            exit_code = result.returncode
+    return exit_code
 
 
 DESKTOP_CATALOG_KEYS = {
