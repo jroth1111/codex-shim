@@ -66,6 +66,7 @@ from .settings import (
     ShimModel,
     chatgpt_passthrough_available,
 )
+from .capabilities import route_capabilities
 from .streaming import ClientDisconnected, ResponsesStreamState
 from .streaming import anthropic_stream_to_chat_chunk as _anthropic_stream_to_chat_chunk
 from .streaming import open_stream_sink as _open_stream_sink
@@ -130,6 +131,40 @@ def _executed_tool_count_from_response_payload(response_payload: dict[str, Any] 
         if t in tool_types or t.endswith("_call") or t.endswith("_result"):
             count += 1
     return count
+
+
+def _shim_response_metadata(route: ShimModel, prepared: PreparedResponsesRequest | None) -> dict[str, Any]:
+    caps = route_capabilities(route)
+    metadata: dict[str, Any] = {
+        "shim_route": {
+            "provider": route.provider,
+            "transport": route.transport,
+            "capabilities": {
+                "local_shell": caps.local_shell,
+                "web_search": caps.web_search,
+                "tool_search": caps.tool_search,
+                "image_generation": caps.image_generation,
+                "mcp_tools": caps.mcp_tools,
+                "reasoning": caps.reasoning,
+            },
+        }
+    }
+    if prepared is not None and prepared.chained_from_previous:
+        metadata["shim_history"] = {"expanded_previous_response_id": True}
+    return metadata
+
+
+def _attach_response_metadata(
+    response_payload: dict[str, Any],
+    route: ShimModel,
+    prepared: PreparedResponsesRequest | None,
+) -> dict[str, Any]:
+    payload = dict(response_payload)
+    existing = payload.get("metadata")
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    merged.update(_shim_response_metadata(route, prepared))
+    payload["metadata"] = merged
+    return payload
 
 
 class ShimServer:
@@ -694,7 +729,11 @@ class ShimServer:
             payload = await upstream.json(content_type=None)
             provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
-            response_payload = chat_completion_to_response(payload, route.slug)
+            response_payload = _attach_response_metadata(
+                chat_completion_to_response(payload, route.slug),
+                route,
+                prepared,
+            )
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
             resp = web.json_response(response_payload)
@@ -755,7 +794,11 @@ class ShimServer:
             payload = await upstream.json(content_type=None)
             provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
-            response_payload = anthropic_to_response(payload, route.slug)
+            response_payload = _attach_response_metadata(
+                anthropic_to_response(payload, route.slug),
+                route,
+                prepared,
+            )
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
             resp = web.json_response(response_payload)
@@ -826,7 +869,11 @@ class ShimServer:
             return _cursor_acp_error_response(exc)
         provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
-            response_payload = cursor_acp_response_payload(result, route.slug)
+            response_payload = _attach_response_metadata(
+                cursor_acp_response_payload(result, route.slug),
+                route,
+                prepared,
+            )
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
             resp = web.json_response(response_payload)
@@ -897,7 +944,11 @@ class ShimServer:
             return _cursor_agent_error_response(exc, "cursor_cli_error")
         provider_ms = _elapsed_ms(provider_started_at)
         if as_responses:
-            response_payload = cursor_acp_response_payload(result, route.slug)
+            response_payload = _attach_response_metadata(
+                cursor_acp_response_payload(result, route.slug),
+                route,
+                prepared,
+            )
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
             resp = web.json_response(response_payload)
@@ -942,6 +993,7 @@ class ShimServer:
         response = await _open_stream_sink(request, stream_response)
         if as_responses:
             state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools"))
+            state.metadata = _shim_response_metadata(route, prepared)
         try:
             if as_responses:
                 await state.start(response)
@@ -988,6 +1040,7 @@ class ShimServer:
         response = await _open_stream_sink(request, stream_response)
         if as_responses:
             state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools"))
+            state.metadata = _shim_response_metadata(route, prepared)
         try:
             if as_responses:
                 await state.start(response)
@@ -1033,6 +1086,8 @@ class ShimServer:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
         state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools")) if as_responses else None
+        if state is not None:
+            state.metadata = _shim_response_metadata(route, prepared)
         chained = prepared.chained_from_previous if prepared is not None else False
         try:
             if state is not None:
@@ -1106,6 +1161,8 @@ class ShimServer:
         started_at = started_at or time.monotonic()
         response = await _open_stream_sink(request, stream_response)
         state = ResponsesStreamState(route.slug, tools=(prepared.body if prepared is not None else {}).get("tools")) if as_responses else None
+        if state is not None:
+            state.metadata = _shim_response_metadata(route, prepared)
         chained = prepared.chained_from_previous if prepared is not None else False
         try:
             if state is not None:

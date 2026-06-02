@@ -243,3 +243,42 @@ def probe_ws_streaming(settings_path: Path, port: int, slug: str | None = None) 
     harness.run_ws_streaming(port, route)
     print(f"WS streaming probe passed for {route.slug} ({route.provider}).")
     return 0
+
+
+def probe_tools(settings_path: Path, port: int, slug: str | None = None) -> int:
+    route = harness.resolve_byok_slug(settings_path, slug)
+    timeout = 600 if route.is_cursor_cli else 120
+    payload = harness.post_fixture_turn(
+        port,
+        route.slug,
+        "tool_heavy_turn.json",
+        stream=False,
+        session_id=f"probe-tools-{route.slug}",
+        timeout=timeout,
+    )
+    harness.validate_completed_response(payload)
+    output = payload.get("output")
+    tool_items = [
+        item
+        for item in (output if isinstance(output, list) else [])
+        if isinstance(item, dict) and str(item.get("type") or "").endswith("_call")
+    ]
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict) or "shim_route" not in metadata:
+        raise CompactProbeError("Tool probe expected response metadata.shim_route in completed payload.")
+    shim_route = metadata.get("shim_route")
+    if not isinstance(shim_route, dict):
+        raise CompactProbeError("Tool probe expected metadata.shim_route to be an object.")
+    if str(shim_route.get("transport") or "") != route.transport:
+        raise CompactProbeError(
+            f"Tool probe transport mismatch: expected {route.transport!r}, got {shim_route.get('transport')!r}."
+        )
+    capabilities = shim_route.get("capabilities")
+    if not isinstance(capabilities, dict):
+        raise CompactProbeError("Tool probe expected metadata.shim_route.capabilities to be an object.")
+    if not tool_items:
+        raise CompactProbeError("Tool probe expected at least one mapped tool call output item.")
+    print(f"Tool-loop probe passed for {route.slug} ({route.provider}).")
+    print(f"  tool_items: {len(tool_items)}")
+    print(f"  route_transport: {metadata.get('shim_route', {}).get('transport', 'unknown')}")
+    return 0

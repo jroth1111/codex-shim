@@ -710,6 +710,17 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 | **Tier A — Native** | ChatGPT passthrough (`gpt-5.5`) | Full parity: hosted tools, native compaction v2, encrypted reasoning, native Response item types |
 | **Tier B — Agent loop** | OpenAI chat / Anthropic / Cursor BYOK | Tool loops via function-tool fallbacks; inbound/outbound native hosted-tool item shapes where possible; emulated compaction (`context_compaction` items); shim-encoded reasoning for round-trip |
 | **Tier C — Degraded** | Same BYOK routes | No true OpenAI encrypted reasoning blobs; image generation gated unless model declares support; opaque native compaction v2 blobs not synthesized on BYOK |
+### Tool capability matrix (per route family)
+
+| Route family | local_shell | web_search | tool_search | image_generation | MCP tools | Reasoning |
+|---|---|---|---|---|---|---|
+| ChatGPT passthrough (`gpt-5.5`) | native | native | native | native | native | native |
+| OpenAI chat-compatible BYOK | mapped | mapped | mapped | mapped | mapped | mapped |
+| Anthropic Messages BYOK | mapped | mapped | mapped | unsupported | mapped | mapped |
+| Cursor CLI (`cursor-agent`) | mapped | mapped | mapped | unsupported | mapped | mapped |
+
+“Mapped” means Codex tools remain authoritative (Desktop runs shell/web/apply_patch/MCP), and the shim translates tool schemas and outputs so upstream models and Cursor can stay in the loop. “Unsupported” means the shim will not silently synthesize that tool for the route; `codex-shim doctor` reports it clearly.
+
 
 **Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
 
@@ -748,6 +759,7 @@ codex-shim probe compact --slug your-byok-slug
 codex-shim probe history      # hosted tools + previous_response_id + compact w/ trigger
 codex-shim probe streaming-history
 codex-shim probe ws-streaming          # BYOK WebSocket stream:true deltas
+codex-shim probe tools                # BYOK mapped tool-loop + metadata parity
 codex-shim probe passthrough --live        # Tier A streaming OK
 codex-shim probe passthrough-compact --live
 ```
@@ -860,6 +872,10 @@ Every provider call also emits a structured `[access]` JSON log line with
 Trace ids are resolved in this order: `metadata.trace_id`, `trace_id`,
 `metadata.request_id`, `request_id`, `x-request-id`, then a generated id. Token
 stats include input, output, total, cached, and reasoning counts when observed.
+Completed BYOK `/v1/responses` payloads also include lightweight `metadata`
+keys (`shim_route`, optional `shim_history`, optional `shim_anomalies`) so you
+can see route capabilities and stream-normalization warnings without digging
+into logs.
 
 ---
 
@@ -1238,6 +1254,23 @@ tail -f .codex-shim/shim.log
 
 The server uses a long read timeout because real coding-agent turns can stream
 for a while; a silent hang is usually upstream/network/provider behavior.
+
+### Cursor route shows text but tool cards are missing
+
+Run `codex-shim probe tools --slug <cursor-slug>` and inspect response
+`metadata.shim_route.capabilities`. If tools are `mapped` for that route, Codex
+is still authoritative for execution, and missing cards usually indicate the
+upstream produced plain assistant text instead of structured tool events.
+
+### `metadata.shim_anomalies` appears in a completed response
+
+These are non-fatal normalization signals, not hard failures. Examples:
+
+- `malformed_cursor_events`: Cursor emitted non-JSON lines that were ignored.
+- `unknown_cursor_event_types`: Cursor emitted an event type the shim does not
+  map yet.
+- `duplicate_reasoning_completed` / `late_tool_completions`: duplicate or late
+  completion events were ignored after the item was already closed.
 
 ### macOS app crashes after patching
 

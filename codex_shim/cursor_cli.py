@@ -184,6 +184,8 @@ async def _consume_stream(
                 continue
             event = _json_event(line + b"\n")
             if event is None:
+                if on_event is not None:
+                    await on_event({"type": "shim_diagnostic", "subtype": "malformed_jsonl_line"})
                 continue
             events.append(event)
             if on_event is not None:
@@ -210,6 +212,8 @@ async def _consume_stream(
                 if text and (("timestamp_ms" in event) or not deltas):
                     deltas.append(text)
                     await on_text(text)
+        elif on_event is not None:
+            await on_event({"type": "shim_diagnostic", "subtype": "malformed_jsonl_trailer"})
     await proc.wait()
 
 

@@ -37,6 +37,14 @@ class ResponsesStreamState:
         self.tool_calls: dict[Any, dict[str, Any]] = {}
         self.reasoning_blocks: dict[Any, dict[str, Any]] = {}
         self.next_output_index = 0
+        self.metadata: dict[str, Any] = {}
+        self.anomalies: dict[str, Any] = {
+            "malformed_cursor_events": 0,
+            "duplicate_tool_starts": 0,
+            "late_tool_completions": 0,
+            "duplicate_reasoning_completed": 0,
+            "unknown_cursor_event_types": [],
+        }
 
     async def start(self, response: web.StreamResponse) -> None:
         await write_sse(response, {"type": "response.created", "response": self._response("in_progress")})
@@ -212,6 +220,11 @@ class ResponsesStreamState:
 
     async def write_cursor_cli_event(self, response: web.StreamResponse, event: dict[str, Any]) -> None:
         event_type = str(event.get("type") or "")
+        if event_type == "shim_diagnostic":
+            subtype = str(event.get("subtype") or "")
+            if subtype.startswith("malformed_jsonl"):
+                self.anomalies["malformed_cursor_events"] = int(self.anomalies.get("malformed_cursor_events") or 0) + 1
+            return
         if event_type == "tool_call":
             subtype = str(event.get("subtype") or "")
             call_id = str(event.get("call_id") or "")
@@ -223,6 +236,11 @@ class ResponsesStreamState:
                 state = self.tool_calls.get(key)
                 if state is None:
                     state = await self._open_tool(response, key=key, call_id=call_id, name=tool_name)
+                elif state.get("closed"):
+                    self.anomalies["late_tool_completions"] = int(self.anomalies.get("late_tool_completions") or 0) + 1
+                    return
+                else:
+                    self.anomalies["duplicate_tool_starts"] = int(self.anomalies.get("duplicate_tool_starts") or 0) + 1
                 if arguments:
                     state["arguments"] = arguments
                     await write_sse(
@@ -239,6 +257,8 @@ class ResponsesStreamState:
                 state = self.tool_calls.get(key)
                 if state is not None and not state.get("closed"):
                     await self._close_tool(response, state)
+                else:
+                    self.anomalies["late_tool_completions"] = int(self.anomalies.get("late_tool_completions") or 0) + 1
                 return
         if event_type == "thinking":
             subtype = str(event.get("subtype") or "")
@@ -248,6 +268,16 @@ class ResponsesStreamState:
                 state = self.reasoning_blocks.get(("chat",))
                 if state is not None and not state.get("closed"):
                     await self._close_reasoning(response, state)
+                else:
+                    self.anomalies["duplicate_reasoning_completed"] = int(
+                        self.anomalies.get("duplicate_reasoning_completed") or 0
+                    ) + 1
+            return
+        known_ignored = {"system", "assistant", "result", "user"}
+        if event_type and event_type not in known_ignored:
+            seen = self.anomalies.get("unknown_cursor_event_types")
+            if isinstance(seen, list) and event_type not in seen and len(seen) < 16:
+                seen.append(event_type)
 
     async def _open_message(self, response: web.StreamResponse) -> None:
         self.message_index = self.next_output_index
@@ -514,6 +544,17 @@ class ResponsesStreamState:
             payload["usage"] = self.usage
         elif final:
             payload["usage"] = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        if final:
+            metadata = dict(self.metadata)
+            anomalies = {
+                key: value
+                for key, value in self.anomalies.items()
+                if (isinstance(value, list) and value) or (isinstance(value, int) and value > 0)
+            }
+            if anomalies:
+                metadata["shim_anomalies"] = anomalies
+            if metadata:
+                payload["metadata"] = metadata
         return payload
 
 
@@ -614,7 +655,10 @@ def _cursor_cli_tool_name_and_args(tool_call: Any) -> tuple[str, str]:
                 "imageGeneration": "image_generation",
                 "toolSearch": "tool_search",
             }.get(normalized, normalized)
-            return normalized, _json_or_empty(tool.get("value"))
+            tool_value = tool.get("value")
+            if isinstance(tool_value, dict) and isinstance(tool_value.get("args"), dict):
+                return normalized, _json_or_empty(tool_value.get("args"))
+            return normalized, _json_or_empty(tool_value)
     return str(tool_call.get("title") or ""), _json_or_empty(tool_call.get("rawInput"))
 
 

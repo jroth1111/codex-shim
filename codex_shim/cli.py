@@ -103,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     probe_stream_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
     probe_ws_parser = probe_sub.add_parser("ws-streaming", help="Probe BYOK WebSocket streaming deltas.")
     probe_ws_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
+    probe_tools_parser = probe_sub.add_parser("tools", help="Probe mapped tool-loop output items and route metadata.")
+    probe_tools_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
     probe_sub.add_parser("fidelity", help="Offline hosted-tool and compaction translation checks.")
     probe_all_parser = probe_sub.add_parser("all", help="Run offline fidelity plus live probes when daemon/auth allow.")
     probe_all_parser.add_argument("--slug", help="BYOK model slug for live BYOK probes.")
@@ -237,6 +239,8 @@ def main(argv: list[str] | None = None) -> int:
             return probe_streaming_history_route(args.settings, args.port, args.slug)
         if args.probe_command == "ws-streaming":
             return probe_ws_streaming_route(args.settings, args.port, args.slug)
+        if args.probe_command == "tools":
+            return probe_tools_route(args.settings, args.port, args.slug)
         if args.probe_command == "all":
             return probe_all_route(args.settings, args.port, args.slug, live=args.live)
         if args.probe_command == "passthrough":
@@ -657,6 +661,22 @@ def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -
         return 1
 
 
+def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
+    from .probe import CompactProbeError, probe_tools
+
+    try:
+        return probe_tools(Path(settings_path).expanduser(), port, slug)
+    except CompactProbeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except FileNotFoundError as exc:
+        print(f"Settings file not found: {exc.filename or exc}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"Settings file is not valid JSON: {exc}", file=sys.stderr)
+        return 1
+
+
 def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: bool) -> int:
     from .probe import CompactProbeError, probe_all
 
@@ -706,6 +726,7 @@ def probe_live_matrix_route(settings_path: Path, port: int) -> int:
 def doctor(settings_path: Path) -> int:
     from .catalog import websockets_enabled
     from .response_store import default_store_path, store_scope
+    from .capabilities import route_capabilities
 
     models = _load_models(settings_path)
     desktop_models = _desktop_models(settings_path)
@@ -720,7 +741,12 @@ def doctor(settings_path: Path) -> int:
         print("\nVisible configured models:")
         width = max(len(model.slug) for model in desktop_models)
         for model in desktop_models:
-            print(f"  {model.slug:<{width}}  {model.display_name} -> {model.model} ({model.provider})")
+            caps = route_capabilities(model)
+            tool_summary = ", ".join(
+                f"{name}={getattr(caps, name)}"
+                for name in ("local_shell", "web_search", "tool_search", "image_generation", "mcp_tools")
+            )
+            print(f"  {model.slug:<{width}}  {model.display_name} -> {model.model} ({model.provider}, {model.transport}); tools: {tool_summary}")
     else:
         print("\nVisible configured models: none")
     if hidden:
@@ -884,9 +910,7 @@ def start(settings_path: Path, port: int) -> int:
         "--port",
         str(port),
     ]
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(PROJECT_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
-    process = _popen_daemon(cmd, log, env)
+    process = _popen_daemon(cmd, log)
     PID_PATH.write_text(str(process.pid))
     for _ in range(50):
         if _healthy(port):
@@ -961,18 +985,25 @@ def exec_codex(settings_path: Path, port: int, codex_args: list[str]) -> None:
     codex_args = list(codex_args or [])
     if codex_args[:1] == ["--"]:
         codex_args = codex_args[1:]
-    args = ["codex", *overrides, *codex_args]
-    env = _with_loopback_no_proxy(os.environ.copy())
+    codex_exe = _resolve_executable("codex")
+    args = [codex_exe, *overrides, *codex_args]
+    _set_loopback_no_proxy_env()
     if os.name == "nt":
-        raise SystemExit(subprocess.call(args, env=env))
-    os.execvpe("codex", args, env)
+        raise SystemExit(subprocess.call(args))
+    os.execv(args[0], args)
 
 
 def exec_codex_app(settings_path: Path, port: int, path: str) -> None:
     _quit_codex_app()
-    args = ["codex", "app", path]
-    subprocess.Popen(args, env=_with_loopback_no_proxy(os.environ.copy()))
+    codex_exe = _resolve_executable("codex")
+    args = [codex_exe, "app", path]
+    _set_loopback_no_proxy_env()
+    subprocess.Popen(args)
     _foreground_codex_app()
+
+
+def _set_loopback_no_proxy_env() -> None:
+    _with_loopback_no_proxy(os.environ)
 
 
 def _with_loopback_no_proxy(env: dict[str, str]) -> dict[str, str]:
@@ -990,7 +1021,12 @@ def _with_loopback_no_proxy(env: dict[str, str]) -> dict[str, str]:
 def _quit_codex_app() -> None:
     script = 'tell application "Codex" to if it is running then quit'
     try:
-        subprocess.run(["osascript", "-e", script], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [_resolve_executable("osascript"), "-e", script],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         time.sleep(1.0)
     except OSError:
         pass
@@ -1026,7 +1062,7 @@ def patch_codex_app() -> int:
 
         shutil.rmtree(workdir)
     workdir.mkdir(parents=True)
-    subprocess.run(["npx", "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
+    subprocess.run([_resolve_executable("npx"), "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
     desktop_version = _codex_desktop_version(info_plist)
     inspection = _inspect_codex_desktop_bundles(workdir, version=desktop_version)
     if _inspection_has_missing_patch(inspection):
@@ -1056,7 +1092,7 @@ def patch_codex_app() -> int:
     if changed is None:
         return 1
     if changed:
-        subprocess.run(["npx", "--yes", "asar", "pack", str(workdir), str(app_asar)], check=True)
+        subprocess.run([_resolve_executable("npx"), "--yes", "asar", "pack", str(workdir), str(app_asar)], check=True)
         _update_app_asar_integrity(app_asar, info_plist)
         _resign_codex_app()
     return 0
@@ -1132,7 +1168,7 @@ def patch_status() -> int:
             shutil.rmtree(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
         try:
-            subprocess.run(["npx", "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
+            subprocess.run([_resolve_executable("npx"), "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
             inspection = _inspect_codex_desktop_bundles(workdir, version=_codex_desktop_version(info_plist))
             _print_patch_inspection(inspection)
             if _inspection_has_missing_patch(inspection):
@@ -1145,6 +1181,15 @@ def patch_status() -> int:
 
             shutil.rmtree(workdir, ignore_errors=True)
     return 0 if ok else 1
+
+
+def _resolve_executable(command: str) -> str:
+    from shutil import which
+
+    resolved = which(command)
+    if resolved:
+        return resolved
+    raise SystemExit(f"Required command not found on PATH: {command}")
 
 
 def _has_command(command: str) -> bool:
@@ -1286,7 +1331,7 @@ def _extract_app_asar_workdir(app_path: Path) -> Path | None:
         shutil.rmtree(workdir)
     workdir.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(["npx", "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
+        subprocess.run([_resolve_executable("npx"), "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
     except subprocess.CalledProcessError:
         shutil.rmtree(workdir, ignore_errors=True)
         return None
@@ -1330,7 +1375,7 @@ def _resign_codex_app() -> None:
     # startup. Re-sign after patching so the modified archive does not trip the
     # asar integrity check.
     subprocess.run(
-        ["codesign", "--force", "--deep", "--sign", "-", "/Applications/Codex.app"],
+        [_resolve_executable("codesign"), "--force", "--deep", "--sign", "-", "/Applications/Codex.app"],
         check=True,
     )
     print("Re-signed Codex.app after patch.")
@@ -1357,7 +1402,12 @@ tell application "System Events"
 end tell
 '''
     try:
-        subprocess.run(["osascript", "-e", script], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [_resolve_executable("osascript"), "-e", script],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except OSError:
         pass
 
@@ -1482,7 +1532,8 @@ def _remove_section(text: str, section: str) -> str:
     return "\n".join(output) + ("\n" if text.endswith("\n") else "")
 
 
-def _popen_daemon(cmd: list[str], log, env: dict[str, str]) -> subprocess.Popen:
+def _popen_daemon(cmd: list[str], log) -> subprocess.Popen:
+    env = {"PYTHONPATH": str(PROJECT_ROOT)}
     kwargs = {"cwd": str(PROJECT_ROOT), "env": env, "stdout": log, "stderr": log}
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
