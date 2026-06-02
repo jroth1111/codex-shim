@@ -1,0 +1,95 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S6_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "scenario": "S6",
+  "source": "shim-wire",
+  "turns": [
+    {
+      "capture_ref": "codex-desktop-decompiled/captures/parsed/S6_shim_wire.jsonl",
+      "evidence": [
+        "CAPTURE"
+      ],
+      "method": "POST",
+      "path": "/v1/responses",
+      "request": {
+        "input": [
+          {
+            "content": [
+              {
+                "text": "Reply with exactly: OK6a",
+                "type": "input_text"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "model": "zai-glm-5-1-coding-plan",
+        "stream": false
+      },
+      "response": {
+        "id": "20260602114513e9448e9f49084127",
+        "model": "zai-glm-5-1-coding-plan",
+        "object": "response",
+        "output_summary": [
+          {
+            "status": "completed",
+            "type": "reasoning"
+          },
+          {
+            "status": "completed",
+            "type": "message"
+          }
+        ],
+        "status": "completed"
+      },
+      "response_status": 200,
+      "scenario": "S6",
+      "source": "shim-wire"
+    },
+    {
+      "capture_ref": "codex-desktop-decompiled/captures/parsed/S6_shim_wire.jsonl",
+      "evidence": [
+        "CAPTURE"
+      ],
+      "method": "POST",
+      "path": "/v1/responses",
+      "request": {
+        "input": [
+          {
+            "content": [
+              {
+                "text": "ack",
+                "type": "input_text"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "model": "zai-glm-5-1-coding-plan",
+        "previous_response_id": "20260602114513e9448e9f49084127",
+        "stream": false
+      },
+      "response": {
+        "id": "20260602114531ba673ab1c5f84a37",
+        "model": "zai-glm-5-1-coding-plan",
+        "object": "response",
+        "output_summary": [
+          {
+            "status": "completed",
+            "type": "reasoning"
+          },
+          {
+            "status": "completed",
+            "type": "message"
+          }
+        ],
+        "status": "completed"
+      },
+      "response_status": 200,
+      "scenario": "S6",
+      "source": "shim-wire"
+    }
+  ]
+}

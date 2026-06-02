@@ -1,0 +1,47 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S9_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "action": {
+          "prompt": "neon fox"
+        },
+        "call_id": "call_ig_1",
+        "revised_prompt": "neon fox",
+        "status": "completed",
+        "type": "image_generation_call"
+      },
+      {
+        "call_id": "call_ig_1",
+        "output": "image rendered",
+        "type": "function_call_output"
+      },
+      {
+        "content": [
+          {
+            "text": "continue",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5.5",
+    "stream": true
+  },
+  "response": {
+    "id": "resp_0e9835b29570373f016a1e5333de008191ac66d02425fb95eb",
+    "model": "gpt-5.5",
+    "object": "response",
+    "output_summary": [],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S9",
+  "source": "shim-wire"
+}

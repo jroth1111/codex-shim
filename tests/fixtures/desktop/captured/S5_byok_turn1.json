@@ -1,0 +1,42 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S5_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "Reply with exactly: OK",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "zai-glm-5-1-coding-plan",
+    "stream": false
+  },
+  "response": {
+    "id": "20260602114458158c5ec44aea419d",
+    "model": "zai-glm-5-1-coding-plan",
+    "object": "response",
+    "output_summary": [
+      {
+        "status": "completed",
+        "type": "reasoning"
+      },
+      {
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S5",
+  "source": "shim-wire"
+}

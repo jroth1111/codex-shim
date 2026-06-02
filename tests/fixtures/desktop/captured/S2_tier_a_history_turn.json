@@ -1,0 +1,33 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S2_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "Second turn: reply with exactly: OK2",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5.5",
+    "stream": true
+  },
+  "response": {
+    "id": "resp_083ecba28ef982e8016a1e51b6b27081919f81ff3ddb4b9726",
+    "model": "gpt-5.5",
+    "object": "response",
+    "output_summary": [],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S2",
+  "source": "shim-wire"
+}

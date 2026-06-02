@@ -1,0 +1,54 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S10_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "action": {
+          "command": "echo probe"
+        },
+        "call_id": "call_shell",
+        "type": "local_shell_call"
+      },
+      {
+        "call_id": "call_shell",
+        "output": "probe",
+        "type": "function_call_output"
+      },
+      {
+        "content": [
+          {
+            "text": "continue",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "zai-glm-5-1-coding-plan",
+    "stream": false
+  },
+  "response": {
+    "id": "20260602115047aa10be7177184bfc",
+    "model": "zai-glm-5-1-coding-plan",
+    "object": "response",
+    "output_summary": [
+      {
+        "status": "completed",
+        "type": "reasoning"
+      },
+      {
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S10",
+  "source": "shim-wire"
+}

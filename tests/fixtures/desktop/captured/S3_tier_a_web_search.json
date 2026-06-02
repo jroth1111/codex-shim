@@ -1,0 +1,47 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S3_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "action": {
+          "query": "codex shim docs",
+          "type": "search"
+        },
+        "call_id": "call_ws_1",
+        "status": "completed",
+        "type": "web_search_call"
+      },
+      {
+        "call_id": "call_ws_1",
+        "output": "10 results found",
+        "type": "function_call_output"
+      },
+      {
+        "content": [
+          {
+            "text": "continue",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5.5",
+    "stream": true
+  },
+  "response": {
+    "id": "resp_02de87a7207c3e53016a1e531633ec8191a1a70c82f6563da3",
+    "model": "gpt-5.5",
+    "object": "response",
+    "output_summary": [],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S3",
+  "source": "shim-wire"
+}

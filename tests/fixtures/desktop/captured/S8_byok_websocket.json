@@ -1,0 +1,42 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S8_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "Reply with exactly: OK",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "zai-glm-5-1-coding-plan",
+    "stream": true
+  },
+  "response": {
+    "id": "resp_1780371963976",
+    "model": "zai-glm-5-1-coding-plan",
+    "object": "response",
+    "output_summary": [
+      {
+        "status": "completed",
+        "type": "reasoning"
+      },
+      {
+        "status": "completed",
+        "type": "message"
+      }
+    ],
+    "status": "completed"
+  },
+  "response_status": 200,
+  "scenario": "S8",
+  "source": "shim-wire"
+}

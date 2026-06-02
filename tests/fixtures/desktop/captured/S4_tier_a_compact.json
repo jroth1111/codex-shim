@@ -1,0 +1,41 @@
+{
+  "capture_ref": "codex-desktop-decompiled/captures/parsed/S4_shim_wire.jsonl",
+  "evidence": [
+    "CAPTURE"
+  ],
+  "method": "POST",
+  "path": "/v1/responses/compact",
+  "request": {
+    "input": [
+      {
+        "content": [
+          {
+            "text": "Summarize prior context for handoff.",
+            "type": "input_text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5.5"
+  },
+  "response": {
+    "id": "resp_05df23a8b0ced679016a1e51b8ec408191a21b395b29ee42d9",
+    "model": null,
+    "object": "response.compaction",
+    "output_summary": [
+      {
+        "status": "completed",
+        "type": "message"
+      },
+      {
+        "status": "",
+        "type": "compaction_summary"
+      }
+    ],
+    "status": null
+  },
+  "response_status": 200,
+  "scenario": "S4",
+  "source": "shim-wire"
+}
