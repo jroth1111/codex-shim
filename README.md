@@ -757,9 +757,22 @@ locally when you need ASAR needles, Ghidra decomp, or strings evidence.
 | `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` | Fail CI-style checks instead of skipping when the tree is absent |
 
 With the tree present, see `codex-desktop-decompiled/CODEX_SHIM_ARCHITECTURE.md` for
-integration notes. Committed shim constants live in `codex_shim/desktop_contract.py`
-(regenerate with `python scripts/generate_desktop_contract.py --write` after updating
-`native-binaries/codex.strings.txt`).
+integration notes. Regenerate committed contracts after refreshing the tree:
+
+```bash
+python scripts/extract_app_server_schemas.py
+python scripts/generate_desktop_contract.py --write
+python scripts/generate_desktop_app_server_contract.py --write
+python scripts/mine_desktop_electron.py
+python scripts/inventory_desktop_bundle.py
+```
+
+Committed constants: `codex_shim/desktop_contract.py` (Responses wire shapes) and
+`codex_shim/desktop_app_server_contract.py` (app-server RPC and provider fields).
+Mining output lands in gitignored `codex-desktop-decompiled/DESKTOP_RE_FINDINGS.md`.
+
+**12-day inference RE plan:** [`docs/DESKTOP_INFERENCE_MAP.md`](docs/DESKTOP_INFERENCE_MAP.md) (living doc) and
+[`scripts/capture_runbook.md`](scripts/capture_runbook.md) for HAR capture scenarios S1–S10.
 
 ---
 

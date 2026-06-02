@@ -14,9 +14,13 @@ python3 -m pip install -e ".[dev]"
 
 python3 -m pytest tests/ -q
 python3 -m compileall codex_shim/ -q
-python3 scripts/generate_desktop_contract.py --check   # skips if no local RE tree
-python3 scripts/check_desktop_patch_needles.py         # exits 1 if RE tree exists but needles drift
+python3 scripts/generate_desktop_contract.py --check           # skips if no local RE tree
+python3 scripts/generate_desktop_app_server_contract.py --check
+python3 scripts/check_desktop_patch_needles.py                 # exits 1 if RE tree exists but needles drift
 ```
+
+For the 12-day Desktop inference RE plan, see [`docs/DESKTOP_INFERENCE_MAP.md`](docs/DESKTOP_INFERENCE_MAP.md) and
+[`scripts/capture_runbook.md`](scripts/capture_runbook.md).
 
 Optional: maintain a gitignored `codex-desktop-decompiled/` tree (see README). The
 patch-needle **script** fails when the tree exists but needles are missing; the

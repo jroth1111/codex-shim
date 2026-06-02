@@ -189,6 +189,26 @@ Outbound: upstream assistant output → Responses items via `chat_completion_to_
 | WebSocket | `responses_ws.py` |
 | Catalog / wire_api | `catalog.py`, `settings.py` |
 | Golden fixtures | `tests/fixtures/desktop/*.json` |
+| Capture-backed fixtures | `tests/fixtures/desktop/captured/*.json` (from `scripts/export_captured_fixtures.py`) |
+
+---
+
+## Desktop RE evidence (12-day plan)
+
+Cross-walk for auditors. **Verified** when shim source and at least one Desktop RE artifact agree.
+
+| Contract row | Shim | Desktop evidence | Capture |
+|--------------|------|------------------|---------|
+| Tier A `POST /v1/responses` passthrough | `server.py` `_chatgpt_passthrough` | STRINGS: `backend-api/codex/responses`; GHIDRA: `shim_hits.md` ChatGPT URL cluster | CAPTURE S1 (`captured/S1_tier_a_passthrough.json`) |
+| Tier A multi-turn full `input` | `passthrough_prepare.py` | STRINGS: `ResponseItem` history types in `desktop_contract.py` | CAPTURE S2 |
+| Tier A native compact | `chatgpt_compact_passthrough` | STRINGS: `/responses/compact`; GHIDRA backend-api hits | CAPTURE S4 (`compaction_summary` + `encrypted_content`) |
+| BYOK `previous_response_id` expansion | `server.py` `_body_with_previous_response` | STRINGS: store/session fields; app-server index | CAPTURE S6 turn 2 |
+| BYOK WebSocket streaming | `responses_ws.py` | STRINGS: `supports_websockets`, `responses_websockets=2026-02-06` | CAPTURE S8 |
+| Hosted tools on wire | `translate/input.py` | STRINGS: `web_search_call`, `local_shell_call`, `image_generation_call` | CAPTURE S3, S9, S10 |
+| App-server → HTTP boundary | `desktop_app_server_contract.py` | STRINGS + `extracted/app_server_method_index.json` | `APP_SERVER_TO_HTTP.md` (shim-wire mapped) |
+| Tool local vs wire | `AUDIT` + `TOOL_EXECUTION_MATRIX.md` | GHIDRA `thread_config` cluster; STRINGS tool action enums | CAPTURE S3/S9/S10 + golden `tool_heavy_turn.json` |
+
+Regenerate capture fixtures after re-recording: `python3 scripts/record_shim_wire_captures.py` then `python3 scripts/export_captured_fixtures.py --write`.
 
 ---
 
@@ -259,6 +279,29 @@ Live tests intentionally do **not** claim absolute Tier A parity (sanitization, 
 |----------|------|
 | `scripts/generate_desktop_contract.py` | Extract `ResponseItem` types and `WebSearchAction` variants from `codex.strings.txt` |
 | `codex_shim/desktop_contract.py` | Generated constants (CI `--check`) |
+| `scripts/generate_desktop_app_server_contract.py` | Extract app-server RPC methods and provider/thread metadata from strings + fallback index |
+| `codex_shim/desktop_app_server_contract.py` | Generated app-server constants (CI `--check`) |
+| `scripts/extract_app_server_schemas.py` | Writes `extracted/schemas/` (fallback index when full JSON schema is not contiguous in the binary) |
+| `scripts/mine_desktop_electron.py` | Main-process/webview grep for `wire_api`, `base_url`, loopback URLs → `DESKTOP_RE_FINDINGS.md` |
 | `codex_shim/desktop_validate.py` | Runtime validators for hosted-tool `action` sub-shapes |
 | `codex_shim/patch_specs.py` | Version-keyed ASAR patch needle library |
 | `scripts/check_desktop_patch_needles.py` | Needle drift check against local `app-asar-extracted/` (skipped in CI without RE tree) |
+
+---
+
+## App-server boundary (Desktop UI → shim HTTP)
+
+Codex Desktop does **not** send `/v1/responses` directly from minified webview bundles. The
+UI talks JSON-RPC to an in-process **app-server** (embedded `codex` binary). That layer
+builds thread state and ultimately drives the configured `model_provider` HTTP client.
+
+| Layer | Evidence (local RE tree) | Shim relevance |
+|-------|--------------------------|----------------|
+| Webview RPC | `APP_SERVER_RPC_METHODS` in `codex_shim/desktop_app_server_contract.py` | Explains thread/turn lifecycle before HTTP |
+| Provider config | `MODEL_PROVIDER_WIRE_FIELDS`, `DESKTOP_HTTP_ENDPOINTS` | Documents `wire_api`, `base_url`, ChatGPT backend paths |
+| Responses wire | `DESKTOP_RESPONSE_ITEM_TYPES` in `codex_shim/desktop_contract.py` | What the shim must emit on `/v1/responses` |
+| Electron wiring | `codex-desktop-decompiled/DESKTOP_RE_FINDINGS.md` | How ASAR references loopback/catalog |
+
+When the RE tree is present, cross-check Tier A/B rows against `DESKTOP_RE_FINDINGS.md` and
+`codex-desktop-decompiled/ghidra/codex/shim_hits.md`. Mark **DESKTOP-EVIDENCE-MISSING** when
+only committed generated constants exist.
