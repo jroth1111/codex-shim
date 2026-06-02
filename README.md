@@ -368,6 +368,10 @@ codex-shim import-vibeproxy http://127.0.0.1:8318 --provider-base-url http://127
 codex-shim import-vibeproxy http://127.0.0.1:8318 --provider-base-url http://127.0.0.1:8318/v1 --direct
 ```
 
+`codex-shim configure cursor` now defaults to the headless CLI route
+(`provider: "cursor-agent"`). Use `--transport acp` only when you explicitly
+want the ACP experiment.
+
 `configure` adds or updates common provider rows without writing secrets into
 the generated Codex catalog. By default it references `ZAI_API_KEY` for Z.AI and
 `NVIDIA_API_KEY` for NVIDIA NIM; use `--api-key-file` or `--api-key` when you
@@ -483,6 +487,9 @@ and `session/prompt`, then maps `agent_message_chunk` updates back to Responses
 SSE deltas. On this machine, the ACP prompt path reached Cursor but returned
 `Upgrade your plan to continue`; the direct CLI path returned the expected
 smoke-test text.
+
+For Codex Desktop compatibility, prefer the `cursor-agent` CLI route. ACP is
+kept as an explicit experiment and can be subscription-gated.
 
 ### Ollama / local OpenAI-compatible chat endpoints
 
@@ -707,6 +714,10 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 **Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
 
 **Native tool wire shapes:** `local_shell_call`, `web_search_call`, `tool_search_call`, and `image_generation_call` can be emitted on BYOK streams when the upstream used the matching function-tool fallback. During streaming, argument chunks still use `response.function_call_arguments.delta` for all tool types; only the final completed items carry native shapes. `apply_patch` and `computer_use` remain `function_call` items (Desktop executes from tool calls; decompiled `ResponseItem` has no separate `apply_patch_call` type).
+
+Cursor CLI routes stream assistant text and selected tool-call events through
+the same Responses SSE bridge; they are not byte-for-byte OpenAI-native
+Responses parity.
 
 **Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
 

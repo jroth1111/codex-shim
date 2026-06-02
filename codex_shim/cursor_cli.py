@@ -14,6 +14,7 @@ from .settings import ShimModel
 
 
 TextCallback = Callable[[str], Awaitable[None]]
+EventCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 class CursorCliError(RuntimeError):
@@ -34,6 +35,7 @@ async def run_cursor_cli(
     body: dict[str, Any],
     *,
     on_text: TextCallback | None = None,
+    on_event: EventCallback | None = None,
     chained_from_previous: bool = False,
 ) -> CursorAcpResult:
     config = cursor_cli_config(route)
@@ -45,7 +47,7 @@ async def run_cursor_cli(
         chained_from_previous=chained_from_previous,
     )
     if on_text is not None:
-        return await _run_stream_json(config, prompt, on_text)
+        return await _run_stream_json(config, prompt, on_text, on_event=on_event)
     return await _run_json(config, prompt)
 
 
@@ -108,7 +110,13 @@ async def _finish_stderr_task(stderr_task: asyncio.Task[bytes] | None) -> None:
         pass
 
 
-async def _run_stream_json(config: CursorCliConfig, prompt: str, on_text: TextCallback) -> CursorAcpResult:
+async def _run_stream_json(
+    config: CursorCliConfig,
+    prompt: str,
+    on_text: TextCallback,
+    *,
+    on_event: EventCallback | None = None,
+) -> CursorAcpResult:
     args = _with_output_format(config.args, "stream-json", stream_partial=True)
     env = os.environ.copy()
     env.update(config.env)
@@ -130,7 +138,7 @@ async def _run_stream_json(config: CursorCliConfig, prompt: str, on_text: TextCa
     stderr_task = asyncio.create_task(proc.stderr.read()) if proc.stderr is not None else None
     try:
         try:
-            await asyncio.wait_for(_consume_stream(proc, events, deltas, on_text), timeout=config.timeout)
+            await asyncio.wait_for(_consume_stream(proc, events, deltas, on_text, on_event=on_event), timeout=config.timeout)
         except asyncio.TimeoutError as exc:
             raise CursorCliError(
                 f"Timed out waiting for Cursor Agent command {command_display(config, args)}"
@@ -159,6 +167,8 @@ async def _consume_stream(
     events: list[dict[str, Any]],
     deltas: list[str],
     on_text: TextCallback,
+    *,
+    on_event: EventCallback | None = None,
 ) -> None:
     if proc.stdout is None:
         raise CursorCliError("Cursor Agent subprocess stdout is unavailable")
@@ -176,6 +186,8 @@ async def _consume_stream(
             if event is None:
                 continue
             events.append(event)
+            if on_event is not None:
+                await on_event(event)
             if event.get("type") != "assistant":
                 continue
             text = _assistant_event_text(event)
@@ -191,6 +203,8 @@ async def _consume_stream(
         event = _json_event(pending)
         if event is not None:
             events.append(event)
+            if on_event is not None:
+                await on_event(event)
             if event.get("type") == "assistant":
                 text = _assistant_event_text(event)
                 if text and (("timestamp_ms" in event) or not deltas):
@@ -240,9 +254,22 @@ def command_display(config: CursorCliConfig, args: list[str] | None = None) -> s
 
 
 def _with_output_format(args: list[str], output_format: str, *, stream_partial: bool = False) -> list[str]:
-    result = list(args)
-    if "--output-format" not in result and not any(item.startswith("--output-format=") for item in result):
-        result.extend(["--output-format", output_format])
+    result: list[str] = []
+    skip_next = False
+    for index, item in enumerate(args):
+        if skip_next:
+            skip_next = False
+            continue
+        if item == "--output-format":
+            # Replace any user-provided output format with the shim-required mode
+            # so non-stream and stream paths always parse deterministically.
+            if index + 1 < len(args):
+                skip_next = True
+            continue
+        if item.startswith("--output-format="):
+            continue
+        result.append(item)
+    result.extend(["--output-format", output_format])
     if stream_partial and "--stream-partial-output" not in result:
         result.append("--stream-partial-output")
     return result

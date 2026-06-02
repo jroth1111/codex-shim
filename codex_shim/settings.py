@@ -663,22 +663,27 @@ def _int_or_none(value: Any) -> int | None:
 def default_model_slug(models: list[ShimModel], include_chatgpt: bool | None = None) -> str:
     """Pick the default catalog slug for install/generate flows.
 
-    When ``include_chatgpt`` is omitted, prefer ChatGPT passthrough when auth is available.
+    When ``include_chatgpt`` is omitted, prefer a visible BYOK model (favoring
+    Cursor CLI routes) and fall back to ChatGPT passthrough only when no BYOK
+    model is visible.
     When ``include_chatgpt=False`` (BYOK-first flows), pick the first visible BYOK slug and
     only fall back to ChatGPT when no visible BYOK models remain.
     """
     if include_chatgpt is None:
-        include_chatgpt = chatgpt_passthrough_available()
-    if include_chatgpt:
+        include_chatgpt = False
+    if include_chatgpt and chatgpt_passthrough_available():
         return CHATGPT_MODEL_SLUG
     byok_visible = [
         model
         for model in models
         if getattr(model, "visible", True) and model.slug != CHATGPT_MODEL_SLUG
     ]
+    cursor_visible = [model for model in byok_visible if getattr(model, "is_cursor_cli", False)]
+    if cursor_visible:
+        return cursor_visible[0].slug
     if byok_visible:
         return byok_visible[0].slug
-    if chatgpt_passthrough_available():
+    if include_chatgpt or chatgpt_passthrough_available():
         return CHATGPT_MODEL_SLUG
     raise ValueError(
         "No usable codex-shim models: add models to ~/.codex-shim/models.json, run `codex login`, "

@@ -210,6 +210,45 @@ class ResponsesStreamState:
             if r_state is not None and not r_state.get("closed"):
                 await self._close_reasoning(response, r_state)
 
+    async def write_cursor_cli_event(self, response: web.StreamResponse, event: dict[str, Any]) -> None:
+        event_type = str(event.get("type") or "")
+        if event_type == "tool_call":
+            subtype = str(event.get("subtype") or "")
+            call_id = str(event.get("call_id") or "")
+            if not call_id:
+                return
+            key = ("cursor_cli", call_id)
+            if subtype == "started":
+                tool_name, arguments = _cursor_cli_tool_name_and_args(event.get("tool_call"))
+                state = self.tool_calls.get(key)
+                if state is None:
+                    state = await self._open_tool(response, key=key, call_id=call_id, name=tool_name)
+                if arguments:
+                    state["arguments"] = arguments
+                    await write_sse(
+                        response,
+                        {
+                            "type": "response.function_call_arguments.delta",
+                            "item_id": state["id"],
+                            "output_index": state["output_index"],
+                            "delta": arguments,
+                        },
+                    )
+                return
+            if subtype == "completed":
+                state = self.tool_calls.get(key)
+                if state is not None and not state.get("closed"):
+                    await self._close_tool(response, state)
+                return
+        if event_type == "thinking":
+            subtype = str(event.get("subtype") or "")
+            if subtype == "delta":
+                await self._chat_reasoning_delta(response, str(event.get("text") or ""))
+            elif subtype == "completed":
+                state = self.reasoning_blocks.get(("chat",))
+                if state is not None and not state.get("closed"):
+                    await self._close_reasoning(response, state)
+
     async def _open_message(self, response: web.StreamResponse) -> None:
         self.message_index = self.next_output_index
         self.next_output_index += 1
@@ -556,3 +595,35 @@ def anthropic_stream_to_chat_chunk(event: dict[str, Any], model: str) -> dict[st
         "model": model,
         "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}],
     }
+
+
+def _cursor_cli_tool_name_and_args(tool_call: Any) -> tuple[str, str]:
+    if not isinstance(tool_call, dict):
+        return "", ""
+    if "name" in tool_call:
+        return str(tool_call.get("name") or ""), _json_or_empty(tool_call.get("arguments"))
+    # Cursor ACP/CLI payloads frequently nest under tool.case/tool.value.
+    tool = tool_call.get("tool")
+    if isinstance(tool, dict):
+        tool_case = str(tool.get("case") or "")
+        if tool_case:
+            normalized = tool_case[:-8] if tool_case.endswith("ToolCall") else tool_case
+            normalized = {
+                "shell": "local_shell",
+                "webSearch": "web_search",
+                "imageGeneration": "image_generation",
+                "toolSearch": "tool_search",
+            }.get(normalized, normalized)
+            return normalized, _json_or_empty(tool.get("value"))
+    return str(tool_call.get("title") or ""), _json_or_empty(tool_call.get("rawInput"))
+
+
+def _json_or_empty(value: Any) -> str:
+    if value in (None, "", {}):
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    except TypeError:
+        return str(value)

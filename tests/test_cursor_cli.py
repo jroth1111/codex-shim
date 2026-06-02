@@ -53,6 +53,18 @@ if output_format == "stream-json":
     session_id = "fake-session"
     print(json.dumps({"type": "system", "subtype": "init", "session_id": session_id}))
     stream_style = os.environ.get("CURSOR_CLI_STREAM_STYLE", "partial")
+    if stream_style == "tool-events":
+        print(json.dumps({"type": "tool_call", "subtype": "started", "call_id": "call_1", "tool_call": {"name": "local_shell", "arguments": {"command": "pwd"}}, "session_id": session_id}))
+        print(json.dumps({"type": "tool_call", "subtype": "completed", "call_id": "call_1", "session_id": session_id}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "Cursor CLI", "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
+    if stream_style == "tool-case-events":
+        print(json.dumps({"type": "tool_call", "subtype": "started", "call_id": "call_1", "tool_call": {"tool": {"case": "shellToolCall", "value": {"args": {"command": "pwd"}}}}, "session_id": session_id}))
+        print(json.dumps({"type": "tool_call", "subtype": "completed", "call_id": "call_1", "session_id": session_id}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "Cursor CLI", "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
     if stream_style == "partial":
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor "}]}, "session_id": session_id, "timestamp_ms": 1}))
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
@@ -240,6 +252,40 @@ async def test_streaming_responses_accepts_long_cursor_cli_json_lines(tmp_path):
     text = completed["response"]["output"][0]["content"][0]["text"]
     assert len(text) == 70000
     assert text == "x" * 70000
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_emits_tool_items_from_cursor_cli_events(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="tool-events")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    assert resp.status == 200
+    events = _sse_events(await resp.text())
+    opened = [event for event in events if event.get("type") == "response.output_item.added"]
+    completed = [event for event in events if event.get("type") == "response.output_item.done"]
+    assert any(event["item"].get("type") == "local_shell_call" for event in opened)
+    assert any(event["item"].get("type") == "local_shell_call" for event in completed)
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_maps_cursor_tool_case_to_native_call(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="tool-case-events")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    assert resp.status == 200
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    tool_items = [item for item in completed["response"]["output"] if item.get("type") == "local_shell_call"]
+    assert tool_items
+    assert tool_items[0]["action"]["command"] == "pwd"
 
     await shim_client.close()
 
@@ -440,6 +486,6 @@ def test_cursor_cli_output_format_args_are_not_duplicated():
         "agent",
         "--print",
         "--output-format",
-        "json",
+        "stream-json",
         "--stream-partial-output",
     ]

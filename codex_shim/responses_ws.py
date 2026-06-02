@@ -70,22 +70,15 @@ async def handle_responses_websocket(
         if body.get("stream"):
             result = await dispatch(request, body, ws_stream=WsStreamResponse(ws))
             if isinstance(result, web.Response) and result.status >= 400:
-                raw = result.body if isinstance(result.body, (bytes, bytearray)) else b"{}"
-                try:
-                    payload = json.loads(raw.decode())
-                except json.JSONDecodeError:
-                    payload = {"type": "error", "error": {"message": "Request failed"}}
-                await ws.send_json(payload)
+                await ws.send_json(_response_error_payload(result, fallback="Streaming request failed"))
         else:
             result = await dispatch(request, body)
-            if isinstance(result, web.StreamResponse) and getattr(result, "text", None) is not None:
-                payload = json.loads(result.text or "{}")
-                if "error" in payload:
-                    await ws.send_json(payload)
+            if isinstance(result, web.Response):
+                if result.status >= 400:
+                    await ws.send_json(_response_error_payload(result, fallback="Request failed"))
                 else:
+                    payload = _response_json_payload(result)
                     await ws.send_json({"type": "response.completed", "response": payload})
-            elif isinstance(result, web.StreamResponse):
-                await _relay_sse_stream_to_websocket(ws, result)
             else:
                 await ws.send_json({"type": "error", "error": {"message": "Unexpected handler response"}})
     except Exception as exc:
@@ -102,3 +95,19 @@ async def _relay_sse_stream_to_websocket(ws: web.WebSocketResponse, stream: web.
     async for chunk in stream.body_iterator:
         await relay.write(chunk)
     await relay.write_eof()
+
+
+def _response_json_payload(result: web.Response) -> dict[str, Any]:
+    raw = result.body if isinstance(result.body, (bytes, bytearray)) else b"{}"
+    try:
+        payload = json.loads(raw.decode())
+    except json.JSONDecodeError:
+        payload = {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _response_error_payload(result: web.Response, *, fallback: str) -> dict[str, Any]:
+    payload = _response_json_payload(result)
+    if "error" in payload:
+        return payload
+    return {"type": "error", "error": {"message": fallback}}

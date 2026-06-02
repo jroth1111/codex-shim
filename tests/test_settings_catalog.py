@@ -669,6 +669,59 @@ def test_default_model_slug_falls_back_to_chatgpt_when_only_passthrough(tmp_path
     assert default_model_slug(models, include_chatgpt=False) == CHATGPT_MODEL_SLUG
 
 
+def test_default_model_slug_prefers_cursor_cli_when_visible(tmp_path, auth_present):
+    from codex_shim.settings import default_model_slug
+
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "byok-1",
+                        "model": "gpt-4o-mini",
+                        "displayName": "BYOK",
+                        "provider": "openai",
+                        "baseUrl": "http://127.0.0.1:9/v1",
+                    },
+                    {
+                        "id": "cursor-auto",
+                        "model": "auto",
+                        "displayName": "Cursor Auto",
+                        "provider": "cursor-agent",
+                        "command": sys.executable,
+                    },
+                ]
+            }
+        )
+    )
+    models = ModelSettings(settings).desktop_models()
+    assert default_model_slug(models, include_chatgpt=False) == "cursor-auto"
+
+
+def test_default_model_slug_include_chatgpt_true_prefers_passthrough(tmp_path, auth_present):
+    from codex_shim.settings import CHATGPT_MODEL_SLUG, default_model_slug
+
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "cursor-auto",
+                        "model": "auto",
+                        "displayName": "Cursor Auto",
+                        "provider": "cursor-agent",
+                        "command": sys.executable,
+                    }
+                ]
+            }
+        )
+    )
+    models = ModelSettings(settings).desktop_models()
+    assert default_model_slug(models, include_chatgpt=True) == CHATGPT_MODEL_SLUG
+
+
 def test_by_slug_or_model_prefers_chatgpt_passthrough_over_catalog_slug(tmp_path, auth_present, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     settings = tmp_path / "models.json"

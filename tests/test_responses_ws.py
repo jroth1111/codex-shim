@@ -110,3 +110,42 @@ async def test_responses_websocket_byok_streaming_emits_deltas(tmp_path):
     finally:
         await shim_client.close()
         await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_responses_websocket_nonstream_error_returns_error_payload(tmp_path):
+    async def chat(_request):
+        return web.json_response({"error": {"type": "upstream_error", "message": "boom"}}, status=502)
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+    try:
+        ws = await shim_client.ws_connect("/v1/responses")
+        await ws.send_json({"model": "real-openai", "input": "hello", "stream": False})
+        msg = await ws.receive_json()
+        assert msg["error"]["type"] == "upstream_error"
+        assert msg["error"]["message"] == "boom"
+    finally:
+        await shim_client.close()
+        await upstream_client.close()
