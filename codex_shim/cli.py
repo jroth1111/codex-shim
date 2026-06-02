@@ -31,6 +31,8 @@ from .settings import (
     default_model_slug,
     fetch_vibeproxy_model_rows,
 )
+from .migrate import apply_postgres_migrations
+from .workers import main as worker_main
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +77,14 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("disable")
     sub.add_parser("restart")
     sub.add_parser("status")
+    sub.add_parser("migrate", help="Apply SQL migrations from the migrations/ directory.")
+    worker_parser = sub.add_parser("worker", help="Run background worker tasks.")
+    worker_sub = worker_parser.add_subparsers(dest="worker_command", required=True)
+    worker_run_parser = worker_sub.add_parser("run", help="Run queued worker jobs.")
+    worker_run_parser.add_argument("--once", action="store_true", help="Run one worker cycle and exit.")
+    worker_enqueue_parser = worker_sub.add_parser("enqueue", help="Queue a worker job.")
+    worker_enqueue_parser.add_argument("job_type")
+    worker_enqueue_parser.add_argument("--payload", default="{}", help="JSON payload for the queued job.")
     doctor_parser = sub.add_parser("doctor", help="Explain visibility, patch status, catalog schema, and contract drift.")
     doctor_sub = doctor_parser.add_subparsers(dest="doctor_command")
     doctor_sub.add_parser("models", help="List visible and hidden configured models (default).")
@@ -118,8 +128,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("patch-status", help="Inspect the macOS Codex Desktop ASAR patch and backups.")
     configure_parser = sub.add_parser("configure", help="Add or update common provider rows in the model settings file.")
     configure_sub = configure_parser.add_subparsers(dest="configure_provider", required=True)
-    cursor_parser = configure_sub.add_parser("cursor", help="Configure Cursor Agent through ACP or the headless CLI.")
-    cursor_parser.add_argument("--transport", choices=["acp", "cli"], default="acp")
+    cursor_parser = configure_sub.add_parser(
+        "cursor",
+        help="Configure Cursor Agent (defaults to headless CLI; ACP is experimental opt-in).",
+    )
+    cursor_parser.add_argument("--transport", choices=["acp", "cli"], default="cli")
     cursor_parser.add_argument("--command")
     cursor_parser.add_argument("--model", default="default[]")
     cursor_parser.add_argument("--mode", default="agent")
@@ -193,6 +206,15 @@ def main(argv: list[str] | None = None) -> int:
         return start(args.settings, args.port)
     if args.command == "status":
         return status(args.port)
+    if args.command == "migrate":
+        return apply_postgres_migrations(PROJECT_ROOT / "migrations")
+    if args.command == "worker":
+        worker_args: list[str] = [args.worker_command]
+        if args.worker_command == "run" and args.once:
+            worker_args.append("--once")
+        if args.worker_command == "enqueue":
+            worker_args.extend([args.job_type, "--payload", args.payload])
+        return worker_main(worker_args)
     if args.command == "doctor":
         cmd = getattr(args, "doctor_command", None) or "models"
         if cmd == "patch":
@@ -429,6 +451,7 @@ def configure(settings_path: Path, args: argparse.Namespace) -> int:
         if args.transport == "acp":
             row["mode"] = args.mode
             row["cursor_model"] = cursor_model
+            print("warning: ACP transport is experimental and may be subscription-gated; prefer --transport cli for default use.")
         else:
             row["args"] = ["agent", "--print", "--trust", "--yolo", "--model", cursor_model]
         return _write_configured_row(settings_path, row)

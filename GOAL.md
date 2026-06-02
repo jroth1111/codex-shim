@@ -1,101 +1,79 @@
 # Goal
 
-## Goal
+Build `codex_shim` as a production-ready greenfield platform using a **modular monolith** architecture with strict boundaries, strong test coverage, and a clear path to split services later only when justified by scale or ownership.
 
-Complete the **12-day Codex Desktop inference & tools RE plan**: produce evidence-backed documentation of how Desktop routes inference (app-server → `model_provider` → shim `/v1/responses`), which tools run locally vs on the wire, and how history/compaction behave—then fold proven findings into generated contracts, audit rows, and [`docs/DESKTOP_INFERENCE_MAP.md`](docs/DESKTOP_INFERENCE_MAP.md).
+## Target Architecture
 
-**Desktop pin:** 26.527.31326 · **Shim:** `http://127.0.0.1:8765/v1`
+### 1) Application Shape (Modular Monolith)
+- One deployable backend codebase with explicit domain modules and interface boundaries.
+- No cross-module imports of internals; integration happens through service interfaces/events.
+- Shared platform capabilities (logging, auth, config, telemetry, retries) are centralized.
 
-## Non-goals
+### 2) Core Modules
+- `gateway`: OpenAI-compatible HTTP surface (`/v1/*`), request validation, auth, rate limits.
+- `routing`: model/provider resolution, policy gates, fallback and retry orchestration.
+- `providers`: provider adapters with normalized request/response contracts.
+- `tools`: tool registry, tool execution policy, and local vs remote tool dispatch.
+- `sessions`: conversation history, compaction, and context assembly.
+- `governance`: audits, evidence rows, compliance checks, and policy enforcement.
+- `observability`: structured logs, metrics, traces, and diagnostic snapshots.
 
-- Full Rust decompilation of the ~185 MB `codex` binary
-- Windows MSIX / non-macOS Desktop builds
-- Deep `codex_chronicle` or screen-memory RE
-- Publishing or redistributing extracted Desktop sources
-- Changing shim runtime behavior unless capture-backed contract drift requires it
+### 3) Data Architecture
+- Single primary relational store (PostgreSQL preferred) for durable operational state.
+- File-backed artifacts for captures/fixtures/docs kept versioned in repo where appropriate.
+- Schema migrations are mandatory and forward/backward-safe.
+- Idempotency keys for externally visible write operations.
 
-## Scope
+### 4) API and Contracts
+- API-first: backward-compatible `/v1/responses` behavior as the stability anchor.
+- Typed internal contracts for module interfaces and provider adapters.
+- Contract generation/check scripts are required gates in CI.
+- Versioned fixture corpus for regression-proof protocol behavior.
 
-Paths the agent may change (one per line):
+### 5) Async and Background Work
+- Keep synchronous path simple; use async queue only for non-critical/long-running work
+  (capture ingestion, summarization, report generation).
+- Background jobs are retry-safe and idempotent.
 
-- `docs/`
-- `scripts/`
-- `codex_shim/desktop_contract.py`
-- `codex_shim/desktop_app_server_contract.py`
-- `tests/`
-- `AUDIT_CONTRACTS.md`
-- `README.md`
-- `CONTRIBUTING.md`
-- `.github/workflows/ci.yml`
-- `codex-desktop-decompiled/` (gitignored artifacts only: captures, matrices, RE notes—not committed bulk)
+### 6) Delivery and Operations
+- Containerized local/dev/prod parity.
+- CI gates: lint, type check, unit tests, integration tests, contract checks.
+- Environments: local, staging, production with explicit config separation.
+- Baseline SLOs and dashboards for latency, error rate, and provider/tool failures.
 
-## Work units
+## Non-Goals (Initial Phase)
+- Premature microservice split.
+- Multi-database polyglot persistence without clear need.
+- Event-driven redesign of all workflows before baseline stability.
+- Large-scale infra complexity before reliability and contract correctness are proven.
 
-### day1-2-baseline
-Baseline, contracts, capture harness
+## Implementation Phases
 
-- scope: `scripts/`, `docs/DESKTOP_INFERENCE_MAP.md`, `codex_shim/desktop_contract.py`, `codex_shim/desktop_app_server_contract.py`
-- role: implement
-- acceptance: Days 1–2 artifacts exist; contract generators pass `--check`; offline pytest green
+### Phase 1: Foundation
+- Establish module boundaries and shared platform layer.
+- Lock API contract and normalize provider adapter contract.
+- Stand up CI contract/type/test gates.
 
-### day3-5-captures
-Live HAR corpus S1–S10
+### Phase 2: Reliability
+- Add robust retries/timeouts/fallbacks in routing and providers.
+- Harden session/history/compaction correctness with fixtures.
+- Add structured observability across all module boundaries.
 
-- scope: `codex-desktop-decompiled/captures/`, `scripts/ingest_har.py`, `scripts/diff_captures.py`
-- role: implement
-- acceptance: `captures/MANIFEST.json` lists parsed runs for applicable S1–S10; `RE_SCENARIO_MATRIX.md` statuses not `pending`
+### Phase 3: Scale Readiness
+- Introduce queue-backed background workers for heavy offline jobs.
+- Add performance profiling and targeted optimizations.
+- Define service extraction criteria (ownership, throughput, failure isolation).
 
-### day6-7-app-server
-App-server index and HTTP map
-
-- scope: `scripts/generate_app_server_method_index.py`, `codex-desktop-decompiled/APP_SERVER_TO_HTTP.md`
-- role: implement
-- acceptance: `extracted/app_server_method_index.json` present; HTTP map cites capture per tier family
-
-### day8-10-native
-Ghidra + tool execution matrix
-
-- scope: `codex-desktop-decompiled/ghidra/codex/`, `scripts/summarize_ghidra_shim_hits.py`
-- role: implement
-- acceptance: `shim_hits.md` updated; `TOOL_EXECUTION_MATRIX.md` draft complete
-
-### day11-contracts
-Fixtures, audit, CI
-
-- scope: `tests/fixtures/desktop/captured/`, `AUDIT_CONTRACTS.md`
-- role: implement
-- acceptance: New capture fixtures; audit rows cite CAPTURE/STRINGS/GHIDRA; CI checks pass
-
-### day12-synthesis
-Finalize inference map
-
-- scope: `docs/DESKTOP_INFERENCE_MAP.md`
-- role: verify
-- acceptance: No `pending` plan rows; sections tagged with evidence types; upgrade checklist present
+## Acceptance Criteria
+- Module boundaries are enforced and documented.
+- `/v1` compatibility remains stable under automated contract tests.
+- Provider/tool routing behavior is deterministic and covered by regression tests.
+- Observability can answer: which provider was chosen, what tools ran, and why failures occurred.
+- CI consistently enforces quality gates before merge.
 
 ## Checks
-
-Machine-verified stopping condition. Each line is a shell command that must exit 0:
+Each command below must exit 0 before release:
 
 - `python3 scripts/generate_desktop_contract.py --check`
 - `python3 scripts/generate_desktop_app_server_contract.py --check`
 - `PYTHONPATH=. python3 -m pytest tests/ -m "not live" -q`
-- `test -f scripts/capture_runbook.md && test -f scripts/ingest_har.py && test -f scripts/diff_captures.py`
-- `test -f docs/DESKTOP_INFERENCE_MAP.md`
-- `test -f codex-desktop-decompiled/RE_SCENARIO_MATRIX.md`
-- `test -f codex-desktop-decompiled/extracted/app_server_method_index.json`
-- `python3 -c "import json,sys; m=json.load(open('codex-desktop-decompiled/captures/MANIFEST.json')); runs=[r for r in m.get('runs',[]) if r.get('parsed') or r.get('har')]; sys.exit(0 if len(runs)>=6 else 1)"`
-- `test -f codex-desktop-decompiled/APP_SERVER_TO_HTTP.md`
-- `test -f codex-desktop-decompiled/TOOL_EXECUTION_MATRIX.md`
-- `test -f codex-desktop-decompiled/ghidra/codex/shim_hits.md`
-- `! grep -q '| pending |' docs/DESKTOP_INFERENCE_MAP.md`
-
-## Forbidden proxies
-
-Do not treat these as done without the checks above:
-
-- Contract generators pass but no Desktop HAR captures in `captures/MANIFEST.json`
-- Shim `probe` logs only (not a substitute for S1–S10 UI captures)
-- `DESKTOP_INFERENCE_MAP.md` still lists plan days as `pending`
-- Ghidra decomp file count growth without updated `shim_hits.md` summaries
-- Agent narrative in PROGRESS without fresh `ingest_har` / `diff_captures` command output

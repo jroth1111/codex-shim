@@ -33,5 +33,7 @@ jobs:
         run: python scripts/generate_desktop_app_server_contract.py --check  # skips without local RE tree
       - name: Desktop patch needle drift check
         run: python scripts/check_desktop_patch_needles.py       # skips without local RE tree
+      - name: Modular boundary check
+        run: python scripts/check_module_boundaries.py
       - name: Run tests
         run: python -m pytest tests/ -m "not live" -q

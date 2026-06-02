@@ -15,7 +15,6 @@ from .access_log import elapsed_ms as _elapsed_ms
 from .access_log import log_access as _log_access
 from .access_log import log_incoming_request as _log_incoming_request
 from .compact import as_compact_response as _as_compact_response
-from .compact import compact_request_body as _compact_request_body
 from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
 from .cursor_cli import CursorCliError, run_cursor_cli
 from .debug_dump import DEBUG_DIR
@@ -32,6 +31,9 @@ from .errors import (
 )
 from .hostguard import build_allowed_hosts, host_guard_middleware
 from .image_gate import needs_image_generation
+from .governance import GovernanceAuditSink
+from .gateway import GatewayHandlers
+from .observability import ObservabilitySink
 from .passthrough import (
     chatgpt_compact_passthrough,
     chatgpt_passthrough,
@@ -46,14 +48,13 @@ from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
 from .picker import restart_codex_app as _restart_codex_app
 from .picker import set_active_model as _set_active_model
-from .responses_request import (
-    PreparedResponsesRequest,
-    prepare_byok_responses_request,
-    responses_items_from_input as _responses_items_from_input,
-    should_persist_instructions,
-)
-from .responses_ws import WsStreamResponse, handle_responses_websocket
+from .responses_request import PreparedResponsesRequest
+from .responses_ws import WsStreamResponse
+from .routing import resolve_model_route
+from .providers import ProviderDispatcher
 from .response_store import ResponseStore, default_store_path
+from .sessions import SessionService
+from .persistence import JsonOperationalStore
 from .settings import (
     CHATGPT_MODEL_SLUG,
     COMPACT_UNSUPPORTED,
@@ -97,6 +98,40 @@ async def _await_cursor_inference(coro):
         raise
 
 
+def _executed_tool_count_from_response_payload(response_payload: dict[str, Any] | None) -> int:
+    """
+    Best-effort extraction of how many tools were executed in this completed turn.
+
+    For non-stream `/v1/responses`, provider translators build `output` items that
+    include tool-call-like types (e.g. `web_search_call`, `local_shell_call`,
+    `function_call`). We count those here.
+    """
+    if not isinstance(response_payload, dict):
+        return 0
+    output = response_payload.get("output")
+    if not isinstance(output, list):
+        return 0
+    tool_types = {
+        "function_call",
+        "local_shell_call",
+        "web_search_call",
+        "image_generation_call",
+        "tool_search_call",
+        "mcp_tool_call",
+        "custom_tool_call",
+        "function_call_output",
+        "tool_result",
+    }
+    count = 0
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        t = str(item.get("type") or "")
+        if t in tool_types or t.endswith("_call") or t.endswith("_result"):
+            count += 1
+    return count
+
+
 class ShimServer:
     def __init__(
         self,
@@ -108,6 +143,18 @@ class ShimServer:
         self.host = host
         self.timeout = ClientTimeout(total=None, sock_connect=120, sock_read=None)
         self.response_store = ResponseStore(path=response_store_path or default_store_path())
+        self.session_service = SessionService(self.response_store, self._content_to_debug_text)
+        self.provider_dispatcher = ProviderDispatcher(
+            openai_handler=self._provider_openai_dispatch,
+            anthropic_handler=self._provider_anthropic_dispatch,
+            cursor_acp_handler=self._provider_cursor_acp_dispatch,
+            cursor_cli_handler=self._provider_cursor_cli_dispatch,
+        )
+        runtime_root = default_store_path().parent
+        self.governance = GovernanceAuditSink(runtime_root / "governance_events.jsonl")
+        self.observability = ObservabilitySink(runtime_root / "observability_events.jsonl")
+        self.operational_store = JsonOperationalStore(runtime_root / "ops")
+        self.gateway_handlers = GatewayHandlers(self)
 
     def app(self) -> web.Application:
         allowed_hosts = build_allowed_hosts(self.host)
@@ -117,10 +164,10 @@ class ShimServer:
         )
         app.router.add_get("/health", self.health)
         app.router.add_get("/v1/models", self.models)
-        app.router.add_post("/v1/chat/completions", self.chat_completions)
-        app.router.add_post("/v1/responses", self.responses)
-        app.router.add_get("/v1/responses", self.responses_websocket)
-        app.router.add_post("/v1/responses/compact", self.responses_compact)
+        app.router.add_post("/v1/chat/completions", self.gateway_handlers.chat_completions)
+        app.router.add_post("/v1/responses", self.gateway_handlers.responses)
+        app.router.add_get("/v1/responses", self.gateway_handlers.responses_websocket)
+        app.router.add_post("/v1/responses/compact", self.gateway_handlers.responses_compact)
         app.router.add_get("/picker", self.picker_page)
         app.router.add_get("/api/models", self.api_models)
         app.router.add_post("/api/switch", self.switch_model)
@@ -217,13 +264,6 @@ class ShimServer:
             return await self._post_cursor_cli(request, route, forwarded, as_responses=False)
         raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
 
-    async def responses(self, request: web.Request) -> web.StreamResponse:
-        body = await request.json()
-        return await self._dispatch_responses(request, body)
-
-    async def responses_websocket(self, request: web.Request) -> web.WebSocketResponse:
-        return await handle_responses_websocket(request, dispatch=self._dispatch_responses)
-
     async def _dispatch_responses(
         self,
         request: web.Request,
@@ -232,7 +272,27 @@ class ShimServer:
     ) -> web.StreamResponse | web.Response:
         _log_incoming_request("/v1/responses", body)
         model = str(body.get("model") or "")
-        route = self._route(body)
+        resolution = resolve_model_route(self.settings, body)
+        route = resolution.selected_route
+        policy = resolution.policy
+        requested_tool_count = 0
+        tools = body.get("tools")
+        if isinstance(tools, list):
+            requested_tool_count = len(tools)
+        self.observability.emit(
+            stage="route_selected",
+            path="/v1/responses",
+            provider=route.provider,
+            model_slug=route.slug,
+            attributes={"requested_model": model, "requested_tool_count": requested_tool_count},
+        )
+        idempotency_key = str(request.headers.get("Idempotency-Key") or "").strip()
+        if idempotency_key:
+            self.operational_store.put(
+                "idempotency",
+                idempotency_key,
+                {"path": "/v1/responses", "model": route.slug, "stream": bool(body.get("stream"))},
+            )
         if needs_image_generation(body):
             if not route.capabilities.supports_image_generation:
                 return _unsupported_capability_response(
@@ -250,8 +310,17 @@ class ShimServer:
                 ws_stream=ws_stream,
             )
         try:
-            prepared = prepare_byok_responses_request(self.response_store, request, body)
+            prepared = self.session_service.prepare(request, body)
         except KeyError as exc:
+            self.governance.emit(
+                path="/v1/responses",
+                provider=route.provider,
+                model_slug=route.slug,
+                outcome="error",
+                body=body,
+                failure_category="previous_response_missing",
+                selected_by=resolution.selected_by,
+            )
             return web.json_response(
                 {"error": {"type": "not_found", "message": f"Unknown previous_response_id: {exc.args[0]}"}},
                 status=404,
@@ -262,9 +331,21 @@ class ShimServer:
                 request,
                 route,
                 prepared,
+                fallback_route=resolution.fallback_route,
+                selected_by=resolution.selected_by,
+                policy=policy,
                 ws_stream=ws_stream,
             )
         except ResponsesInputError as exc:
+            self.governance.emit(
+                path="/v1/responses",
+                provider=route.provider,
+                model_slug=route.slug,
+                outcome="error",
+                body=body,
+                failure_category="invalid_request",
+                selected_by=resolution.selected_by,
+            )
             return _invalid_request_error_response(exc)
         raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
 
@@ -274,12 +355,20 @@ class ShimServer:
         route: ShimModel,
         prepared: PreparedResponsesRequest,
         *,
+        fallback_route: ShimModel | None = None,
+        selected_by: str | None = None,
+        policy=None,
         ws_stream: WsStreamResponse | None = None,
         force_non_stream: bool = False,
         compact_body_for_wrap: dict[str, Any] | None = None,
     ) -> web.StreamResponse | web.Response:
         stream_target = ws_stream if ws_stream is not None else None
+        dispatch_stats: dict[str, Any] = {}
         body = prepared.body
+        requested_tool_count = 0
+        tools = body.get("tools")
+        if isinstance(tools, list):
+            requested_tool_count = len(tools)
         chained = prepared.chained_from_previous
         if route.is_openai_chat:
             forwarded = responses_to_chat(
@@ -291,11 +380,13 @@ class ShimServer:
             )
             if force_non_stream:
                 forwarded["stream"] = False
-            result = await self._post_openai_chat(
+            result = await self.provider_dispatcher.dispatch(
                 request,
                 route,
                 forwarded,
                 as_responses=True,
+                policy=policy,
+                stats=dispatch_stats,
                 prepared=prepared,
                 stream_response=stream_target,
             )
@@ -308,11 +399,13 @@ class ShimServer:
             )
             if force_non_stream:
                 forwarded["stream"] = False
-            result = await self._post_anthropic(
+            result = await self.provider_dispatcher.dispatch(
                 request,
                 route,
                 forwarded,
                 as_responses=True,
+                policy=policy,
+                stats=dispatch_stats,
                 prepared=prepared,
                 stream_response=stream_target,
             )
@@ -320,11 +413,13 @@ class ShimServer:
             dispatch_body = dict(body)
             if force_non_stream:
                 dispatch_body["stream"] = False
-            result = await self._post_cursor_acp(
+            result = await self.provider_dispatcher.dispatch(
                 request,
                 route,
                 dispatch_body,
                 as_responses=True,
+                policy=policy,
+                stats=dispatch_stats,
                 prepared=prepared,
                 stream_response=stream_target,
             )
@@ -332,16 +427,69 @@ class ShimServer:
             dispatch_body = dict(body)
             if force_non_stream:
                 dispatch_body["stream"] = False
-            result = await self._post_cursor_cli(
+            result = await self.provider_dispatcher.dispatch(
                 request,
                 route,
                 dispatch_body,
                 as_responses=True,
+                policy=policy,
+                stats=dispatch_stats,
                 prepared=prepared,
                 stream_response=stream_target,
             )
         else:
             raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
+        status = getattr(result, "status", 200)
+        fallback_used = False
+        if (
+            policy is not None
+            and getattr(policy, "fallback_enabled", False)
+            and fallback_route is not None
+            and status >= 400
+            and status in getattr(policy, "retryable_statuses", ())
+            and not bool(body.get("stream"))
+        ):
+            fallback_used = True
+            dispatch_body = dict(body)
+            dispatch_body["model"] = fallback_route.model
+            result = await self.provider_dispatcher.dispatch(
+                request,
+                fallback_route,
+                dispatch_body,
+                as_responses=True,
+                policy=policy,
+                stats=dispatch_stats,
+                prepared=prepared,
+                stream_response=stream_target,
+            )
+            status = getattr(result, "status", 200)
+        outcome = "ok" if status < 400 else "error"
+        failure_category = None if status < 400 else "upstream_error"
+        executed_tool_count = getattr(result, "_codex_shim_executed_tool_count", None)
+        self.governance.emit(
+            path=str(request.path),
+            provider=fallback_route.provider if fallback_used and fallback_route is not None else route.provider,
+            model_slug=fallback_route.slug if fallback_used and fallback_route is not None else route.slug,
+            outcome=outcome,
+            body=prepared.body,
+            failure_category=failure_category,
+            selected_by=selected_by,
+            retry_attempts=int(dispatch_stats.get("attempts", 0)),
+            fallback_used=fallback_used,
+            tool_count_override=executed_tool_count,
+        )
+        self.observability.emit(
+            stage="provider_dispatched",
+            path=str(request.path),
+            provider=route.provider,
+            model_slug=route.slug,
+            attributes={
+                "status": status,
+                "requested_tool_count": requested_tool_count,
+                "executed_tool_count": int(executed_tool_count) if executed_tool_count is not None else None,
+                "tool_evidence": "response_output" if executed_tool_count is not None else "unknown",
+            },
+        )
         if compact_body_for_wrap is not None:
             return await _as_compact_response(result, route.slug, compact_body_for_wrap)
         return result
@@ -352,46 +500,37 @@ class ShimServer:
         response_payload: dict[str, Any],
     ) -> None:
         """Persist completed turn items for multi-turn BYOK / passthrough history."""
-        response_id = str(response_payload.get("id") or "")
-        if not response_id:
-            return
-        items: list[dict[str, Any]] = []
-        if should_persist_instructions(prepared):
-            instructions = prepared.body.get("instructions")
-            items.append(
-                {
-                    "type": "message",
-                    "role": "developer",
-                    "content": [{"type": "input_text", "text": self._content_to_debug_text(instructions)}],
-                }
-            )
-        items.extend(_responses_items_from_input(prepared.body.get("input")))
-        output = response_payload.get("output")
-        if isinstance(output, list):
-            items.extend(item for item in output if isinstance(item, dict))
-        self.response_store.put(
-            response_id,
-            items,
-            session_id=prepared.session_id,
-            model=str(prepared.body.get("model") or response_payload.get("model") or ""),
-        )
+        self.session_service.store_response_history(prepared, response_payload)
 
     async def responses_compact(self, request: web.Request) -> web.StreamResponse:
         body = await request.json()
+        return await self.responses_compact_from_body(request, body)
+
+    async def responses_compact_from_body(self, request: web.Request, body: dict[str, Any]) -> web.StreamResponse:
         _log_incoming_request("/v1/responses/compact", body)
-        route = self._route(body)
+        resolution = resolve_model_route(self.settings, body)
+        route = resolution.selected_route
         if route.is_chatgpt:
             return await chatgpt_compact_passthrough(self, request, route, body)
         if route.capabilities.compact_behavior == COMPACT_UNSUPPORTED:
             return _unsupported_compact_response(route)
         try:
-            prepared = prepare_byok_responses_request(self.response_store, request, body)
+            prepared = self.session_service.prepare(request, body)
         except KeyError as exc:
+            self.governance.emit(
+                path="/v1/responses/compact",
+                provider=route.provider,
+                model_slug=route.slug,
+                outcome="error",
+                body=body,
+                failure_category="previous_response_missing",
+                selected_by=resolution.selected_by,
+            )
             return web.json_response(
                 {"error": {"type": "not_found", "message": f"Unknown previous_response_id: {exc.args[0]}"}},
                 status=404,
             )
-        compact_body = _compact_request_body(prepared.body, route.model)
+        compact_body = self.session_service.compact_body(prepared, route.model)
         try:
             validate_responses_input(compact_body)
             compact_prepared = PreparedResponsesRequest(
@@ -403,10 +542,22 @@ class ShimServer:
                 request,
                 route,
                 compact_prepared,
+                fallback_route=resolution.fallback_route,
+                selected_by=resolution.selected_by,
+                policy=resolution.policy,
                 force_non_stream=True,
                 compact_body_for_wrap=compact_body,
             )
         except ResponsesInputError as exc:
+            self.governance.emit(
+                path="/v1/responses/compact",
+                provider=route.provider,
+                model_slug=route.slug,
+                outcome="error",
+                body=body,
+                failure_category="invalid_request",
+                selected_by=resolution.selected_by,
+            )
             return _invalid_request_error_response(exc)
         raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
 
@@ -428,11 +579,79 @@ class ShimServer:
         return str(content)
 
     def _route(self, body: dict[str, Any]) -> ShimModel:
-        requested = str(body.get("model") or "")
-        route = self.settings.by_slug_or_model(requested)
-        if route is None:
-            raise web.HTTPNotFound(text=f"Unknown model slug/model: {requested}")
-        return route
+        return resolve_model_route(self.settings, body).selected_route
+
+    async def _provider_openai_dispatch(
+        self,
+        request: web.Request,
+        route: ShimModel,
+        body: dict[str, Any],
+        as_responses: bool,
+        prepared: PreparedResponsesRequest | None,
+        stream_response: WsStreamResponse | None,
+    ) -> web.StreamResponse:
+        return await self._post_openai_chat(
+            request,
+            route,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
+        )
+
+    async def _provider_anthropic_dispatch(
+        self,
+        request: web.Request,
+        route: ShimModel,
+        body: dict[str, Any],
+        as_responses: bool,
+        prepared: PreparedResponsesRequest | None,
+        stream_response: WsStreamResponse | None,
+    ) -> web.StreamResponse:
+        return await self._post_anthropic(
+            request,
+            route,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
+        )
+
+    async def _provider_cursor_acp_dispatch(
+        self,
+        request: web.Request,
+        route: ShimModel,
+        body: dict[str, Any],
+        as_responses: bool,
+        prepared: PreparedResponsesRequest | None,
+        stream_response: WsStreamResponse | None,
+    ) -> web.StreamResponse:
+        return await self._post_cursor_acp(
+            request,
+            route,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
+        )
+
+    async def _provider_cursor_cli_dispatch(
+        self,
+        request: web.Request,
+        route: ShimModel,
+        body: dict[str, Any],
+        as_responses: bool,
+        prepared: PreparedResponsesRequest | None,
+        stream_response: WsStreamResponse | None,
+    ) -> web.StreamResponse:
+        return await self._post_cursor_cli(
+            request,
+            route,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
+        )
 
     async def _post_openai_chat(
         self,
@@ -478,6 +697,10 @@ class ShimServer:
             response_payload = chat_completion_to_response(payload, route.slug)
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
+            resp = web.json_response(response_payload)
+            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
+            if executed_tool_count > 0:
+                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
             _log_access(
                 request,
                 route,
@@ -488,7 +711,7 @@ class ShimServer:
                 request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
-            return web.json_response(response_payload)
+            return resp
         _log_access(request, route, 200, started_at, payload=payload, stream=False, request_body=body, provider_ms=provider_ms)
         return web.json_response(payload)
 
@@ -535,6 +758,10 @@ class ShimServer:
             response_payload = anthropic_to_response(payload, route.slug)
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
+            resp = web.json_response(response_payload)
+            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
+            if executed_tool_count > 0:
+                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
             _log_access(
                 request,
                 route,
@@ -545,7 +772,7 @@ class ShimServer:
                 request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
-            return web.json_response(response_payload)
+            return resp
         chat_payload = anthropic_to_chat_response(payload, route.slug)
         _log_access(
             request,
@@ -602,6 +829,10 @@ class ShimServer:
             response_payload = cursor_acp_response_payload(result, route.slug)
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
+            resp = web.json_response(response_payload)
+            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
+            if executed_tool_count > 0:
+                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
             _log_access(
                 request,
                 route,
@@ -612,7 +843,7 @@ class ShimServer:
                 request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
-            return web.json_response(response_payload)
+            return resp
         chat_payload = cursor_acp_chat_payload(result, route.slug)
         _log_access(
             request,
@@ -669,6 +900,10 @@ class ShimServer:
             response_payload = cursor_acp_response_payload(result, route.slug)
             if prepared is not None:
                 self._store_response_history(prepared, response_payload)
+            resp = web.json_response(response_payload)
+            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
+            if executed_tool_count > 0:
+                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
             _log_access(
                 request,
                 route,
@@ -679,7 +914,7 @@ class ShimServer:
                 request_body=prepared.body if prepared is not None else body,
                 provider_ms=provider_ms,
             )
-            return web.json_response(response_payload)
+            return resp
         chat_payload = cursor_acp_chat_payload(result, route.slug)
         _log_access(
             request,
@@ -879,8 +1114,17 @@ class ShimServer:
                 async def write_responses_delta(text: str) -> None:
                     await state.write_chat_delta(response, {"choices": [{"delta": {"content": text}}]})
 
+                async def write_responses_event(event: dict[str, Any]) -> None:
+                    await state.write_cursor_cli_event(response, event)
+
                 result = await _await_cursor_inference(
-                    run_cursor_cli(route, body, on_text=write_responses_delta, chained_from_previous=chained)
+                    run_cursor_cli(
+                        route,
+                        body,
+                        on_text=write_responses_delta,
+                        on_event=write_responses_event,
+                        chained_from_previous=chained,
+                    )
                 )
                 if result.usage is not None:
                     state.usage = result.usage

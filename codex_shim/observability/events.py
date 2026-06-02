@@ -1,0 +1,35 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from pathlib import Path
+import json
+import time
+from typing import Any
+
+
+@dataclass(frozen=True)
+class ObservabilityEvent:
+    timestamp: int
+    stage: str
+    path: str
+    provider: str
+    model_slug: str
+    attributes: dict[str, Any]
+
+
+class ObservabilitySink:
+    def __init__(self, log_path: Path):
+        self._log_path = log_path
+        self._log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def emit(self, *, stage: str, path: str, provider: str, model_slug: str, attributes: dict[str, Any] | None = None) -> None:
+        event = ObservabilityEvent(
+            timestamp=int(time.time()),
+            stage=stage,
+            path=path,
+            provider=provider,
+            model_slug=model_slug,
+            attributes=attributes or {},
+        )
+        with self._log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(asdict(event), sort_keys=True) + "\n")
