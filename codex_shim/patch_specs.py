@@ -45,15 +45,22 @@ _LEGACY_PICKER_SPEC: PatchSpec = (
     MODEL_PICKER_REPLACEMENT,
     MODEL_PICKER_OPTIONAL,
 )
+_MODEL_PICKER_SPEC_26_527: PatchSpec = (
+    "model picker allowlist filter",
+    ["model-queries-*.js", "*.js"],
+    "let u=c.useHiddenModels&&a!==`amazonBedrock`,f;",
+    "let u=!1,f;",
+    False,
+)
 
 PATCH_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
     "26.519.81530": [_SIDEBAR_SPEC],
-    "26.527.60818": [_SIDEBAR_SPEC_26_527],
+    "26.527.60818": [_MODEL_PICKER_SPEC_26_527, _SIDEBAR_SPEC_26_527],
 }
 
 INSPECTION_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
     "26.519.81530": [_LEGACY_PICKER_SPEC, _SIDEBAR_SPEC],
-    "26.527.60818": [_LEGACY_PICKER_SPEC, _SIDEBAR_SPEC_26_527],
+    "26.527.60818": [_LEGACY_PICKER_SPEC, _MODEL_PICKER_SPEC_26_527, _SIDEBAR_SPEC_26_527],
 }
 
 KNOWN_DESKTOP_VERSIONS = tuple(sorted(PATCH_SPECS_BY_VERSION.keys(), reverse=True))

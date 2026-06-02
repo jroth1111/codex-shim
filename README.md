@@ -1058,7 +1058,10 @@ codex-shim model list        list slugs currently usable in the picker
 codex-shim model use <slug>  set the Desktop default model in managed config
 codex-shim codex -- <args>   exec `codex` CLI through inline shim overrides
 codex-shim app [path]        launch Codex Desktop through managed shim config
+codex-shim one-shot [path]   patch-if-needed, start shim, launch Desktop, stop shim on Desktop exit
 codex-shim patch-app         patch macOS Codex Desktop sidebar ASAR behavior
+codex-shim patch-auto        patch macOS Codex Desktop only if needed
+codex-shim install-dock-shortcut  create a Dock launcher app for one-click one-shot
 codex-shim patch-status      inspect macOS patch/backups/tooling
 codex-shim restore-app       restore macOS app.asar from patch backup
 codex-shim configure cursor  add/update Cursor Agent model settings
@@ -1280,6 +1283,48 @@ or the patch hit the wrong JavaScript bundle. Restore and retry:
 ```bash
 codex-shim restore-app
 codex-shim patch-app
+```
+
+### Avoid manual re-patching after app updates
+
+Desktop updates replace `app.asar`, which removes the sidebar patch. Use:
+
+```bash
+codex-shim patch-auto
+```
+
+It inspects the current Desktop bundle and only runs `patch-app` when the
+sidebar filter is unpatched. If macOS permissions block writes under
+`/Applications/Codex.app`, rerun with sudo:
+
+```bash
+sudo python3 -m codex_shim.cli patch-app
+```
+
+For a single-command daily workflow, run:
+
+```bash
+codex-shim one-shot .
+```
+
+`one-shot` will:
+
+1. regenerate catalog/config
+2. run `patch-auto` on macOS (unless `--skip-patch`)
+3. start shim if needed
+4. launch Codex Desktop
+5. wait until Codex Desktop exits
+6. restore your prior `~/.codex/config.toml` model/provider keys
+7. stop the shim daemon
+
+This keeps shim usage transactional for Desktop sessions: Codex is pointed to
+shim while Desktop is running, and automatically restored when the session
+ends.
+
+If you explicitly want to keep shim/config active after launch, use:
+
+```bash
+codex-shim one-shot . --keep-shim-running
 ```
 
 ### Reset generated shim state

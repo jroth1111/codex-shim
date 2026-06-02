@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import ctypes
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -126,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
         "--live", action="store_true", help="Run probe (or set CODEX_SHIM_PROBE_PASSTHROUGH=1)."
     )
     sub.add_parser("patch-app", help="Patch Codex Desktop sidebar handling for custom shim models.")
+    sub.add_parser("patch-auto", help="Patch Codex Desktop only when current bundle is unpatched.")
+    sub.add_parser("install-dock-shortcut", help="Create a macOS Dock launcher for one-click shim lifecycle.")
     sub.add_parser("restore-app", help="Restore Codex Desktop app.asar from the pre-patch backup.")
     sub.add_parser("patch-status", help="Inspect the macOS Codex Desktop ASAR patch and backups.")
     configure_parser = sub.add_parser("configure", help="Add or update common provider rows in the model settings file.")
@@ -135,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Configure Cursor Agent (defaults to headless CLI; ACP is experimental opt-in).",
     )
     cursor_parser.add_argument("--transport", choices=["acp", "cli"], default="cli")
-    cursor_parser.add_argument("--command")
+    cursor_parser.add_argument("--command", dest="cursor_command")
     cursor_parser.add_argument("--model", default="default[]")
     cursor_parser.add_argument("--mode", default="agent")
     cursor_parser.add_argument("--display-name", default="Cursor Agent Auto")
@@ -185,6 +188,27 @@ def main(argv: list[str] | None = None) -> int:
     app_parser = sub.add_parser("app", help="Launch Codex Desktop with opt-in shim config overrides.")
     app_parser.add_argument("-m", "--model", dest="model_slug")
     app_parser.add_argument("path", nargs="?", default=".")
+    one_shot_parser = sub.add_parser(
+        "one-shot",
+        help="Transactional Desktop run: patch/check, start shim, launch Codex, then restore config and stop shim.",
+    )
+    one_shot_parser.add_argument("-m", "--model", dest="model_slug")
+    one_shot_parser.add_argument("path", nargs="?", default=".")
+    one_shot_parser.add_argument(
+        "--skip-patch",
+        action="store_true",
+        help="Skip patch-auto preflight on macOS.",
+    )
+    one_shot_parser.add_argument(
+        "--require-patch",
+        action="store_true",
+        help="Fail if patch-auto cannot patch the Desktop bundle.",
+    )
+    one_shot_parser.add_argument(
+        "--keep-shim-running",
+        action="store_true",
+        help="Opt out of transactional default and leave shim/config active after Desktop exits.",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "generate":
@@ -253,6 +277,10 @@ def main(argv: list[str] | None = None) -> int:
         return configure(args.settings, args)
     if args.command == "patch-app":
         return patch_codex_app()
+    if args.command == "patch-auto":
+        return patch_codex_app_auto()
+    if args.command == "install-dock-shortcut":
+        return install_dock_shortcut()
     if args.command == "restore-app":
         return restore_codex_app_bundle()
     if args.command == "patch-status":
@@ -293,6 +321,16 @@ def main(argv: list[str] | None = None) -> int:
         install_codex_config(args.settings, args.port, args.model_slug)
         exec_codex_app(args.settings, args.port, args.path)
         return 0
+    if args.command == "one-shot":
+        return one_shot(
+            args.settings,
+            args.port,
+            args.path,
+            args.model_slug,
+            skip_patch=bool(args.skip_patch),
+            require_patch=bool(args.require_patch),
+            keep_shim_running=bool(args.keep_shim_running),
+        )
     return 2
 
 
@@ -449,7 +487,7 @@ def configure(settings_path: Path, args: argparse.Namespace) -> int:
             "model": cursor_model,
             "display_name": args.display_name,
             "provider": provider,
-            "command": args.command or ("cursor-agent" if args.transport == "acp" else "cursor"),
+            "command": args.cursor_command or ("cursor-agent" if args.transport == "acp" else "cursor"),
             "enabled": True,
         }
         if args.transport == "acp":
@@ -1002,6 +1040,47 @@ def exec_codex_app(settings_path: Path, port: int, path: str) -> None:
     _foreground_codex_app()
 
 
+def one_shot(
+    settings_path: Path,
+    port: int,
+    path: str,
+    model_slug: str | None,
+    *,
+    skip_patch: bool = False,
+    require_patch: bool = False,
+    keep_shim_running: bool = False,
+) -> int:
+    generate(settings_path, port)
+    if sys.platform == "darwin" and not skip_patch:
+        code = patch_codex_app_auto()
+        if code != 0:
+            if require_patch:
+                return code
+            print(
+                "patch-auto could not complete; continuing without patch. "
+                "Desktop model picker may still show only Custom until patched.",
+                file=sys.stderr,
+            )
+    ensure_started(settings_path, port)
+    install_codex_config(settings_path, port, model_slug)
+    exec_codex_app(settings_path, port, path)
+    if keep_shim_running:
+        print("Codex Desktop launched; shim left running (opt-out mode).")
+        print("Use `codex-shim stop` when you are done.")
+        return 0
+    print("Waiting for Codex Desktop to exit...")
+    if not _wait_for_codex_launch(timeout_seconds=30):
+        print("Codex Desktop process was not detected after launch; shim remains running.", file=sys.stderr)
+        return 1
+    try:
+        _wait_for_codex_exit()
+    except KeyboardInterrupt:
+        print("\nInterrupted; restoring config, stopping shim, and exiting.")
+    # one-shot is intentionally transactional: restore user Codex config and stop shim.
+    restore_codex_config()
+    return stop()
+
+
 def _set_loopback_no_proxy_env() -> None:
     _with_loopback_no_proxy(os.environ)
 
@@ -1016,6 +1095,77 @@ def _with_loopback_no_proxy(env: dict[str, str]) -> dict[str, str]:
                 values.append(host)
         env[key] = ",".join(values)
     return env
+
+
+def _codex_desktop_running() -> bool:
+    if sys.platform == "darwin":
+        result = subprocess.run(["pgrep", "-x", "Codex"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        return result.returncode == 0
+    if os.name == "nt":
+        result = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq Codex.exe"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+        return "Codex.exe" in (result.stdout or "")
+    result = subprocess.run(["pgrep", "-f", "codex app"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return result.returncode == 0
+
+
+def _wait_for_codex_launch(*, timeout_seconds: int = 30) -> bool:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        if _codex_desktop_running():
+            return True
+        time.sleep(0.5)
+    return _codex_desktop_running()
+
+
+def _wait_for_codex_exit() -> None:
+    while _codex_desktop_running():
+        time.sleep(1.0)
+
+
+def install_dock_shortcut() -> int:
+    if sys.platform != "darwin":
+        print("install-dock-shortcut is macOS-only.", file=sys.stderr)
+        return 1
+    launcher_dir = Path.home() / ".codex-shim"
+    launcher_dir.mkdir(parents=True, exist_ok=True)
+    launcher_script = launcher_dir / "dock-launch.sh"
+    repo_root = PROJECT_ROOT
+    launcher_script.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        f"cd {shlex.quote(str(repo_root))}\n"
+        "python3 -m codex_shim.cli one-shot .\n"
+    )
+    launcher_script.chmod(0o755)
+
+    app_dir = Path.home() / "Applications"
+    app_dir.mkdir(parents=True, exist_ok=True)
+    app_path = app_dir / "Codex Shim Launcher.app"
+    applescript = (
+        'tell application "Terminal"\n'
+        f'  do script "{launcher_script}"\n'
+        "  activate\n"
+        "end tell\n"
+    )
+    subprocess.run(
+        [
+            _resolve_executable("osacompile"),
+            "-o",
+            str(app_path),
+            "-e",
+            applescript,
+        ],
+        check=True,
+    )
+    print(f"Created Dock launcher app: {app_path}")
+    print("Drag this app into your Dock for one-click startup/shutdown workflow.")
+    return 0
 
 
 def _quit_codex_app() -> None:
@@ -1060,7 +1210,15 @@ def patch_codex_app() -> int:
     if workdir.exists():
         import shutil
 
-        shutil.rmtree(workdir)
+        shutil.rmtree(workdir, ignore_errors=True)
+        if workdir.exists():
+            print(
+                f"Cannot clear existing workdir {workdir}. "
+                "It may contain root-owned files from a prior sudo run.",
+                file=sys.stderr,
+            )
+            print("Try: sudo rm -rf " + str(workdir), file=sys.stderr)
+            return 1
     workdir.mkdir(parents=True)
     subprocess.run([_resolve_executable("npx"), "--yes", "asar", "extract", str(app_asar), str(workdir)], check=True)
     desktop_version = _codex_desktop_version(info_plist)
@@ -1092,10 +1250,57 @@ def patch_codex_app() -> int:
     if changed is None:
         return 1
     if changed:
-        subprocess.run([_resolve_executable("npx"), "--yes", "asar", "pack", str(workdir), str(app_asar)], check=True)
-        _update_app_asar_integrity(app_asar, info_plist)
-        _resign_codex_app()
+        try:
+            subprocess.run([_resolve_executable("npx"), "--yes", "asar", "pack", str(workdir), str(app_asar)], check=True)
+            _update_app_asar_integrity(app_asar, info_plist)
+            _resign_codex_app()
+        except PermissionError:
+            print(
+                "Permission denied while writing Codex.app bundle. Re-run with elevated privileges:\n"
+                "  sudo python3 -m codex_shim.cli patch-app",
+                file=sys.stderr,
+            )
+            return 1
     return 0
+
+
+def patch_codex_app_auto() -> int:
+    if sys.platform != "darwin":
+        print("patch-auto is macOS-only.", file=sys.stderr)
+        return 1
+    app_path = Path("/Applications/Codex.app")
+    info_plist = app_path / "Contents/Info.plist"
+    version = _codex_desktop_version(info_plist)
+    workdir = _extract_app_asar_workdir(app_path)
+    if workdir is None:
+        print("Could not inspect app.asar bundles.", file=sys.stderr)
+        return 1
+    try:
+        inspection = _inspect_codex_desktop_bundles(workdir, version=version)
+        if not inspection:
+            print("Desktop inspection returned no patch specs; run `codex-shim doctor patch` for details.", file=sys.stderr)
+            return 1
+        required = [row for row in inspection if row.get("optional", "false") != "true"]
+        if not required:
+            print("Desktop inspection found no required patch specs.", file=sys.stderr)
+            return 1
+        statuses = {str(row.get("status") or "") for row in required}
+        if statuses == {"patched"}:
+            print(f"Codex Desktop {version} already patched; no action needed.")
+            return 0
+        if any(str(row.get("status") or "") == "missing" for row in required):
+            print(
+                f"Codex Desktop {version} has unknown required bundle shape. "
+                "Update patch specs for this version before patching.",
+                file=sys.stderr,
+            )
+            return 1
+    finally:
+        import shutil
+
+        shutil.rmtree(workdir, ignore_errors=True)
+    print(f"Codex Desktop {version} is unpatched; applying patch...")
+    return patch_codex_app()
 
 
 def restore_codex_app_bundle() -> int:
