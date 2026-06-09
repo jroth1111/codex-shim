@@ -110,3 +110,23 @@ def test_known_response_input_types_covers_all_desktop_item_types():
         "other",
     }
     assert KNOWN_RESPONSE_INPUT_TYPES == expected
+
+
+def test_responses_to_chat_preserves_thought_signature_on_function_call():
+    body = {
+        "model": "slug",
+        "input": [
+            {
+                "type": "function_call",
+                "call_id": "call_gemini",
+                "name": "lookup",
+                "arguments": "{\"q\":\"repo\"}",
+                "thought_signature": "sig-abc123",
+            },
+            {"type": "function_call_output", "call_id": "call_gemini", "output": "ok"},
+        ],
+    }
+
+    out = responses_to_chat(body, "gemini-model")
+
+    assert out["messages"][0]["tool_calls"][0]["thought_signature"] == "sig-abc123"

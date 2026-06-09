@@ -106,16 +106,19 @@ def responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             # message with multiple tool_calls so chat-completions upstreams
             # accept the subsequent tool messages.
             call_id = item.get("call_id") or item.get("id") or "call_0"
-            pending_tool_calls.append(
-                {
-                    "id": call_id,
-                    "type": "function",
-                    "function": {
-                        "name": item.get("name") or "",
-                        "arguments": item.get("arguments") or "",
-                    },
-                }
-            )
+            tool_call: dict[str, Any] = {
+                "id": call_id,
+                "type": "function",
+                "function": {
+                    "name": item.get("name") or "",
+                    "arguments": item.get("arguments") or "",
+                },
+            }
+            # Preserve thought_signature for Gemini thinking models — required
+            # when echoing function calls back in the conversation history.
+            if item.get("thought_signature"):
+                tool_call["thought_signature"] = item["thought_signature"]
+            pending_tool_calls.append(tool_call)
         elif item_type == "function_call_output":
             flush_pending_assistant_tool_calls()
             output = item.get("output", "")

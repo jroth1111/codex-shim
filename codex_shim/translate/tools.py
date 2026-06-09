@@ -292,7 +292,7 @@ def tool_call_to_response_item(call: dict[str, Any], *, status: str = "completed
     native = function_call_to_native_item(name, call_id, arguments, status=status)
     if native is not None:
         return native
-    return {
+    fc_item: dict[str, Any] = {
         "id": call_id,
         "type": "function_call",
         "status": status,
@@ -300,3 +300,8 @@ def tool_call_to_response_item(call: dict[str, Any], *, status: str = "completed
         "name": name,
         "arguments": arguments,
     }
+    # Preserve thought_signature so Codex echoes it back on the next turn.
+    # Without this, Gemini thinking models reject the follow-up request.
+    if call.get("thought_signature"):
+        fc_item["thought_signature"] = call["thought_signature"]
+    return fc_item

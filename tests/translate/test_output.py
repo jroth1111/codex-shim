@@ -46,6 +46,33 @@ def test_chat_completion_to_response_preserves_reasoning_content_for_tool_calls(
     assert out["output"][0]["encrypted_content"] is None
 
 
+def test_chat_completion_to_response_preserves_thought_signature_on_function_call():
+    payload = {
+        "id": "chatcmpl_gemini",
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "call_gemini",
+                            "type": "function",
+                            "thought_signature": "sig-abc123",
+                            "function": {"name": "lookup", "arguments": "{\"q\":\"repo\"}"},
+                        }
+                    ],
+                }
+            }
+        ],
+    }
+
+    out = chat_completion_to_response(payload, "gemini-model")
+
+    assert out["output"][0]["type"] == "function_call"
+    assert out["output"][0]["thought_signature"] == "sig-abc123"
+
+
 def test_chat_completion_to_response_normalizes_cached_usage():
     payload = {
         "id": "chatcmpl_1",
