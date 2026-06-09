@@ -467,7 +467,7 @@ def test_doctor_reports_hidden_reason(monkeypatch, tmp_path, capsys, auth_missin
         json.dumps({"models": [{"id": "zai", "model": "glm-5.1", "provider": "zai", "api_key_env": "ZAI_API_KEY"}]})
     )
 
-    assert cli.doctor(settings) == 1
+    assert cli.doctor_models(settings) == 1
 
     output = capsys.readouterr().out
     assert "WebSockets (client):" in output
