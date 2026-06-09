@@ -428,8 +428,18 @@ Useful model fields:
 | `command` / `args` | Cursor command and argv before the prompt. For `cursor-agent`, defaults to `cursor` + `["agent", "--print", "--trust", "--yolo", "--model", "auto"]`; the shim adds `--output-format json` for non-streaming calls and `--output-format stream-json --stream-partial-output` for streaming calls when no output format is already configured. For `cursor-acp`, defaults to `cursor-agent` + `["acp"]`. |
 | `mode` | Cursor ACP mode for `cursor-acp` routes. Defaults to `agent`. |
 | `cursor_model` / `cursorModel` | Cursor CLI model (`auto` by default) or Cursor ACP model config value (`default[]` by default). |
-| `cwd` | Working directory for the Cursor subprocess. Defaults to the shim process cwd. |
-| `timeoutSeconds` | Prompt timeout for Cursor subprocess requests. Defaults to 600 seconds. |
+| `cwd` | Working directory for the Cursor subprocess when Desktop does not send workspace metadata. Prefer dynamic resolution from request `metadata.cwd` / headers (see S11 in [`scripts/capture_runbook.md`](scripts/capture_runbook.md)). |
+| `timeoutSeconds` | Prompt timeout for Cursor subprocess requests. Defaults to **3600** seconds (`CODEX_SHIM_CURSOR_TIMEOUT` env override). |
+| `use_native_transport` / `useNativeTransport` | When `true` on a Cursor provider row, route through the shim's Cursor Agent envelope builder (`cursor-agent-grpc` transport). Default execution still delegates to the Cursor CLI unless `CODEX_SHIM_CURSOR_AGENT_LIVE=1` is set (HTTP/1 RunSSE+BidiAppend by default; optional `CODEX_SHIM_CURSOR_AGENT_TRANSPORT=http2` for Connect bidi `AgentService/Run`; requires `codex login` or `CODEX_SHIM_CURSOR_AUTH_TOKEN`). |
+| `CODEX_SHIM_CURSOR_CATALOG_LIVE` | When `1`, model catalog prefetch calls live `GetUsableModels` (same auth as native transport) instead of only mirroring `settings.json`. |
+| `nativeTransportMode` / `native_transport_mode` | Per-model live wire mode: `http1` (default) or `http2` (`AgentService/Run`). Overrides env when set on the model row. |
+
+Decode captured Connect frames offline:
+
+```bash
+PYTHONPATH=. python3 scripts/cursor_connect_decode.py path/to/frames.hexl
+```
+| `allow_fallback` | On `/v1/responses`, retry an alternate visible model slug when the primary upstream returns a retryable status (non-stream only). |
 
 ### Cursor Agent CLI
 
@@ -454,6 +464,19 @@ For non-streaming Codex requests, the shim starts:
 
 ```bash
 cursor agent --print --trust --yolo --model auto --output-format json "<translated Codex prompt>"
+```
+
+To compare envelope shape against recovered Cursor Agent sources (when
+`/private/tmp/cursor` or `CURSOR_SOURCE_ROOT` is available):
+
+```bash
+python3 scripts/cursor_inference_parity.py --mode plan "parity check"
+
+Live native smoke (requires auth + `useNativeTransport` model slug):
+
+```bash
+CODEX_SHIM_CURSOR_AGENT_LIVE=1 PYTHONPATH=. python3 scripts/cursor_agent_live_smoke.py --slug YOUR_NATIVE_SLUG "hello"
+```
 ```
 
 For streaming Codex requests, the shim starts:
@@ -632,7 +655,16 @@ already-patched bundle when that backup is missing.
 ## ChatGPT/Codex passthrough
 
 If `~/.codex/auth.json` exists and contains `tokens.access_token`, the shim
-exposes a synthetic `gpt-5.5` catalog entry that proxies straight to:
+fetches your ChatGPT subscription model catalog from
+`https://chatgpt.com/backend-api/codex/models` (cached for 300s in
+`~/.codex-shim/subscription_models_cache.json`) and merges those native
+`ModelInfo` entries into `custom_model_catalog.json` ahead of BYOK models. BYOK
+slugs win on exact slug collisions. Refresh happens on `codex-shim generate`,
+shim server startup, and `codex-shim doctor subscription`. Restart Codex after
+catalog changes if the picker does not update immediately.
+
+When the live fetch is unavailable, the shim falls back to a synthetic `gpt-5.5`
+catalog entry that proxies straight to:
 
 ```text
 https://chatgpt.com/backend-api/codex/responses
@@ -708,27 +740,27 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 | Tier | Route | What you get |
 |---|---|---|
 | **Tier A — Native** | ChatGPT passthrough (`gpt-5.5`) | Full parity: hosted tools, native compaction v2, encrypted reasoning, native Response item types |
-| **Tier B — Agent loop** | OpenAI chat / Anthropic / Cursor BYOK | Tool loops via function-tool fallbacks; inbound/outbound native hosted-tool item shapes where possible; emulated compaction (`context_compaction` items); shim-encoded reasoning for round-trip |
+| **Tier B — Agent loop** | OpenAI chat / Anthropic BYOK | Tool loops via function-tool fallbacks; inbound/outbound native hosted-tool item shapes where possible; emulated compaction (`context_compaction` items); shim-encoded reasoning for round-trip |
+| **Tier B-delegate** | Cursor CLI / Cursor Agent native | Cursor owns the full agent loop; shim streams assistant text/thinking only (`execution_mode=delegate`, `tool_authority=cursor`); Codex does not re-execute Cursor tool events |
 | **Tier C — Degraded** | Same BYOK routes | No true OpenAI encrypted reasoning blobs; image generation gated unless model declares support; opaque native compaction v2 blobs not synthesized on BYOK |
 ### Tool capability matrix (per route family)
 
-| Route family | local_shell | web_search | tool_search | image_generation | MCP tools | Reasoning |
-|---|---|---|---|---|---|---|
-| ChatGPT passthrough (`gpt-5.5`) | native | native | native | native | native | native |
-| OpenAI chat-compatible BYOK | mapped | mapped | mapped | mapped | mapped | mapped |
-| Anthropic Messages BYOK | mapped | mapped | mapped | unsupported | mapped | mapped |
-| Cursor CLI (`cursor-agent`) | mapped | mapped | mapped | unsupported | mapped | mapped |
+| Route family | local_shell | web_search | tool_search | image_generation | MCP tools | Reasoning | execution_mode |
+|---|---|---|---|---|---|---|---|
+| ChatGPT passthrough (`gpt-5.5`) | native | native | native | native | native | native | mapped |
+| OpenAI chat-compatible BYOK | mapped | mapped | mapped | mapped | mapped | mapped | mapped |
+| Anthropic Messages BYOK | mapped | mapped | mapped | unsupported | mapped | mapped | mapped |
+| Cursor CLI (`cursor-agent`) | delegated | delegated | delegated | unsupported | delegated | mapped | **delegate** |
+| Cursor Agent native (`cursor-agent-grpc`) | delegated | delegated | delegated | unsupported | delegated | mapped | **delegate** |
 
-“Mapped” means Codex tools remain authoritative (Desktop runs shell/web/apply_patch/MCP), and the shim translates tool schemas and outputs so upstream models and Cursor can stay in the loop. “Unsupported” means the shim will not silently synthesize that tool for the route; `codex-shim doctor` reports it clearly.
+“Mapped” means Codex tools remain authoritative (Desktop runs shell/web/apply_patch/MCP), and the shim translates tool schemas and outputs so upstream models can stay in the loop. **Delegated** (Cursor routes) means Cursor executes tools autonomously; the shim suppresses Cursor `tool_call` stream events so Codex never receives executable tool items from Cursor output. “Unsupported” means the shim will not silently synthesize that tool for the route; `codex-shim doctor` reports it clearly.
 
 
 **Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
 
 **Native tool wire shapes:** `local_shell_call`, `web_search_call`, `tool_search_call`, and `image_generation_call` can be emitted on BYOK streams when the upstream used the matching function-tool fallback. During streaming, argument chunks still use `response.function_call_arguments.delta` for all tool types; only the final completed items carry native shapes. `apply_patch` and `computer_use` remain `function_call` items (Desktop executes from tool calls; decompiled `ResponseItem` has no separate `apply_patch_call` type).
 
-Cursor CLI routes stream assistant text and selected tool-call events through
-the same Responses SSE bridge; they are not byte-for-byte OpenAI-native
-Responses parity.
+Cursor CLI and native Cursor Agent routes run in **delegate mode**: assistant text and reasoning stream through the Responses SSE bridge, but Cursor tool events are not forwarded to Codex. Use `codex-shim probe delegate --slug <cursor-slug>` to verify `execution_mode=delegate` and message-only output.
 
 **Provider transport:** Generated shim provider config sets `supports_websockets = true` by default (disable with `CODEX_SHIM_ENABLE_WEBSOCKETS=0`). The shim exposes HTTP/SSE on `POST /v1/responses` and a WebSocket upgrade on `GET /v1/responses`. After upgrading codex-shim, rerun `codex-shim enable` or `codex-shim app` to refresh managed `~/.codex/config.toml`.
 
@@ -759,7 +791,8 @@ codex-shim probe compact --slug your-byok-slug
 codex-shim probe history      # hosted tools + previous_response_id + compact w/ trigger
 codex-shim probe streaming-history
 codex-shim probe ws-streaming          # BYOK WebSocket stream:true deltas
-codex-shim probe tools                # BYOK mapped tool-loop + metadata parity
+codex-shim probe tools                # BYOK mapped tool-loop + metadata parity (non-Cursor)
+codex-shim probe delegate --slug cursor-auto   # Cursor delegate: message-only, execution_mode=delegate
 codex-shim probe passthrough --live        # Tier A streaming OK
 codex-shim probe passthrough-compact --live
 ```
@@ -795,7 +828,7 @@ Committed constants: `codex_shim/desktop_contract.py` (Responses wire shapes) an
 Mining output lands in gitignored `codex-desktop-decompiled/DESKTOP_RE_FINDINGS.md`.
 
 **12-day inference RE plan:** [`docs/DESKTOP_INFERENCE_MAP.md`](docs/DESKTOP_INFERENCE_MAP.md) (living doc) and
-[`scripts/capture_runbook.md`](scripts/capture_runbook.md) for HAR capture scenarios S1–S10.
+[`scripts/capture_runbook.md`](scripts/capture_runbook.md) for HAR capture scenarios S1–S11.
 
 ---
 
@@ -895,6 +928,37 @@ The BYOK path intentionally strips provider-hostile fields such as `stream` and
 `service_tier` before forwarding. It preserves the practical Codex behavior — a
 smaller next context window — without pretending third-party chat APIs can emit
 OpenAI's opaque encrypted compaction items.
+
+### Emulated compaction hardening (BYOK only)
+
+For non-passthrough routes, the shim treats compaction summaries as
+`projection_unverified` until basic quality checks pass:
+
+- last user intent appears in the summary
+- modified file basenames appear when tool history includes writes/edits
+
+Before forwarding, the shim extracts a **compact frontier** from the compact
+request input (last user message, prior compaction excerpt, modified files,
+recent shell commands, unresolved tool calls) and embeds it in schema-shaped
+instructions (`LAST_USER_INTENT`, `MODIFIED_FILES`, `RECENT_COMMANDS`, etc.).
+When workspace metadata resolves, a best-effort `git status --short` snapshot is
+included.
+
+If quality checks fail, the shim **augments** the upstream summary with a
+corrective prefix rather than returning the lossy text alone:
+
+```text
+[shim-compact-warning: projection_unverified]
+LAST_USER_INTENT: ...
+MODIFIED_FILES: ...
+--- original summary ---
+```
+
+Audit records are appended to `.codex-shim/postcompact-captures.jsonl` and
+emitted on the observability sink as `stage=emulated_compact`. Access logs for
+emulated compact include `compact_summary_status`.
+
+Native ChatGPT passthrough compaction is unchanged. No Codex hooks are required.
 
 ---
 
@@ -1260,10 +1324,39 @@ for a while; a silent hang is usually upstream/network/provider behavior.
 
 ### Cursor route shows text but tool cards are missing
 
-Run `codex-shim probe tools --slug <cursor-slug>` and inspect response
-`metadata.shim_route.capabilities`. If tools are `mapped` for that route, Codex
-is still authoritative for execution, and missing cards usually indicate the
-upstream produced plain assistant text instead of structured tool events.
+Cursor routes use **delegate mode** by default. Run:
+
+```bash
+codex-shim probe delegate --slug <cursor-slug>
+```
+
+Inspect `metadata.shim_route.execution_mode` (expect `delegate`) and `metadata.shim_route.tool_authority` (expect `cursor`). Missing Codex tool cards is expected: Cursor executes tools internally and the shim does not emit `function_call` / `local_shell_call` items to Desktop.
+
+For OpenAI/Anthropic BYOK routes, use `codex-shim probe tools --slug <slug>` instead.
+
+### Codex Desktop reconnect loop on Cursor routes
+
+If Desktop shows “Prior session's tools failed” or “Reconnecting 1/3” with a Cursor slug:
+
+1. Confirm delegate mode: response `metadata.shim_route.execution_mode` must be `delegate`.
+2. Bump Cursor timeout in `~/.codex-shim/models.json` (`prompt_timeout`: 3600) and Desktop `stream_idle_timeout_ms` in `~/.codex/config.toml` (≥ `prompt_timeout * 1000`).
+3. Clear poisoned history if prior turns stored tool items: stop shim, remove `.codex-shim/response_store.sqlite`, restart.
+4. Ensure workspace resolves to your project path (S11 capture in [`scripts/capture_runbook.md`](scripts/capture_runbook.md)); check `metadata.shim_route.workspace` on responses.
+
+### Post-deploy migration (Cursor delegate)
+
+After upgrading codex-shim:
+
+1. Set `prompt_timeout: 3600` on your Cursor row in `~/.codex-shim/models.json`.
+2. Set `stream_idle_timeout_ms = 3600000` in `~/.codex/config.toml`.
+3. Clear poisoned multi-turn history: stop shim, delete `.codex-shim/response_store.sqlite`, restart.
+4. Verify delegate mode:
+   ```bash
+   codex-shim probe delegate --slug cursor-auto
+   PYTHONPATH=. python3 scripts/cursor_delegate_verify.py --slug cursor-auto --cwd /path/to/your/project
+   ```
+
+Access logs include `"workspace"` on cursor turns when cwd resolves successfully.
 
 ### `metadata.shim_anomalies` appears in a completed response
 
@@ -1272,6 +1365,7 @@ These are non-fatal normalization signals, not hard failures. Examples:
 - `malformed_cursor_events`: Cursor emitted non-JSON lines that were ignored.
 - `unknown_cursor_event_types`: Cursor emitted an event type the shim does not
   map yet.
+- `delegated_tool_events_suppressed`: Cursor emitted tool events that were intentionally dropped in delegate mode.
 - `duplicate_reasoning_completed` / `late_tool_completions`: duplicate or late
   completion events were ignored after the item was already closed.
 
