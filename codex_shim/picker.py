@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -11,6 +12,7 @@ from pathlib import Path
 from .settings import PROVIDER_NAME
 
 
+PICKER_TOKEN_HEADER = "X-Codex-Shim-Picker-Token"
 CODEX_CONFIG_PATH = Path.home() / ".codex" / "config.toml"
 _MODEL_LINE_RE = re.compile(r'(?m)^(\s*model\s*=\s*")[^"]*(")')
 _PROVIDER_NAME_RE = re.compile(
@@ -84,8 +86,9 @@ def restart_codex_app() -> None:
     threading.Thread(target=_do_restart, daemon=True).start()
 
 
-def picker_html() -> str:
-    return '''<!DOCTYPE html>
+def picker_html(picker_token: str) -> str:
+    token_json = json.dumps(picker_token).replace("</", "<\\/")
+    html = '''<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -142,6 +145,7 @@ def picker_html() -> str:
   <p class="restart-note">Codex needs to restart to use the new model</p>
 </div>
 <script>
+const PICKER_TOKEN = __PICKER_TOKEN__;
 async function loadModels() {
   const res = await fetch('/api/models');
   const models = await res.json();
@@ -179,7 +183,10 @@ async function switchModel(slug) {
   try {
     const res = await fetch('/api/switch', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Codex-Shim-Picker-Token': PICKER_TOKEN
+      },
       body: JSON.stringify({slug, restart_codex: restart})
     });
     const data = await res.json();
@@ -200,3 +207,4 @@ loadModels();
 </script>
 </body>
 </html>'''
+    return html.replace("__PICKER_TOKEN__", token_json)

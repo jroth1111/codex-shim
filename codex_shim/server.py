@@ -5,6 +5,7 @@ import asyncio
 from contextlib import suppress
 import json
 import re
+import secrets
 import time
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,7 @@ from .passthrough import (
     sanitize_chatgpt_passthrough_body as _sanitize_chatgpt_passthrough_body,
 )
 from .picker import CODEX_CONFIG_PATH
+from .picker import PICKER_TOKEN_HEADER
 from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
 from .picker import restart_codex_app as _restart_codex_app
@@ -254,6 +256,7 @@ class ShimServer:
         self.operational_store = JsonOperationalStore(runtime_root / "ops")
         self.gateway_handlers = GatewayHandlers(self)
         self.auto_router = AutoRouterService(self)
+        self.picker_token = secrets.token_urlsafe(32)
         self.subscription_catalog = refresh_subscription_catalog()
         try:
             write_catalog(
@@ -351,7 +354,7 @@ class ShimServer:
         return app
 
     async def picker_page(self, _request: web.Request) -> web.Response:
-        return web.Response(text=_picker_html(), content_type="text/html")
+        return web.Response(text=_picker_html(self.picker_token), content_type="text/html")
 
     async def api_models(self, request: web.Request) -> web.Response:
         current = _current_managed_model()
@@ -395,7 +398,13 @@ class ShimServer:
             data.append(row)
         return web.json_response(data)
 
+    def _valid_picker_token(self, request: web.Request) -> bool:
+        token = request.headers.get(PICKER_TOKEN_HEADER, "")
+        return secrets.compare_digest(token, self.picker_token)
+
     async def switch_model(self, request: web.Request) -> web.Response:
+        if not self._valid_picker_token(request):
+            return web.json_response({"error": "forbidden"}, status=403)
         try:
             body = await request.json()
         except json.JSONDecodeError:
