@@ -79,6 +79,21 @@ Audit-oriented contract notes: `AUDIT_CONTRACTS.md`, `AUDIT_MANIFEST.md`.
   in fixtures, logs, or test data. Use synthetic tokens (`"stub"`,
   `"secret"`) like the existing tests.
 
+## Upstream capture fixtures
+
+CI uses the small synthetic harness fixtures under
+`tests/fixtures/upstream/harness_*_to_chatgpt.json` only.
+
+The larger live captures (`native_to_chatgpt.json`, `shim_to_chatgpt.json`,
+`cli_*_to_chatgpt.json`) are **gitignored** on purpose: they embed local
+workspace paths, memory/skills context, and full Codex prompts. Refresh them
+locally with the capture scripts when you need maintainer parity checks; run
+`sanitize_upstream_capture.py` before attempting to commit any derivative.
+
+Capture scripts default workspace to `$CODEX_SHIM_WORKSPACE` or the repo root,
+and cursor binary to `$CURSOR_COMMAND` / `$CODEX_SHIM_CURSOR_COMMAND` or
+`PATH`. Do not hardcode home-directory paths in committed tooling.
+
 ## Reporting bugs
 
 Please include:

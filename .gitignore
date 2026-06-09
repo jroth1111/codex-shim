@@ -8,11 +8,37 @@
 .env
 .env.*
 secrets/
-auth.json
+/auth.json
 *.key
 *.pem
 *.p12
 *.pfx
+
+# Capture / proxy dumps (tokens + full prompts)
+*.har
+**/captures/raw/
+**/captures/debug/staging/
+capture-ingest.jsonl
+postcompact-captures.jsonl
+observability_events.jsonl
+governance_events.jsonl
+last_request.json
+
+# Shim runtime copied outside ~/.codex-shim during local debug
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+models.json
+models.*.local.json
+subscription_models_cache.json
+
+# Maintainer-only live upstream captures (refresh locally; harness_* fixtures are CI-safe)
+tests/fixtures/upstream/native_to_chatgpt.json
+tests/fixtures/upstream/shim_to_chatgpt.json
+tests/fixtures/upstream/cli_native_to_chatgpt.json
+tests/fixtures/upstream/cli_shim_to_chatgpt.json
+tests/fixtures/upstream/.live-refreshed
+tests/fixtures/upstream/.live-cli-refreshed
 
 # Local Codex inspection artifacts (don't ship)
 codedb.snapshot
@@ -66,6 +92,10 @@ dist/
 # BEGIN local agent runtime artifact ignores
 # Local Beads state
 .beads/
+.commandcode/
+
+# Synthetic fixture auth (global /auth.json rule above blocks repo-root auth only)
+!tests/fixtures/**/auth.json
 
 # Dependency installs and package-manager state
 uv.lock
