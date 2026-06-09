@@ -15,9 +15,69 @@ def responses_tools_to_chat_tools(tools: Any) -> list[dict[str, Any]]:
     return converted
 
 
+def _mcp_composite_name(namespace: str, name: str) -> str:
+    ns = sanitize_tool_name(namespace)
+    nm = sanitize_tool_name(name)
+    if ns and nm:
+        return sanitize_tool_name(f"{ns}__{nm}")
+    return nm or ns or "mcp_tool"
+
+
+def flatten_mcp_namespace_tool(tool: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Flatten Codex namespace-wrapped MCP tool definitions into OpenAI function tools.
+
+    Codex may send MCP tools with a namespace field that chat-completions providers
+    cannot interpret; emit a stable flat function name instead.
+    """
+    if not isinstance(tool, dict):
+        return None
+    tool_type = str(tool.get("type") or "").strip().lower()
+    namespace = str(tool.get("namespace") or tool.get("tool_namespace") or "").strip()
+    fn = tool.get("function")
+    inner_name = ""
+    inner_desc = ""
+    inner_params: dict[str, Any] | None = None
+    if isinstance(fn, dict):
+        inner_name = str(fn.get("name") or "").strip()
+        inner_desc = str(fn.get("description") or "").strip()
+        params = fn.get("parameters")
+        if isinstance(params, dict):
+            inner_params = params
+    if not inner_name:
+        inner_name = str(tool.get("name") or tool.get("tool_name") or "").strip()
+    if not inner_desc:
+        inner_desc = str(tool.get("description") or "").strip()
+    if inner_params is None:
+        params = tool.get("parameters") or tool.get("input_schema")
+        if isinstance(params, dict):
+            inner_params = params
+
+    is_mcp = tool_type.startswith("mcp") or bool(namespace)
+    if not is_mcp:
+        return None
+    if not inner_name and not namespace:
+        return None
+
+    flat_name = _mcp_composite_name(namespace, inner_name) if namespace else sanitize_tool_name(inner_name or tool_type)
+    description = inner_desc or native_tool_description(tool)
+    parameters = inner_params or native_tool_parameters(tool)
+    return {
+        "type": "function",
+        "function": {
+            "name": flat_name,
+            "description": description,
+            "parameters": parameters,
+        },
+    }
+
+
 def responses_tool_to_chat_function(tool: Any) -> dict[str, Any] | None:
     if not isinstance(tool, dict):
         return None
+    flattened = flatten_mcp_namespace_tool(tool)
+    if flattened is not None:
+        return flattened
     if tool.get("type") == "function" and "function" in tool:
         return tool
     name = responses_tool_function_name(tool)

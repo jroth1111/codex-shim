@@ -27,7 +27,7 @@ def test_sanitize_chat_messages_strips_null_bytes_and_tool_ids():
         {"role": "user", "content": "hi"},
         {
             "role": "assistant",
-            "content": None,
+            "content": "",
             "tool_calls": [
                 {"id": "call0", "type": "function", "function": {"name": "tool", "arguments": "{\"x\":\"y\"}"}}
             ],

@@ -59,7 +59,7 @@ def responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
             ):
                 messages[-1]["tool_calls"] = list(pending_tool_calls)
             else:
-                messages.append({"role": "assistant", "content": None, "tool_calls": list(pending_tool_calls)})
+                messages.append({"role": "assistant", "content": "", "tool_calls": list(pending_tool_calls)})
             pending_tool_calls.clear()
 
     for item in value:
@@ -91,7 +91,7 @@ def responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
                 if content is not None and content != "":
                     message["content"] = responses_content_to_chat_content(content)
                 else:
-                    message["content"] = None
+                    message["content"] = ""
                 messages.append(message)
                 continue
             messages.append({"role": role, "content": responses_content_to_chat_content(item.get("content", ""))})
@@ -182,7 +182,7 @@ def responses_input_to_messages(value: Any) -> list[dict[str, Any]]:
                     "encrypted_content": encrypted,
                     "reasoning_content": reasoning_content,
                     "summary": item.get("summary") or [],
-                    "content": None,
+                    "content": "",
                 }
             )
     flush_pending_assistant_tool_calls()

@@ -237,14 +237,19 @@ def normalize_chatgpt_passthrough_input(items: list[dict[str, Any]]) -> list[dic
     return normalized
 
 
-def prepare_chatgpt_passthrough_body(body: dict[str, Any], *, compact: bool = False) -> dict[str, Any]:
+def prepare_chatgpt_passthrough_body(
+    body: dict[str, Any],
+    *,
+    compact: bool = False,
+    inject_default_instructions: bool = True,
+) -> dict[str, Any]:
     prepared = deepcopy(body)
     for key in _STRIP_TOP_LEVEL:
         prepared.pop(key, None)
     if not _keep_previous_response_id():
         prepared.pop("previous_response_id", None)
 
-    if not prepared.get("instructions"):
+    if inject_default_instructions and not prepared.get("instructions"):
         prepared["instructions"] = _default_instructions()
 
     if compact:

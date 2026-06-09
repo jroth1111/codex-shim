@@ -28,8 +28,54 @@ def copy_if_present(src: dict[str, Any], dst: dict[str, Any], src_key: str, dst_
         dst[dst_key or src_key] = src[src_key]
 
 
+def merge_extra_body_params(body: dict[str, Any], extra: dict[str, Any] | None) -> dict[str, Any]:
+    """Deep-merge provider-specific body params without forwarding the merge key itself."""
+    if not extra:
+        return body
+    merged = dict(body)
+    for key, value in extra.items():
+        if key == "extra_body_params":
+            continue
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            nested = dict(merged[key])
+            nested.update(value)
+            merged[key] = nested
+        else:
+            merged[key] = value
+    merged.pop("extra_body_params", None)
+    return merged
+
+
 def anthropic_stop(reason: Any) -> str:
     return "tool_calls" if reason == "tool_use" else "stop"
+
+
+def chat_finish_to_anthropic_stop(reason: Any) -> str:
+    if reason in {"tool_calls", "function_call"}:
+        return "tool_use"
+    if reason == "length":
+        return "max_tokens"
+    if reason == "content_filter":
+        return "refusal"
+    return "end_turn"
+
+
+def responses_usage_to_anthropic_usage(usage: dict[str, Any] | None) -> dict[str, Any] | None:
+    if usage is None:
+        return None
+    result = {
+        "input_tokens": int(usage.get("input_tokens") or 0),
+        "output_tokens": int(usage.get("output_tokens") or 0),
+    }
+    input_details = usage.get("input_tokens_details")
+    if isinstance(input_details, dict):
+        cache_read = input_details.get("cache_read_input_tokens", input_details.get("cached_tokens"))
+        if isinstance(cache_read, int) and not isinstance(cache_read, bool):
+            result["cache_read_input_tokens"] = cache_read
+        cache_created = input_details.get("cache_creation_input_tokens")
+        if isinstance(cache_created, int) and not isinstance(cache_created, bool):
+            result["cache_creation_input_tokens"] = cache_created
+    return result
 
 
 def jsonish(value: Any) -> str:

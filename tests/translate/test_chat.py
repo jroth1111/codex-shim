@@ -96,7 +96,7 @@ def test_responses_to_chat_sanitizes_and_merges_strict_provider_messages():
         {"role": "user", "content": "hi\n\nagain"},
         {
             "role": "assistant",
-            "content": None,
+            "content": "",
             "tool_calls": [
                 {"id": "call0", "type": "function", "function": {"name": "tool", "arguments": "{\"x\":\"y\"}"}}
             ],
@@ -121,7 +121,7 @@ def test_responses_input_accepts_custom_tool_and_tool_search_output_items():
     assert out["messages"] == [
         {
             "role": "assistant",
-            "content": None,
+            "content": "",
             "tool_calls": [
                 {"id": "call_custom", "type": "function", "function": {"name": "deploy_app", "arguments": '{"env":"prod"}'}},
             ],
@@ -129,7 +129,7 @@ def test_responses_input_accepts_custom_tool_and_tool_search_output_items():
         {"role": "tool", "tool_call_id": "call_custom", "content": "deployed"},
         {
             "role": "assistant",
-            "content": None,
+            "content": "",
             "tool_calls": [
                 {"id": "call_search", "type": "function", "function": {"name": "tool_search", "arguments": '{"query":"grep"}'}},
             ],
@@ -229,7 +229,7 @@ def test_responses_to_chat_replays_reasoning_when_tool_call_has_no_message_text(
     assert out["messages"] == [
         {
             "role": "assistant",
-            "content": None,
+            "content": "",
             "tool_calls": [
                 {
                     "id": "call_date",

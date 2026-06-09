@@ -74,10 +74,9 @@ def sanitize_chat_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any
         current.pop("_reasoning_only", None)
         current.pop("encrypted_content", None)
         current.pop("summary", None)
-        role = current.get("role", "user")
         content = current.get("content")
         if content is None:
-            current["content"] = None if role == "assistant" else ""
+            current["content"] = ""
         elif isinstance(content, list):
             current["content"] = sanitize_chat_content_parts(content)
         elif isinstance(content, str):
