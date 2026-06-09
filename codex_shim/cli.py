@@ -17,7 +17,28 @@ import struct
 import asyncio
 from urllib.request import urlopen
 
-from .catalog import _toml_escape, catalog_entry, codex_config_overrides, websockets_enabled, write_catalog, write_config, write_direct_responses_config
+from . import router as router_module
+from .catalog import (
+    CATALOG_PATH,
+    _toml_escape,
+    catalog_entry,
+    codex_config_overrides,
+    websockets_enabled,
+    write_catalog,
+    write_config,
+    write_direct_responses_config,
+)
+from .cursor_passthrough import (
+    cursor_passthrough_available,
+    cursor_passthrough_display_names,
+    is_cursor_passthrough_slug,
+)
+from .opencode_go import (
+    OPENCODE_GO_API_KEY_ENV,
+    OPENCODE_GO_BASE_URL,
+    refresh_opencode_go_settings,
+)
+from .codex_config import remove_toml_section, write_codex_config
 from .config_redaction import REDACTED_VALUE, export_config_file
 from .settings import (
     CHATGPT_MODEL_SLUG,
@@ -27,18 +48,22 @@ from .settings import (
     PROVIDER_NAME,
     ModelSettings,
     ShimModel,
+    available_model_slugs,
+    byok_model_has_credentials,
     chatgpt_passthrough_available,
     chatgpt_passthrough_model,
+    chatgpt_passthrough_slugs,
     default_model_slug,
     fetch_vibeproxy_model_rows,
+    usable_byok_models,
 )
 from .migrate import apply_postgres_migrations
+from .upstream_capture import clear_capture_config, read_capture_config, write_capture_config
 from .workers import main as worker_main
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = PROJECT_ROOT / ".codex-shim"
-CATALOG_PATH = RUNTIME_DIR / "custom_model_catalog.json"
 CONFIG_PATH = RUNTIME_DIR / "config.toml"
 PID_PATH = RUNTIME_DIR / "shim.pid"
 LOG_PATH = RUNTIME_DIR / "shim.log"
@@ -76,8 +101,25 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("enable")
     sub.add_parser("stop")
     sub.add_parser("disable")
+    repair_config_parser = sub.add_parser(
+        "repair-config",
+        help="Deduplicate repeated ~/.codex/config.toml sections and validate TOML.",
+    )
+    repair_config_parser.add_argument(
+        "--path",
+        type=Path,
+        default=CODEX_CONFIG_PATH,
+        help="Codex config path to repair (default: ~/.codex/config.toml).",
+    )
     sub.add_parser("restart")
     sub.add_parser("status")
+    opencode_parser = sub.add_parser("opencode-go", help="Discover and configure OpenCode Go models.")
+    opencode_sub = opencode_parser.add_subparsers(dest="opencode_go_command", required=True)
+    refresh_parser = opencode_sub.add_parser("refresh", help="Refresh OpenCode Go models into the settings file.")
+    refresh_parser.add_argument("--api-key-env", default=OPENCODE_GO_API_KEY_ENV)
+    refresh_parser.add_argument("--base-url", default=OPENCODE_GO_BASE_URL)
+    refresh_parser.add_argument("--prefer", choices=["chat", "messages"], default="chat")
+    refresh_parser.add_argument("--timeout", type=float, default=30.0)
     sub.add_parser("migrate", help="Apply SQL migrations from the migrations/ directory.")
     worker_parser = sub.add_parser("worker", help="Run background worker tasks.")
     worker_sub = worker_parser.add_subparsers(dest="worker_command", required=True)
@@ -91,7 +133,9 @@ def main(argv: list[str] | None = None) -> int:
     doctor_sub.add_parser("models", help="List visible and hidden configured models (default).")
     doctor_sub.add_parser("patch", help="Report Codex Desktop ASAR patch status and app version.")
     doctor_sub.add_parser("catalog", help="Compare generated catalog keys against Desktop schema fixture.")
+    doctor_sub.add_parser("subscription", help="Report ChatGPT subscription model catalog cache and slugs.")
     doctor_sub.add_parser("contract", help="Check generated Desktop protocol contract drift.")
+    doctor_sub.add_parser("routing", help="Recommend shim vs upstream direct provider per configured slug.")
     test_parser = sub.add_parser("test", help="Run a non-streaming smoke test through the selected model route.")
     test_parser.add_argument("target", help="Model slug, provider, upstream model, or display name.")
     probe_parser = sub.add_parser("probe", help="Validate shim behavior against running daemon.")
@@ -106,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     probe_ws_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
     probe_tools_parser = probe_sub.add_parser("tools", help="Probe mapped tool-loop output items and route metadata.")
     probe_tools_parser.add_argument("--slug", help="BYOK model slug (default: first visible BYOK model).")
+    probe_delegate_parser = probe_sub.add_parser(
+        "delegate",
+        help="Probe Cursor delegate routes emit message-only output with execution_mode=delegate.",
+    )
+    probe_delegate_parser.add_argument("--slug", help="Cursor model slug (default: first visible cursor route).")
     probe_sub.add_parser("fidelity", help="Offline hosted-tool and compaction translation checks.")
     probe_all_parser = probe_sub.add_parser("all", help="Run offline fidelity plus live probes when daemon/auth allow.")
     probe_all_parser.add_argument("--slug", help="BYOK model slug for live BYOK probes.")
@@ -118,6 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         "live-matrix",
         help="Run full live fidelity matrix (Tier A + one BYOK slug per provider family).",
     )
+    probe_matrix_parser = probe_sub.add_parser(
+        "matrix",
+        help="Run staged compatibility matrix (offline gates + live daemon steps when available).",
+    )
+    probe_matrix_parser.add_argument("--slug", help="BYOK model slug for live daemon steps.")
+    probe_matrix_parser.add_argument("--live", action="store_true", help="Include Tier A passthrough live probe.")
+    probe_matrix_parser.add_argument("--json", action="store_true", help="Emit JSON report.")
     probe_passthrough_parser = probe_sub.add_parser("passthrough", help="Live Tier A passthrough probe via shim daemon.")
     probe_passthrough_parser.add_argument("--live", action="store_true", help="Run probe (or set CODEX_SHIM_PROBE_PASSTHROUGH=1).")
     probe_passthrough_compact_parser = probe_sub.add_parser(
@@ -214,6 +270,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "generate":
         generate(args.settings, args.port)
         return 0
+    if args.command == "opencode-go":
+        if args.opencode_go_command == "refresh":
+            return refresh_opencode_go(
+                args.settings,
+                args.api_key_env,
+                args.base_url,
+                args.prefer,
+                args.timeout,
+            )
     if args.command == "list":
         return list_models(args.settings)
     if args.command in {"start", "enable"}:
@@ -221,11 +286,15 @@ def main(argv: list[str] | None = None) -> int:
         code = start(args.settings, args.port)
         if code == 0 and args.command == "enable":
             install_codex_config(args.settings, args.port)
+            _persist_capture_config_from_env()
         return code
     if args.command in {"stop", "disable"}:
         if args.command == "disable":
             restore_codex_config()
+            clear_capture_config()
         return stop()
+    if args.command == "repair-config":
+        return repair_codex_config(args.path)
     if args.command == "restart":
         stop()
         generate(args.settings, args.port)
@@ -247,8 +316,12 @@ def main(argv: list[str] | None = None) -> int:
             return doctor_patch()
         if cmd == "catalog":
             return doctor_catalog(args.settings)
+        if cmd == "subscription":
+            return doctor_subscription()
         if cmd == "contract":
             return doctor_contract()
+        if cmd == "routing":
+            return doctor_routing(args.settings)
         return doctor(args.settings)
     if args.command == "test":
         return test_provider_route(args.settings, args.target)
@@ -265,6 +338,8 @@ def main(argv: list[str] | None = None) -> int:
             return probe_ws_streaming_route(args.settings, args.port, args.slug)
         if args.probe_command == "tools":
             return probe_tools_route(args.settings, args.port, args.slug)
+        if args.probe_command == "delegate":
+            return probe_delegate_route(args.settings, args.port, args.slug)
         if args.probe_command == "all":
             return probe_all_route(args.settings, args.port, args.slug, live=args.live)
         if args.probe_command == "passthrough":
@@ -273,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
             return probe_passthrough_compact_route(args.port, live=args.live)
         if args.probe_command == "live-matrix":
             return probe_live_matrix_route(args.settings, args.port)
+        if args.probe_command == "matrix":
+            return probe_matrix_route(args.settings, args.port, args.slug, live=args.live, as_json=args.json)
     if args.command == "configure":
         return configure(args.settings, args)
     if args.command == "patch-app":
@@ -348,36 +425,71 @@ def _load_models(settings_path: Path):
 
 
 def _desktop_models(settings_path: Path):
-    models = _load_models(settings_path)
-    desktop_models = []
-    chatgpt_model = chatgpt_passthrough_model()
-    if chatgpt_model is not None:
-        desktop_models.append(chatgpt_model)
-    desktop_models.extend(model for model in models if model.visible)
-    return desktop_models
+    return ModelSettings(settings_path).desktop_models()
+
+
+def _active_router(models, settings_path: Path):
+    config = router_module.load_router_config(Path(settings_path).expanduser())
+    if config and router_module.router_is_active(config, available_model_slugs(models)):
+        return config
+    return None
 
 
 def generate(settings_path: Path, port: int) -> None:
+    from .subscription_catalog import refresh_subscription_catalog
+
     models = _load_models(settings_path)
+    snapshot = refresh_subscription_catalog()
     desktop_models = _desktop_models(settings_path)
     try:
         default_model_slug(desktop_models, include_chatgpt=False)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
-    write_catalog(desktop_models, CATALOG_PATH)
+    router_config = router_module.load_router_config(Path(settings_path).expanduser())
+    write_catalog(models, CATALOG_PATH, snapshot=snapshot, router_config=router_config)
     write_config(desktop_models, CONFIG_PATH, CATALOG_PATH, port)
     hidden_count = len(models) - len([model for model in models if model.visible])
-    print(f"Generated {len(desktop_models)} Desktop model entries:")
+    subscription_count = len([model for model in desktop_models if model.is_chatgpt])
+    byok_count = len([model for model in desktop_models if not model.is_chatgpt])
+    print(f"Generated {len(desktop_models)} Desktop model entries ({subscription_count} subscription + {byok_count} BYOK):")
+    if _active_router(models, settings_path) is not None:
+        print(f"  auto router: {router_config.slug} ({router_config.display_name})")
     print(f"  catalog: {CATALOG_PATH}")
     print(f"  config:  {CONFIG_PATH}")
+    if snapshot.status == "error" and snapshot.error:
+        print(f"  subscription catalog: fallback ({snapshot.error})", file=sys.stderr)
     if hidden_count:
         print(f"Hidden {hidden_count} unconfigured or disabled model entries. Run `codex-shim doctor` for details.")
     print("No files under ~/.codex were modified.")
 
 
+def refresh_opencode_go(settings_path: Path, api_key_env: str, base_url: str, prefer: str, timeout: float) -> int:
+    print(f"Refreshing OpenCode Go models from {base_url}...")
+    try:
+        result = refresh_opencode_go_settings(
+            settings_path,
+            api_key_env=api_key_env,
+            base_url=base_url,
+            prefer=prefer,
+            timeout=timeout,
+        )
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(f"Refreshed {len(result.models)} OpenCode Go models into {result.settings_path}.")
+    if result.skipped:
+        print(f"Skipped {len(result.skipped)} models with no working probed endpoint:")
+        for model_id, chat_status, messages_status in result.skipped:
+            print(f"  {model_id}: chat={chat_status}, messages={messages_status}")
+    for row in result.models:
+        print(f"  {row['slug']}  ->  {row['model']} ({row['provider']}, {row['opencode_go_endpoint']})")
+    return 0
+
+
 def install_codex_config(settings_path: Path, port: int, model_slug: str | None = None) -> None:
-    models = _desktop_models(settings_path)
-    default_slug = _resolve_model_slug(models, model_slug)
+    models = _load_models(settings_path)
+    router_config = _active_router(models, settings_path)
+    default_slug = _resolve_model_slug(models, model_slug, router_config)
     CODEX_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     original = CODEX_CONFIG_PATH.read_text() if CODEX_CONFIG_PATH.exists() else ""
@@ -390,16 +502,25 @@ def install_codex_config(settings_path: Path, port: int, model_slug: str | None 
     if not previous_top_level and CODEX_CONFIG_BACKUP_PATH.exists():
         previous_top_level = _extract_top_level_key_lines(CODEX_CONFIG_BACKUP_PATH.read_text(), MANAGED_TOP_LEVEL_KEYS)
     cleaned = _remove_top_level_keys(cleaned, MANAGED_TOP_LEVEL_KEYS)
-    cleaned = _remove_section(cleaned, f"model_providers.{PROVIDER_NAME}")
+    cleaned = remove_toml_section(cleaned, f"model_providers.{PROVIDER_NAME}")
     top_block, provider_block = _managed_config_blocks(default_slug, port, previous_top_level)
-    CODEX_CONFIG_PATH.write_text(top_block + "\n" + cleaned.lstrip() + "\n" + provider_block)
+    write_codex_config(top_block + "\n" + cleaned.lstrip() + "\n" + provider_block, CODEX_CONFIG_PATH)
     print(f"Installed shim config into {CODEX_CONFIG_PATH}.")
 
 
 def list_models(settings_path: Path) -> int:
-    models = _desktop_models(settings_path)
+    models = _load_models(settings_path)
     rows: list[tuple[str, str, str, str]] = []
-    rows.extend((model.slug, model.display_name, model.model, model.provider) for model in models)
+    router_config = _active_router(models, settings_path)
+    if router_config is not None:
+        rows.append((router_config.slug, router_config.display_name, "per-task pick", "auto"))
+    if chatgpt_passthrough_available():
+        for slug, display_name in chatgpt_passthrough_display_names().items():
+            rows.append((slug, display_name, slug, "chatgpt"))
+    if cursor_passthrough_available():
+        for slug, display_name in cursor_passthrough_display_names().items():
+            rows.append((slug, display_name, slug, "cursor"))
+    rows.extend((model.slug, model.display_name, model.model, model.provider) for model in usable_byok_models(models))
     if not rows:
         print(
             "No models available. Create ~/.codex-shim/models.json, pass --settings /path/to/models.json, "
@@ -411,6 +532,26 @@ def list_models(settings_path: Path) -> int:
     for slug, display_name, model, provider in rows:
         print(f"{slug:<{width}}  {display_name}  ->  {model} ({provider})", flush=True)
     return 0
+
+
+def _upstream_supports_responses_api(base_url: str) -> bool:
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    root = base_url.rstrip("/")
+    candidates = [f"{root}/responses", f"{root}/v1/responses"]
+    for url in candidates:
+        try:
+            req = Request(url, method="OPTIONS")
+            with urlopen(req, timeout=5) as resp:
+                if resp.status < 500:
+                    return True
+        except HTTPError as exc:
+            if exc.code in {200, 204, 401, 403, 405}:
+                return True
+        except URLError:
+            continue
+    return False
 
 
 def import_vibeproxy_models(
@@ -425,12 +566,20 @@ def import_vibeproxy_models(
     direct_config_path: Path | None = None,
 ) -> int:
     rows = fetch_vibeproxy_model_rows(base_url, provider_base_url=provider_base_url, provider=provider)
+    direct_base_url = (provider_base_url or f"{base_url.rstrip('/')}/v1").rstrip("/")
+    if not direct and _upstream_supports_responses_api(direct_base_url):
+        print(f"Detected Responses-compatible endpoint at {direct_base_url}; use --direct for upstream-native routing.")
     if direct:
-        direct_base_url = (provider_base_url or f"{base_url.rstrip('/')}/v1").rstrip("/")
         models = _vibeproxy_direct_models(rows, direct_base_url)
         catalog_path = Path(direct_catalog_path or CATALOG_PATH).expanduser()
         config_path = Path(direct_config_path or CONFIG_PATH).expanduser()
-        write_catalog(models, catalog_path)
+        from .subscription_catalog import SubscriptionCatalogSnapshot
+
+        write_catalog(
+            models,
+            catalog_path,
+            snapshot=SubscriptionCatalogSnapshot((), "unavailable"),
+        )
         write_direct_responses_config(models, config_path, catalog_path, direct_base_url)
         print(f"Generated {len(models)} direct VibeProxy model entries:")
         print(f"  catalog: {catalog_path}")
@@ -619,6 +768,22 @@ DESKTOP_CATALOG_KEYS = {
 }
 
 
+def doctor_subscription() -> int:
+    from .subscription_catalog import CACHE_PATH, refresh_subscription_catalog
+
+    snapshot = refresh_subscription_catalog()
+    print(f"status: {snapshot.status}")
+    if snapshot.error:
+        print(f"error: {snapshot.error}")
+    if snapshot.fetched_at is not None:
+        print(f"cache_age_s: {snapshot.age_s}")
+    print(f"cache_path: {CACHE_PATH}")
+    print(f"model_count: {len(snapshot.models)}")
+    for slug in snapshot.slugs:
+        print(f"  - {slug}")
+    return 0 if snapshot.status in {"loaded", "cached"} or snapshot.models else 1
+
+
 def doctor_catalog(settings_path: Path) -> int:
     models = _load_models(settings_path)
     visible = [model for model in models if model.visible]
@@ -707,6 +872,16 @@ def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
     except CompactProbeError as exc:
         print(str(exc), file=sys.stderr)
         return 1
+
+
+def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> int:
+    from .probe import CompactProbeError, probe_delegate
+
+    try:
+        return probe_delegate(Path(settings_path).expanduser(), port, slug)
+    except CompactProbeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     except FileNotFoundError as exc:
         print(f"Settings file not found: {exc.filename or exc}", file=sys.stderr)
         return 1
@@ -761,10 +936,51 @@ def probe_live_matrix_route(settings_path: Path, port: int) -> int:
         return 1
 
 
+def probe_matrix_route(
+    settings_path: Path,
+    port: int,
+    slug: str | None,
+    *,
+    live: bool,
+    as_json: bool,
+) -> int:
+    from .probe import CompactProbeError, probe_matrix
+
+    try:
+        return probe_matrix(Path(settings_path).expanduser(), port, slug, live=live, as_json=as_json)
+    except CompactProbeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+
+def _routing_recommendation(model: ShimModel) -> str:
+    if model.is_chatgpt:
+        return "use_shim (Tier A passthrough)"
+    if model.is_cursor_cli or model.is_cursor_acp or model.is_cursor_agent:
+        return "use_shim (Cursor delegate/native)"
+    if model.is_anthropic or model.is_openai_chat:
+        return "use_shim (chat/Anthropic translation required)"
+    return "use_shim"
+
+
+def doctor_routing(settings_path: Path) -> int:
+    models = _desktop_models(settings_path)
+    if not models:
+        print("No visible models configured.")
+        return 1
+    print("Routing recommendations:")
+    width = max(len(model.slug) for model in models)
+    for model in models:
+        print(f"  {model.slug:<{width}}  {_routing_recommendation(model)}")
+    print("\nUpstream built-in providers (Ollama, LM Studio, Bedrock) do not need this shim when they speak Responses natively.")
+    print("Use shim when the backend is chat-completions, Anthropic Messages, or Cursor subprocess.")
+    return 0
+
+
 def doctor(settings_path: Path) -> int:
     from .catalog import websockets_enabled
     from .response_store import default_store_path, store_scope
-    from .capabilities import route_capabilities
+    from .capabilities import execution_mode, route_capabilities
 
     models = _load_models(settings_path)
     desktop_models = _desktop_models(settings_path)
@@ -780,11 +996,29 @@ def doctor(settings_path: Path) -> int:
         width = max(len(model.slug) for model in desktop_models)
         for model in desktop_models:
             caps = route_capabilities(model)
+            mode = execution_mode(model)
             tool_summary = ", ".join(
                 f"{name}={getattr(caps, name)}"
                 for name in ("local_shell", "web_search", "tool_search", "image_generation", "mcp_tools")
             )
-            print(f"  {model.slug:<{width}}  {model.display_name} -> {model.model} ({model.provider}, {model.transport}); tools: {tool_summary}")
+            extra_note = ""
+            if model.extra_body_params:
+                extra_note = f"; extra_body_params: {len(model.extra_body_params)} key(s)"
+            unsupported = [
+                name
+                for name, level in (
+                    ("image_generation", caps.image_generation),
+                    ("web_search", caps.web_search),
+                    ("tool_search", caps.tool_search),
+                    ("mcp_tools", caps.mcp_tools),
+                )
+                if level == "unsupported"
+            ]
+            unsupported_note = f"; Desktop-unsupported: {', '.join(unsupported)}" if unsupported else ""
+            print(
+                f"  {model.slug:<{width}}  {model.display_name} -> {model.model} "
+                f"({model.provider}, {model.transport}, {mode}); tools: {tool_summary}{extra_note}{unsupported_note}"
+            )
     else:
         print("\nVisible configured models: none")
     if hidden:
@@ -980,6 +1214,21 @@ def stop() -> int:
     return 1
 
 
+def repair_codex_config(path: Path = CODEX_CONFIG_PATH) -> int:
+    from .codex_config import repair_codex_config as _repair_codex_config
+
+    if not path.exists():
+        print(f"No config to repair at {path}.", file=sys.stderr)
+        return 1
+    removed = _repair_codex_config(path)
+    if removed:
+        labels = ", ".join(sorted(set(removed)))
+        print(f"Repaired {path}: removed duplicate sections [{labels}].")
+    else:
+        print(f"{path} is already valid; no duplicate sections found.")
+    return 0
+
+
 def restore_codex_config() -> None:
     if CODEX_CONFIG_PATH.exists():
         current = CODEX_CONFIG_PATH.read_text()
@@ -987,13 +1236,36 @@ def restore_codex_config() -> None:
         if not previous_top_level and CODEX_CONFIG_BACKUP_PATH.exists():
             previous_top_level = _extract_top_level_key_lines(CODEX_CONFIG_BACKUP_PATH.read_text(), MANAGED_TOP_LEVEL_KEYS)
         restored = _remove_managed_config(current)
-        restored = _remove_section(restored, f"model_providers.{PROVIDER_NAME}")
+        restored = remove_toml_section(restored, f"model_providers.{PROVIDER_NAME}")
         restored = _restore_missing_top_level_keys(restored.lstrip(), previous_top_level)
-        CODEX_CONFIG_PATH.write_text(restored)
+        write_codex_config(restored, CODEX_CONFIG_PATH)
         print(f"Removed shim config from {CODEX_CONFIG_PATH}.")
     if CODEX_CONFIG_BACKUP_PATH.exists():
         CODEX_CONFIG_BACKUP_PATH.unlink()
         print(f"Removed stale shim backup {CODEX_CONFIG_BACKUP_PATH}.")
+
+
+def _persist_capture_config_from_env() -> None:
+    config: dict[str, object] = dict(read_capture_config())
+    if os.environ.get("CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP", "").strip():
+        config["dump"] = True
+    if os.environ.get("CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_FULL", "").strip():
+        config["full"] = True
+    if os.environ.get("CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_ONCE", "").strip():
+        config["once"] = True
+    for env_name, key in (
+        ("CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_PATH", "path"),
+        ("CODEX_SHIM_PASSTHROUGH_REFERENCE_CAPTURE", "reference_capture"),
+        ("CODEX_SHIM_PARITY_MODE", "parity_mode"),
+    ):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            config[key] = value
+    tier = os.environ.get("CODEX_SHIM_UPSTREAM_CAPTURE_TIER", "").strip().lower()
+    if tier in {"a", "b"}:
+        config["tier"] = tier
+    if config:
+        write_capture_config(config)
 
 
 def status(port: int) -> int:
@@ -1003,6 +1275,9 @@ def status(port: int) -> int:
         if health is not None:
             model_count = health.get("models", "unknown")
             print(f"Shim is running on http://{DEFAULT_HOST}:{port} with pid {pid} ({model_count} models).")
+            capture_config = read_capture_config()
+            if capture_config:
+                print(f"Upstream capture config: {json.dumps(capture_config, sort_keys=True)}")
             return 0
     if _pid_running(pid):
         print(f"Shim process {pid} exists but health check failed.")
@@ -1721,24 +1996,9 @@ def _restore_missing_top_level_keys(text: str, previous_top_level: dict[str, str
     return prefix + text.lstrip()
 
 
-def _remove_section(text: str, section: str) -> str:
-    lines = text.splitlines()
-    output: list[str] = []
-    skipping = False
-    header = f"[{section}]"
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            skipping = stripped == header
-            if skipping:
-                continue
-        if not skipping:
-            output.append(line)
-    return "\n".join(output) + ("\n" if text.endswith("\n") else "")
-
-
 def _popen_daemon(cmd: list[str], log) -> subprocess.Popen:
-    env = {"PYTHONPATH": str(PROJECT_ROOT)}
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(PROJECT_ROOT)
     kwargs = {"cwd": str(PROJECT_ROOT), "env": env, "stdout": log, "stderr": log}
     if os.name == "nt":
         creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
@@ -1771,22 +2031,35 @@ def _override_args(settings_path: Path, port: int) -> list[str]:
     return args
 
 
-def _resolve_model_slug(models, requested: str | None) -> str:
+def chatgpt_passthrough_display_names() -> dict[str, str]:
+    return {slug: slug for slug in sorted(chatgpt_passthrough_slugs())}
+
+
+def _resolve_model_slug(models, requested: str | None, router_config=None) -> str:
     if requested is None:
         current = _current_managed_model()
-        if current in _valid_model_slugs(models):
+        if current in _valid_model_slugs(models, router_config):
             return current
         try:
             return default_model_slug(models)
         except ValueError as exc:
             raise SystemExit(str(exc)) from exc
-    if requested in {CHATGPT_MODEL_SLUG, "openai-gpt-5-5"}:
+    if router_config is not None and requested == router_config.slug:
+        return requested
+    if requested in chatgpt_passthrough_slugs() or requested in {CHATGPT_MODEL_SLUG, "openai-gpt-5-5"}:
         if not chatgpt_passthrough_available():
             raise SystemExit(
                 "gpt-5.5 passthrough requires a Codex login. "
                 "Run `codex login` so ~/.codex/auth.json contains tokens.access_token."
             )
-        return CHATGPT_MODEL_SLUG
+        return requested if requested in chatgpt_passthrough_slugs() else CHATGPT_MODEL_SLUG
+    if is_cursor_passthrough_slug(requested):
+        if not cursor_passthrough_available():
+            raise SystemExit(
+                "Composer passthrough requires Cursor CLI login. "
+                "Run `cursor-agent login`, then `cursor-agent status`."
+            )
+        return requested if requested in cursor_passthrough_display_names() else "composer-2-5"
     by_slug = {model.slug: model.slug for model in models}
     by_model = {}
     for model in models:
@@ -1820,8 +2093,15 @@ def _current_managed_model() -> str | None:
     return None
 
 
-def _valid_model_slugs(models) -> set[str]:
-    return {model.slug for model in models}
+def _valid_model_slugs(models, router_config=None) -> set[str]:
+    slugs = {model.slug for model in usable_byok_models(models)}
+    if router_config is not None:
+        slugs.add(router_config.slug)
+    if chatgpt_passthrough_available():
+        slugs.update(chatgpt_passthrough_slugs())
+    if cursor_passthrough_available():
+        slugs.update(cursor_passthrough_display_names())
+    return slugs
 
 
 def _healthy(port: int) -> bool:

@@ -8,20 +8,22 @@ MODEL_PICKER_OPTIONAL = True
 
 SIDEBAR_RECENT_THREADS_NEEDLE = (
     "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ke})}"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ke})"
 )
 SIDEBAR_RECENT_THREADS_REPLACEMENT = (
     "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ke})}"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ke})"
 )
 SIDEBAR_RECENT_THREADS_NEEDLE_26_527 = (
     "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ye})}"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:ye})"
 )
 SIDEBAR_RECENT_THREADS_REPLACEMENT_26_527 = (
     "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,"
-    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ye})}"
+    "{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:ye})"
 )
+SIDEBAR_RECENT_THREADS_NEEDLE_26_602 = SIDEBAR_RECENT_THREADS_NEEDLE_26_527
+SIDEBAR_RECENT_THREADS_REPLACEMENT_26_602 = SIDEBAR_RECENT_THREADS_REPLACEMENT_26_527
 
 _SIDEBAR_SPEC: PatchSpec = (
     "shim-mode sidebar provider filter",
@@ -35,6 +37,13 @@ _SIDEBAR_SPEC_26_527: PatchSpec = (
     ["app-server-manager-signals-*.js", "*.js"],
     SIDEBAR_RECENT_THREADS_NEEDLE_26_527,
     SIDEBAR_RECENT_THREADS_REPLACEMENT_26_527,
+    False,
+)
+_SIDEBAR_SPEC_26_602: PatchSpec = (
+    "shim-mode sidebar provider filter",
+    ["app-server-manager-signals-*.js", "*.js"],
+    SIDEBAR_RECENT_THREADS_NEEDLE_26_602,
+    SIDEBAR_RECENT_THREADS_REPLACEMENT_26_602,
     False,
 )
 
@@ -52,19 +61,28 @@ _MODEL_PICKER_SPEC_26_527: PatchSpec = (
     "let u=!1,f;",
     False,
 )
+_MODEL_PICKER_SPEC_26_602: PatchSpec = (
+    "model picker allowlist filter",
+    ["model-queries-*.js", "*.js"],
+    "let u=c.useHiddenModels&&a!==`amazonBedrock`,f;",
+    "let u=!1,f;",
+    False,
+)
 
 PATCH_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
     "26.519.81530": [_SIDEBAR_SPEC],
     "26.527.60818": [_MODEL_PICKER_SPEC_26_527, _SIDEBAR_SPEC_26_527],
+    "26.602.40724": [_MODEL_PICKER_SPEC_26_602, _SIDEBAR_SPEC_26_602],
 }
 
 INSPECTION_SPECS_BY_VERSION: dict[str, list[PatchSpec]] = {
     "26.519.81530": [_LEGACY_PICKER_SPEC, _SIDEBAR_SPEC],
     "26.527.60818": [_LEGACY_PICKER_SPEC, _MODEL_PICKER_SPEC_26_527, _SIDEBAR_SPEC_26_527],
+    "26.602.40724": [_LEGACY_PICKER_SPEC, _MODEL_PICKER_SPEC_26_602, _SIDEBAR_SPEC_26_602],
 }
 
 KNOWN_DESKTOP_VERSIONS = tuple(sorted(PATCH_SPECS_BY_VERSION.keys(), reverse=True))
-DEFAULT_PATCH_SPEC_VERSION = "26.519.81530"
+DEFAULT_PATCH_SPEC_VERSION = "26.602.40724"
 
 
 def _version_matches_known_major(version: str, known: str) -> bool:

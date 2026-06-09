@@ -83,7 +83,8 @@ async def handle_responses_websocket(
                 await ws.send_json({"type": "error", "error": {"message": "Unexpected handler response"}})
     except Exception as exc:
         if not ws.closed:
-            await ws.send_json({"type": "error", "error": {"message": str(exc)}})
+            print(f"[err] websocket error: {exc}", flush=True)
+            await ws.send_json({"type": "error", "error": {"message": "Internal server error"}})
             await ws.close()
     if not ws.closed:
         await ws.close()

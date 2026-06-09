@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
-import json
 from typing import Any
 
 
@@ -27,7 +29,17 @@ class JsonOperationalStore(OperationalStore):
     def put(self, namespace: str, key: str, value: dict[str, Any]) -> None:
         path = self._path(namespace, key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value, sort_keys=True), encoding="utf-8")
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".store-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(value, f, sort_keys=True)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
     def get(self, namespace: str, key: str) -> dict[str, Any] | None:
         path = self._path(namespace, key)

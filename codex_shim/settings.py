@@ -24,12 +24,17 @@ TRANSPORT_OPENAI_CHAT = "openai_chat"
 TRANSPORT_ANTHROPIC = "anthropic"
 TRANSPORT_CURSOR_ACP = "cursor_acp"
 TRANSPORT_CURSOR_CLI = "cursor_cli"
+TRANSPORT_CURSOR_AGENT = "cursor-agent-grpc"
 TRANSPORT_CHATGPT = "chatgpt"
+CURSOR_AGENT_PROVIDERS = {"cursor-agent-grpc", "cursor-agent-native"}
 THINKING_PASS = "pass"
 THINKING_DROP = "drop"
 THINKING_FORCE_ENABLED = "force_enabled"
 THINKING_FORCE_DISABLED = "force_disabled"
 THINKING_KEEP_ALL = "keep_all"
+REASONING_REPLAY_EMPTY_STRING = "empty_string"
+REASONING_REPLAY_OMIT = "omit"
+REASONING_REPLAY_NULL = "null"
 ROLE_DEVELOPER_TO_SYSTEM = "developer_to_system"
 BASE_URL_CHAT_COMPLETIONS = "chat_completions"
 COMPACT_EMULATED = "emulated"
@@ -76,6 +81,7 @@ class ProviderCapabilities:
     role_behavior: str = ROLE_DEVELOPER_TO_SYSTEM
     base_url_behavior: str = BASE_URL_CHAT_COMPLETIONS
     compact_behavior: str = COMPACT_EMULATED
+    reasoning_replay_mode: str = REASONING_REPLAY_EMPTY_STRING
 
 
 @dataclass(frozen=True)
@@ -93,7 +99,11 @@ class ProviderPreset:
 PROVIDER_PRESETS: dict[str, ProviderPreset] = {
     "generic-chat-completion-api": ProviderPreset(
         transport=TRANSPORT_OPENAI_CHAT,
-        capabilities=ProviderCapabilities(accepts_thinking=True, thinking_behavior=THINKING_PASS),
+        capabilities=ProviderCapabilities(
+            accepts_thinking=True,
+            thinking_behavior=THINKING_PASS,
+            reasoning_replay_mode=REASONING_REPLAY_EMPTY_STRING,
+        ),
     ),
     "deepseek": ProviderPreset(
         transport=TRANSPORT_OPENAI_CHAT,
@@ -101,6 +111,15 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
             supports_reasoning_summaries=True,
             accepts_thinking=True,
             thinking_behavior=THINKING_PASS,
+            reasoning_replay_mode=REASONING_REPLAY_EMPTY_STRING,
+        ),
+    ),
+    "openrouter": ProviderPreset(
+        transport=TRANSPORT_OPENAI_CHAT,
+        capabilities=ProviderCapabilities(
+            accepts_thinking=True,
+            thinking_behavior=THINKING_PASS,
+            reasoning_replay_mode=REASONING_REPLAY_EMPTY_STRING,
         ),
     ),
     "anthropic": ProviderPreset(transport=TRANSPORT_ANTHROPIC),
@@ -143,6 +162,16 @@ PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         transport=TRANSPORT_CURSOR_CLI,
         requires_command=True,
         default_command="cursor",
+        capabilities=ProviderCapabilities(supports_images=False),
+    ),
+    "cursor-agent-grpc": ProviderPreset(
+        transport=TRANSPORT_CURSOR_AGENT,
+        requires_command=False,
+        capabilities=ProviderCapabilities(supports_images=False),
+    ),
+    "cursor-agent-native": ProviderPreset(
+        transport=TRANSPORT_CURSOR_AGENT,
+        requires_command=False,
         capabilities=ProviderCapabilities(supports_images=False),
     ),
 }
@@ -203,21 +232,15 @@ def chatgpt_passthrough_available(auth_path: Path | None = None) -> bool:
 
 
 def chatgpt_passthrough_model(auth_path: Path | None = None) -> NormalizedModel | None:
-    if not chatgpt_passthrough_available(auth_path):
+    from .subscription_catalog import subscription_passthrough_models
+
+    models = subscription_passthrough_models(auth_path)
+    if not models:
         return None
-    return NormalizedModel(
-        slug=CHATGPT_MODEL_SLUG,
-        model=CHATGPT_MODEL_SLUG,
-        display_name="GPT-5.5",
-        provider="chatgpt",
-        base_url="",
-        index=-10_000,
-        max_context_limit=400_000,
-        transport=TRANSPORT_CHATGPT,
-        endpoint_url="https://chatgpt.com/backend-api/codex/responses",
-        capabilities=provider_preset("chatgpt").capabilities,
-        raw={"synthetic": True},
-    )
+    for model in models:
+        if model.slug == CHATGPT_MODEL_SLUG:
+            return model
+    return models[0]
 
 
 def slugify(value: str) -> str:
@@ -238,6 +261,7 @@ class NormalizedModel:
     max_output_tokens: int | None = None
     no_image_support: bool = False
     extra_headers: dict[str, str] = field(default_factory=dict)
+    extra_body_params: dict[str, Any] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
     transport: str = TRANSPORT_OPENAI_CHAT
     endpoint_url: str = ""
@@ -265,6 +289,25 @@ class NormalizedModel:
     @property
     def is_cursor_cli(self) -> bool:
         return self.transport == TRANSPORT_CURSOR_CLI
+
+    @property
+    def is_cursor_agent(self) -> bool:
+        return self.transport == TRANSPORT_CURSOR_AGENT
+
+    @property
+    def use_native_transport(self) -> bool:
+        raw = self.raw
+        return bool(_field(raw, "use_native_transport", "useNativeTransport", default=False))
+
+    @property
+    def native_transport_mode(self) -> str | None:
+        """Per-model override: ``http1`` (RunSSE+BidiAppend) or ``http2`` (AgentService/Run)."""
+        raw = self.raw if isinstance(self.raw, dict) else {}
+        value = _field(raw, "native_transport_mode", "nativeTransportMode", default=None)
+        if value is None:
+            return None
+        text = str(value).strip().lower()
+        return text or None
 
     @property
     def is_chatgpt(self) -> bool:
@@ -319,10 +362,16 @@ class ModelSettings:
                 for k, v in (_field(row, "extra_headers", "extraHeaders", default={}) or {}).items()
                 if v is not None
             }
+            extra_body_raw = _field(row, "extra_body_params", "extraBodyParams", default={}) or {}
+            extra_body_params = extra_body_raw if isinstance(extra_body_raw, dict) else {}
             endpoint_url = _endpoint_url(row, preset, base_url)
             enabled = _bool_field(row, "enabled", default=True)
             visible, unavailable_reason = _visibility(row, preset, base_url, endpoint_url, api_key, enabled)
             capabilities = _provider_capabilities(row, preset, provider_key, model)
+            transport = preset.transport
+            if _bool_field(row, "use_native_transport", "useNativeTransport", default=False):
+                if provider_key in CURSOR_LOCAL_PROVIDERS or provider_key in CURSOR_AGENT_PROVIDERS:
+                    transport = TRANSPORT_CURSOR_AGENT
             models.append(
                 NormalizedModel(
                     slug=slug,
@@ -336,8 +385,9 @@ class ModelSettings:
                     max_output_tokens=_int_or_none(_field(row, "max_output_tokens", "maxOutputTokens")),
                     no_image_support=bool(_field(row, "no_image_support", "noImageSupport", default=False)),
                     extra_headers=extra_headers,
+                    extra_body_params=dict(extra_body_params),
                     raw=row,
-                    transport=preset.transport,
+                    transport=transport,
                     endpoint_url=endpoint_url,
                     enabled=enabled,
                     visible=visible,
@@ -354,20 +404,14 @@ class ModelSettings:
         return [model for model in self.load() if not model.visible]
 
     def desktop_models(self) -> list[NormalizedModel]:
-        models: list[NormalizedModel] = []
-        chatgpt_model = chatgpt_passthrough_model()
-        if chatgpt_model is not None:
-            models.append(chatgpt_model)
-        models.extend(self.visible_models())
-        return models
+        from .subscription_catalog import merge_desktop_models
+
+        return merge_desktop_models(self.visible_models())
 
     def by_slug_or_model(self, requested: str, *, include_unavailable: bool = False) -> NormalizedModel | None:
         models = self.load() if include_unavailable else self.desktop_models()
-        requested = normalize_chatgpt_model_request(requested)
+        requested = normalize_chatgpt_model_request(requested, models)
         by_slug = {m.slug: m for m in models}
-        chatgpt_model = chatgpt_passthrough_model()
-        if chatgpt_model is not None:
-            by_slug[CHATGPT_MODEL_SLUG] = chatgpt_model
         if requested in by_slug:
             return by_slug[requested]
         matches = [m for m in models if m.model == requested]
@@ -375,10 +419,56 @@ class ModelSettings:
             return matches[0]
         return None
 
+    def load_router(self):
+        """Parse the optional top-level ``router`` block from the settings file."""
+        from .router import load_router_config
 
-def normalize_chatgpt_model_request(requested: str) -> str:
+        return load_router_config(self.path)
+
+
+def byok_model_has_credentials(model: NormalizedModel) -> bool:
+    return bool((model.api_key or "").strip())
+
+
+def usable_byok_models(models: list[NormalizedModel]) -> list[NormalizedModel]:
+    return [model for model in models if byok_model_has_credentials(model) and not model.is_chatgpt]
+
+
+def chatgpt_passthrough_slugs() -> set[str]:
+    return {model.slug for model in subscription_passthrough_slugs_models()}
+
+
+def subscription_passthrough_slugs_models() -> list[NormalizedModel]:
+    from .subscription_catalog import subscription_passthrough_models
+
+    return subscription_passthrough_models()
+
+
+def available_model_slugs(models: list[NormalizedModel]) -> set[str]:
+    """Every routable slug: usable BYOK models plus available passthrough slugs."""
+    from .cursor_passthrough import cursor_passthrough_available, cursor_passthrough_display_names
+
+    slugs = {model.slug for model in usable_byok_models(models)}
+    if chatgpt_passthrough_available():
+        slugs |= chatgpt_passthrough_slugs()
+    if cursor_passthrough_available():
+        slugs |= set(cursor_passthrough_display_names())
+    return slugs
+
+
+def normalize_chatgpt_model_request(
+    requested: str,
+    models: list[NormalizedModel] | None = None,
+) -> str:
     if requested.startswith("openai-gpt-5-5") or requested == "gpt-5p5":
         return CHATGPT_MODEL_SLUG
+    if models:
+        subscription_slugs = {model.slug for model in models if model.is_chatgpt}
+        if requested in subscription_slugs:
+            return requested
+        for slug in subscription_slugs:
+            if requested.startswith(f"openai-{slug.replace('.', '-')}"):
+                return slug
     return requested
 
 
@@ -466,6 +556,10 @@ def provider_thinking_options(provider: str, upstream_model: str) -> dict[str, A
     if behavior == THINKING_KEEP_ALL:
         return {"type": "enabled", "keep": "all"}
     return {"type": "enabled"}
+
+
+def provider_reasoning_replay_mode(provider: str) -> str:
+    return provider_preset(provider.lower()).capabilities.reasoning_replay_mode
 
 
 def _provider_capabilities(
@@ -588,12 +682,15 @@ def _endpoint_url(row: dict[str, Any], preset: ProviderPreset, base_url: str) ->
     return preset.endpoint_url
 
 
+_VERSIONED_BASE_RE = re.compile(r"(?:^|/)v\d+$")
+
+
 def _chat_completions_url_from_base(base_url: str, *, append_v1: bool = True) -> str:
     base = base_url.rstrip("/")
     if base.endswith("/chat/completions"):
         return base
     if append_v1:
-        if base.endswith("/v1"):
+        if _VERSIONED_BASE_RE.search(base):
             return base + "/chat/completions"
         return base + "/v1/chat/completions"
     return base + "/chat/completions"

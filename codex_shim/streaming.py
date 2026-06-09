@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from typing import Any
 
 from aiohttp import web
@@ -10,7 +11,9 @@ from .responses_ws import WsStreamResponse
 from .thinking import reasoning_encrypted_content
 from .translate import (
     build_streaming_tool_output_types,
+    chat_finish_to_anthropic_stop,
     normalize_responses_usage,
+    responses_usage_to_anthropic_usage,
     streaming_tool_completed_item,
     streaming_tool_open_item,
     streaming_tool_output_type,
@@ -24,10 +27,11 @@ class ClientDisconnected(Exception):
 class ResponsesStreamState:
     """Translate upstream deltas into the Codex Desktop Responses stream shape."""
 
-    def __init__(self, model: str, tools: Any = None):
+    def __init__(self, model: str, tools: Any = None, *, delegate_mode: bool = False):
         self.response_id = f"resp_{int(time.time() * 1000)}"
         self.message_item_id = f"msg_{int(time.time() * 1000)}"
         self.model = model
+        self.delegate_mode = delegate_mode
         self.tool_output_types = build_streaming_tool_output_types(tools)
         self.message_index: int | None = None
         self.message_text = ""
@@ -43,6 +47,7 @@ class ResponsesStreamState:
             "duplicate_tool_starts": 0,
             "late_tool_completions": 0,
             "duplicate_reasoning_completed": 0,
+            "delegated_tool_events_suppressed": 0,
             "unknown_cursor_event_types": [],
         }
 
@@ -55,11 +60,14 @@ class ResponsesStreamState:
                 await self._close_reasoning(response, state)
         if self.message_opened and not self.message_closed:
             await self._close_message(response)
-        for state in sorted(self.tool_calls.values(), key=lambda s: s["output_index"]):
-            if not state.get("closed"):
-                await self._close_tool(response, state)
+        if not self.delegate_mode:
+            for state in sorted(self.tool_calls.values(), key=lambda s: s["output_index"]):
+                if not state.get("closed"):
+                    await self._close_tool(response, state)
         final_response = self._response("completed", final=True)
         await write_sse(response, {"type": "response.completed", "response": final_response})
+        self.tool_calls.clear()
+        self.reasoning_blocks.clear()
         return final_response
 
     async def write_chat_delta(self, response: web.StreamResponse, chunk: dict[str, Any]) -> None:
@@ -226,6 +234,11 @@ class ResponsesStreamState:
                 self.anomalies["malformed_cursor_events"] = int(self.anomalies.get("malformed_cursor_events") or 0) + 1
             return
         if event_type == "tool_call":
+            if self.delegate_mode:
+                self.anomalies["delegated_tool_events_suppressed"] = int(
+                    self.anomalies.get("delegated_tool_events_suppressed") or 0
+                ) + 1
+                return
             subtype = str(event.get("subtype") or "")
             call_id = str(event.get("call_id") or "")
             if not call_id:
@@ -528,8 +541,9 @@ class ResponsesStreamState:
                 collected.append((state["output_index"], self._reasoning_item(state, "completed")))
             if self.message_opened and self.message_text and self.message_index is not None:
                 collected.append((self.message_index, self._message_item("completed")))
-            for state in self.tool_calls.values():
-                collected.append((state["output_index"], self._tool_item(state, "completed")))
+            if not self.delegate_mode:
+                for state in self.tool_calls.values():
+                    collected.append((state["output_index"], self._tool_item(state, "completed")))
             collected.sort(key=lambda pair: pair[0])
             output = [item for _, item in collected]
         payload = {
@@ -611,10 +625,16 @@ async def write_sse(response: web.StreamResponse, payload: dict[str, Any]) -> No
         raise
 
 
+_MAX_SSE_BUFFER = 10 * 1024 * 1024  # 10 MB
+
+
 async def sse_lines(upstream) -> Any:
     buffer = b""
     async for chunk in upstream.content.iter_chunked(4096):
         buffer += chunk
+        if len(buffer) > _MAX_SSE_BUFFER:
+            buffer = b""
+            break
         while b"\n" in buffer:
             raw, buffer = buffer.split(b"\n", 1)
             line = raw.decode("utf-8", errors="replace").strip()
@@ -671,3 +691,246 @@ def _json_or_empty(value: Any) -> str:
         return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
     except TypeError:
         return str(value)
+
+
+async def write_anthropic_sse(response: web.StreamResponse, event: str, payload: dict[str, Any]) -> None:
+    data = json.dumps(payload, separators=(",", ":"))
+    try:
+        await response.write(f"event: {event}\ndata: {data}\n\n".encode())
+    except (ConnectionResetError, ConnectionError) as exc:
+        raise ClientDisconnected() from exc
+    except Exception as exc:
+        if exc.__class__.__name__ in {
+            "ClientConnectionResetError",
+            "ClientConnectionError",
+            "ClientPayloadError",
+        }:
+            raise ClientDisconnected() from exc
+        raise
+
+
+class AnthropicMessagesStreamState:
+    """Translates OpenAI chat-completions chunks into Anthropic Messages SSE."""
+
+    def __init__(self, model: str):
+        self.message_id = f"msg_{uuid.uuid4().hex[:24]}"
+        self.model = model
+        self.next_index = 0
+        self.text_index: int | None = None
+        self.reasoning_index: int | None = None
+        self.text_open = False
+        self.reasoning_open = False
+        self.tool_calls: dict[int, dict[str, Any]] = {}
+        self.usage: dict[str, Any] | None = None
+        self.stop_reason = "end_turn"
+
+    async def start(self, response: web.StreamResponse) -> None:
+        await write_anthropic_sse(
+            response,
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": self.message_id,
+                    "type": "message",
+                    "role": "assistant",
+                    "model": self.model,
+                    "content": [],
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 0, "output_tokens": 0},
+                },
+            },
+        )
+
+    async def write_chat_delta(self, response: web.StreamResponse, chunk: dict[str, Any]) -> None:
+        usage = chunk.get("usage")
+        if isinstance(usage, dict):
+            self.usage = normalize_responses_usage(usage)
+        choice = (chunk.get("choices") or [{}])[0]
+        finish_reason = choice.get("finish_reason")
+        if finish_reason:
+            self.stop_reason = chat_finish_to_anthropic_stop(finish_reason)
+        delta = choice.get("delta") or {}
+        reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+        if reasoning:
+            await self._reasoning_delta(response, str(reasoning))
+        content = delta.get("content")
+        if content:
+            if self.reasoning_open:
+                await self._close_reasoning(response)
+            await self._text_delta(response, str(content))
+        for call in delta.get("tool_calls") or []:
+            await self._tool_delta(response, call)
+
+    async def finish(self, response: web.StreamResponse) -> None:
+        if self.reasoning_open:
+            await self._close_reasoning(response)
+        if self.text_open:
+            await self._close_text(response)
+        for index in sorted(self.tool_calls):
+            state = self.tool_calls[index]
+            if not state.get("closed"):
+                await self._close_tool(response, index, state)
+        await write_anthropic_sse(
+            response,
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": self.stop_reason, "stop_sequence": None},
+                "usage": responses_usage_to_anthropic_usage(self.usage) or {"output_tokens": 0},
+            },
+        )
+        await write_anthropic_sse(response, "message_stop", {"type": "message_stop"})
+
+    async def _text_delta(self, response: web.StreamResponse, text: str) -> None:
+        if self.text_index is None:
+            self.text_index = self.next_index
+            self.next_index += 1
+            self.text_open = True
+            await write_anthropic_sse(
+                response,
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": self.text_index,
+                    "content_block": {"type": "text", "text": ""},
+                },
+            )
+        await write_anthropic_sse(
+            response,
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": self.text_index,
+                "delta": {"type": "text_delta", "text": text},
+            },
+        )
+
+    async def _close_text(self, response: web.StreamResponse) -> None:
+        if self.text_index is None:
+            return
+        await write_anthropic_sse(
+            response, "content_block_stop", {"type": "content_block_stop", "index": self.text_index}
+        )
+        self.text_index = None
+        self.text_open = False
+
+    async def _reasoning_delta(self, response: web.StreamResponse, text: str) -> None:
+        if self.reasoning_index is None:
+            self.reasoning_index = self.next_index
+            self.next_index += 1
+            self.reasoning_open = True
+            await write_anthropic_sse(
+                response,
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": self.reasoning_index,
+                    "content_block": {"type": "thinking", "thinking": ""},
+                },
+            )
+        await write_anthropic_sse(
+            response,
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": self.reasoning_index,
+                "delta": {"type": "thinking_delta", "thinking": text},
+            },
+        )
+
+    async def _close_reasoning(self, response: web.StreamResponse) -> None:
+        if self.reasoning_index is None:
+            return
+        await write_anthropic_sse(
+            response,
+            "content_block_stop",
+            {"type": "content_block_stop", "index": self.reasoning_index},
+        )
+        self.reasoning_index = None
+        self.reasoning_open = False
+
+    async def _tool_delta(self, response: web.StreamResponse, call: dict[str, Any]) -> None:
+        index = int(call.get("index", 0))
+        fn = call.get("function") or {}
+        state = self.tool_calls.setdefault(
+            index,
+            {
+                "id": "",
+                "name": "",
+                "arguments": "",
+                "emitted": 0,
+                "block_index": None,
+                "open": False,
+                "closed": False,
+            },
+        )
+        if call.get("id"):
+            state["id"] = call["id"]
+        if fn.get("name"):
+            state["name"] += fn["name"]
+        if fn.get("arguments"):
+            state["arguments"] += fn["arguments"]
+        if not state["open"] and state["name"]:
+            if self.reasoning_open:
+                await self._close_reasoning(response)
+            if self.text_open:
+                await self._close_text(response)
+            await self._open_tool(response, index, state)
+        if state["open"] and len(state["arguments"]) > state["emitted"]:
+            delta = state["arguments"][state["emitted"] :]
+            state["emitted"] = len(state["arguments"])
+            await write_anthropic_sse(
+                response,
+                "content_block_delta",
+                {
+                    "type": "content_block_delta",
+                    "index": state["block_index"],
+                    "delta": {"type": "input_json_delta", "partial_json": delta},
+                },
+            )
+
+    async def _open_tool(self, response: web.StreamResponse, index: int, state: dict[str, Any]) -> None:
+        state["block_index"] = self.next_index
+        self.next_index += 1
+        state["open"] = True
+        if not state["id"]:
+            state["id"] = f"call_{index}"
+        await write_anthropic_sse(
+            response,
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": state["block_index"],
+                "content_block": {
+                    "type": "tool_use",
+                    "id": state["id"],
+                    "name": state["name"] or "tool",
+                    "input": {},
+                },
+            },
+        )
+
+    async def _close_tool(self, response: web.StreamResponse, index: int, state: dict[str, Any]) -> None:
+        if not state["open"]:
+            await self._open_tool(response, index, state)
+            if len(state["arguments"]) > state["emitted"]:
+                delta = state["arguments"][state["emitted"] :]
+                state["emitted"] = len(state["arguments"])
+                await write_anthropic_sse(
+                    response,
+                    "content_block_delta",
+                    {
+                        "type": "content_block_delta",
+                        "index": state["block_index"],
+                        "delta": {"type": "input_json_delta", "partial_json": delta},
+                    },
+                )
+        await write_anthropic_sse(
+            response,
+            "content_block_stop",
+            {"type": "content_block_stop", "index": state["block_index"]},
+        )
+        state["open"] = False
+        state["closed"] = True

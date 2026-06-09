@@ -3,6 +3,8 @@ from __future__ import annotations
 from ..thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
 from . import content as _content_module
 from .anthropic import anthropic_to_chat_response, responses_to_anthropic
+from .anthropic_messages import anthropic_messages_to_chat, chat_completion_to_anthropic_message
+from .common import chat_finish_to_anthropic_stop, responses_usage_to_anthropic_usage
 from .chat import chat_to_anthropic, chat_to_responses_request, responses_to_chat
 from .common import ResponsesInputError, THINK_RE, strip_think
 from .content import SUPPORTED_AUDIO_FORMATS, SUPPORTED_AUDIO_MIME_FORMATS
@@ -38,8 +40,12 @@ __all__ = [
     "THINK_RE",
     "WEB_SEARCH_ACTION_TYPES",
     "HOSTED_CALL_FALLBACK_NAMES",
+    "anthropic_messages_to_chat",
     "anthropic_to_chat_response",
     "anthropic_to_response",
+    "chat_completion_to_anthropic_message",
+    "chat_finish_to_anthropic_stop",
+    "responses_usage_to_anthropic_usage",
     "build_streaming_tool_output_types",
     "chat_completion_to_response",
     "chat_to_anthropic",

@@ -53,3 +53,8 @@ class GatewayHandlers:
         if isinstance(body_or_error, web.Response):
             return body_or_error
         return await self._dispatcher.responses_compact_from_body(request, body_or_error)
+
+    async def anthropic_messages(self, request: web.Request) -> web.StreamResponse:
+        from ..anthropic_messages_gateway import anthropic_messages_handler
+
+        return await anthropic_messages_handler(self._dispatcher, request)

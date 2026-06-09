@@ -10,6 +10,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .settings import CHATGPT_MODEL_SLUG, DEFAULT_SETTINGS, ModelSettings, ShimModel, chatgpt_passthrough_available
+from .cursor_acp import DEFAULT_CURSOR_TIMEOUT
 
 
 class IntegrationHarnessError(RuntimeError):
@@ -128,6 +129,53 @@ def tier_a_tool_heavy_body() -> dict[str, Any]:
     return {
         "model": CHATGPT_MODEL_SLUG,
         "input": input_items,
+    }
+
+
+def tool_heavy_probe_tools() -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "local_shell",
+                "description": "Run a shell command",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"command": {"type": "string"}},
+                    "required": ["command"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "Search the web",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                    "required": ["query"],
+                },
+            },
+        },
+    ]
+
+
+def byok_tool_heavy_probe_body(slug: str) -> dict[str, Any]:
+    """Replay hosted tool history, then ask for a fresh mapped tool invocation."""
+    fixture = json.loads((DESKTOP_FIXTURE_DIR / "tool_heavy_turn.json").read_text())
+    input_items = list(fixture.get("input") or [])
+    input_items.append(
+        {
+            "role": "user",
+            "content": [{"type": "input_text", "text": "Use local_shell to run: echo probe"}],
+        },
+    )
+    return {
+        "model": slug,
+        "input": input_items,
+        "stream": False,
+        "tools": tool_heavy_probe_tools(),
     }
 
 
@@ -463,6 +511,9 @@ def post_fixture_turn(
         "input": input_items,
         "stream": stream,
     }
+    tools = fixture.get("tools")
+    if isinstance(tools, list) and tools:
+        body["tools"] = tools
     headers = {"session_id": session_id}
     if stream:
         return post_json_streaming(
@@ -610,10 +661,16 @@ def run_byok_history(port: int, route: ShimModel, *, timeout: int | None = None)
     }
 
 
+def cursor_probe_timeout(route: ShimModel) -> int:
+    if route.is_cursor_cli or route.is_cursor_agent or route.is_cursor_acp:
+        return int(DEFAULT_CURSOR_TIMEOUT)
+    return 120
+
+
 def _byok_timeout(route: ShimModel, timeout: int | None) -> int:
     if timeout is not None:
         return timeout
-    return 600 if route.is_cursor_cli else 120
+    return cursor_probe_timeout(route)
 
 
 def run_byok_streaming_history(port: int, route: ShimModel, *, timeout: int | None = None) -> dict[str, str]:

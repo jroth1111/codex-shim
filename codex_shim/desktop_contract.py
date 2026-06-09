@@ -76,3 +76,38 @@ DESKTOP_THREAD_START_PARAM_FIELDS = frozenset((
     "mockExperimentalField",
     "experimentalRawEvents",
 ))
+
+DESKTOP_WORKSPACE_REQUEST_KEYS = frozenset((
+    "cwd",
+    "projectPath",
+    "project_path",
+    "repoRoot",
+    "repo_root",
+    "workingDirectory",
+    "working_directory",
+    "workspace",
+    "x-codex-cwd",
+    "x-codex-workspace",
+    "x-project-path",
+    "x-workspace",
+))
+
+WORKSPACE_METADATA_KEYS = (
+    "cwd",
+    "workspace",
+    "working_directory",
+    "workingDirectory",
+    "project_path",
+    "projectPath",
+    "repo_root",
+    "repoRoot",
+)
+
+WORKSPACE_HEADER_KEYS = (
+    "x-codex-cwd",
+    "x-codex-workspace",
+    "x-workspace",
+    "x-project-path",
+    "cwd",
+    "workspace",
+)

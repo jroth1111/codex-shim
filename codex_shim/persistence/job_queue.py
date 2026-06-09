@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import Any
 
 
@@ -18,10 +18,17 @@ class JsonlJobQueue:
     def pop_all(self) -> list[dict[str, Any]]:
         if not self._path.exists():
             return []
+        raw = self._path.read_text(encoding="utf-8")
         rows: list[dict[str, Any]] = []
-        for line in self._path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line:
                 continue
-            rows.append(json.loads(line))
-        self._path.write_text("", encoding="utf-8")
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text("", encoding="utf-8")
+        tmp.replace(self._path)  # atomic on POSIX
         return rows
