@@ -1,14 +1,53 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import time
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from aiohttp import web
 
+from .compact_frontier import (
+    CompactFrontier,
+    extract_compact_frontier,
+    git_status_short,
+    mentions_modified_files,
+    preserves_last_user_intent,
+)
 
-def compact_request_body(body: dict[str, Any], upstream_model: str) -> dict[str, Any]:
-    instructions = body.get("instructions") or default_compact_instructions()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+POSTCOMPACT_CAPTURE_PATH = PROJECT_ROOT / ".codex-shim" / "postcompact-captures.jsonl"
+SUMMARY_EXCERPT_LIMIT = 1200
+
+
+@dataclass(frozen=True)
+class CompactQuality:
+    summary_status: str
+    preserves_last_user_intent: bool
+    mentions_modified_files: bool
+    augmented: bool = False
+
+
+def compact_request_body(
+    body: dict[str, Any],
+    upstream_model: str,
+    *,
+    frontier: CompactFrontier | None = None,
+    git_status: str | None = None,
+) -> dict[str, Any]:
+    if body.get("instructions"):
+        instructions = body.get("instructions")
+    elif frontier is not None and (
+        frontier.input_item_count > 0
+        or frontier.last_user_intent
+        or frontier.modified_files
+        or frontier.recent_commands
+    ):
+        instructions = build_emulated_compact_instructions(frontier, git_status=git_status)
+    else:
+        instructions = default_compact_instructions()
     return {
         "model": upstream_model,
         "instructions": instructions,
@@ -26,10 +65,147 @@ def default_compact_instructions() -> str:
     )
 
 
+def build_emulated_compact_instructions(frontier: CompactFrontier, *, git_status: str | None = None) -> str:
+    sections = [
+        "You are producing an emulated compaction summary for Codex.",
+        "The summary is a projection for the next turn, not authoritative history.",
+        "When extracted frontier facts conflict with prior compaction text, prefer the frontier facts.",
+        "",
+        "Return plain text with these exact section headers:",
+        "LAST_USER_INTENT:",
+        "MODIFIED_FILES:",
+        "RECENT_COMMANDS:",
+        "OPEN_ITEMS:",
+        "DECISIONS_AND_BLOCKERS:",
+        "NEXT_ACTION:",
+        "",
+        "Extracted frontier (authoritative for this compaction request):",
+        f"LAST_USER_INTENT: {frontier.last_user_intent or '(none)'}",
+        f"MODIFIED_FILES: {', '.join(frontier.modified_files) if frontier.modified_files else '(none)'}",
+        f"RECENT_COMMANDS: {', '.join(frontier.recent_commands) if frontier.recent_commands else '(none)'}",
+        f"OPEN_ITEMS: {', '.join(frontier.open_items) if frontier.open_items else '(none)'}",
+    ]
+    if frontier.prior_compaction_excerpt:
+        sections.extend(
+            [
+                f"PRIOR_COMPACTION_EXCERPT: {frontier.prior_compaction_excerpt}",
+            ]
+        )
+    if git_status:
+        sections.extend(
+            [
+                f"GIT_STATUS: {git_status}",
+            ]
+        )
+    sections.extend(
+        [
+            "",
+            "Fill each section from the conversation input and frontier facts above.",
+            "Omit filler. Keep the handoff concise but complete enough to resume work safely.",
+        ]
+    )
+    return "\n".join(sections)
+
+
+def evaluate_compact_summary(summary: str, frontier: CompactFrontier | None) -> CompactQuality:
+    if frontier is None:
+        return CompactQuality(
+            summary_status="projection_unverified",
+            preserves_last_user_intent=True,
+            mentions_modified_files=True,
+        )
+    intent_ok = preserves_last_user_intent(summary, frontier)
+    files_ok = mentions_modified_files(summary, frontier)
+    verified = intent_ok and files_ok
+    return CompactQuality(
+        summary_status="projection_verified" if verified else "projection_unverified",
+        preserves_last_user_intent=intent_ok,
+        mentions_modified_files=files_ok,
+    )
+
+
+def augment_compact_summary(
+    summary: str,
+    frontier: CompactFrontier | None,
+    *,
+    git_status: str | None = None,
+) -> str:
+    frontier = frontier or CompactFrontier()
+    lines = [
+        "[shim-compact-warning: projection_unverified]",
+        f"LAST_USER_INTENT: {frontier.last_user_intent or '(none)'}",
+        f"MODIFIED_FILES: {', '.join(frontier.modified_files) if frontier.modified_files else '(none)'}",
+    ]
+    if git_status:
+        lines.append(f"GIT_STATUS: {git_status}")
+    lines.extend(["--- original summary ---", summary])
+    return "\n".join(lines)
+
+
+def finalize_compact_summary(
+    summary: str,
+    frontier: CompactFrontier | None,
+    *,
+    git_status: str | None = None,
+) -> tuple[str, CompactQuality]:
+    quality = evaluate_compact_summary(summary, frontier)
+    if quality.summary_status == "projection_verified":
+        return summary, quality
+    augmented = augment_compact_summary(summary, frontier, git_status=git_status)
+    return augmented, CompactQuality(
+        summary_status=quality.summary_status,
+        preserves_last_user_intent=quality.preserves_last_user_intent,
+        mentions_modified_files=quality.mentions_modified_files,
+        augmented=True,
+    )
+
+
+def compact_audit_record(
+    *,
+    model: str,
+    summary: str,
+    quality: CompactQuality,
+    frontier: CompactFrontier | None,
+    workspace: str | None = None,
+    git_status: str | None = None,
+) -> dict[str, Any]:
+    frontier = frontier or CompactFrontier()
+    excerpt = summary[:SUMMARY_EXCERPT_LIMIT]
+    return {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "model": model,
+        "summary_status": quality.summary_status,
+        "summary_hash": hashlib.sha256(summary.encode("utf-8", errors="replace")).hexdigest(),
+        "summary_excerpt": excerpt,
+        "last_user_intent": frontier.last_user_intent,
+        "modified_files_count": len(frontier.modified_files),
+        "input_item_count": frontier.input_item_count,
+        "git_status_present": bool(git_status),
+        "workspace": workspace,
+        "augmented": quality.augmented,
+        "preserves_last_user_intent": quality.preserves_last_user_intent,
+        "mentions_modified_files": quality.mentions_modified_files,
+    }
+
+
+def append_postcompact_capture(record: dict[str, Any]) -> None:
+    try:
+        POSTCOMPACT_CAPTURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with POSTCOMPACT_CAPTURE_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
+    except OSError:
+        return
+
+
 async def as_compact_response(
     response: web.StreamResponse,
     model: str,
     request_body: dict[str, Any] | None = None,
+    *,
+    frontier: CompactFrontier | None = None,
+    git_status: str | None = None,
+    workspace: str | None = None,
+    audit_callback: Any | None = None,
 ) -> web.Response:
     if not isinstance(response, web.Response) or response.status >= 400:
         return response
@@ -39,12 +215,26 @@ async def as_compact_response(
         return response
     output = payload.get("output") if isinstance(payload, dict) else None
     summary = compact_summary_from_output(output)
+    if frontier is None and request_body is not None:
+        frontier = extract_compact_frontier(request_body.get("input"))
+    final_summary, quality = finalize_compact_summary(summary, frontier, git_status=git_status)
     compacted = compact_response_payload(
         model,
-        summary,
+        final_summary,
         payload.get("usage") if isinstance(payload, dict) else None,
         include_trigger=input_has_compaction_trigger((request_body or {}).get("input")),
     )
+    audit = compact_audit_record(
+        model=model,
+        summary=final_summary,
+        quality=quality,
+        frontier=frontier,
+        workspace=workspace,
+        git_status=git_status,
+    )
+    append_postcompact_capture(audit)
+    if audit_callback is not None:
+        audit_callback(audit)
     return web.json_response(compacted)
 
 

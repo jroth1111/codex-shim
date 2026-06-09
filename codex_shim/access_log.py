@@ -52,6 +52,8 @@ def log_access(
     request_body: dict[str, Any] | None = None,
     provider_ms: int | None = None,
     model_route: str | None = None,
+    workspace: str | None = None,
+    compact_summary_status: str | None = None,
 ) -> None:
     try:
         usage = usage_summary(payload.get("usage") if isinstance(payload, dict) else None)
@@ -72,6 +74,10 @@ def log_access(
         }
         if error:
             record["error"] = error
+        if workspace:
+            record["workspace"] = workspace
+        if compact_summary_status:
+            record["compact_summary_status"] = compact_summary_status
         print("[access] " + json.dumps(record, sort_keys=True, separators=(",", ":")), flush=True)
     except Exception as exc:
         print(f"[access] failed to log: {exc}", flush=True)
