@@ -249,7 +249,7 @@ After this, Codex Desktop sees every configured/usable entry from
 (and only if) `~/.codex/auth.json` holds a valid `tokens.access_token`.
 Disabled rows, rows missing required credentials, and Cursor rows whose command
 cannot be found are omitted from the generated catalog and rejected by the shim
-router. Run `codex-shim doctor` to see why a row is hidden.
+router. Run `codex-shim doctor models` to see why a row is hidden.
 
 If your Codex Desktop's model picker only shows `default` and refuses to render
 the catalog entries, apply the macOS picker patch below.
@@ -360,6 +360,7 @@ codex-shim configure zai
 codex-shim configure zai --coding-plan
 codex-shim configure nim --model z-ai/glm-5.1
 codex-shim doctor
+codex-shim doctor models
 codex-shim test cursor-agent
 codex-shim config export ./models.redacted.json
 codex-shim config export --include-secrets ./models.full.json
@@ -375,9 +376,10 @@ want the ACP experiment.
 `configure` adds or updates common provider rows without writing secrets into
 the generated Codex catalog. By default it references `ZAI_API_KEY` for Z.AI and
 `NVIDIA_API_KEY` for NVIDIA NIM; use `--api-key-file` or `--api-key` when you
-need a different source. `doctor` reports the visible set and hidden rows with
-their exact reason, such as a missing key, disabled row, invalid endpoint, or
-missing Cursor command.
+need a different source. `doctor models` reports the visible set and hidden rows
+with their exact reason, such as a missing key, disabled row, invalid endpoint,
+or missing Cursor command. `doctor` (no subcommand) prints a read-only setup
+diagnostics report (Python, deps, daemon health, passthrough readiness).
 
 `test <target>` resolves a slug, provider, upstream model id, or display name,
 prints whether the row is visible or hidden, then sends a real non-streaming
@@ -753,7 +755,7 @@ Codex Desktop speaks the Responses API; upstream fidelity depends on the route.
 | Cursor CLI (`cursor-agent`) | delegated | delegated | delegated | unsupported | delegated | mapped | **delegate** |
 | Cursor Agent native (`cursor-agent-grpc`) | delegated | delegated | delegated | unsupported | delegated | mapped | **delegate** |
 
-“Mapped” means Codex tools remain authoritative (Desktop runs shell/web/apply_patch/MCP), and the shim translates tool schemas and outputs so upstream models can stay in the loop. **Delegated** (Cursor routes) means Cursor executes tools autonomously; the shim suppresses Cursor `tool_call` stream events so Codex never receives executable tool items from Cursor output. “Unsupported” means the shim will not silently synthesize that tool for the route; `codex-shim doctor` reports it clearly.
+“Mapped” means Codex tools remain authoritative (Desktop runs shell/web/apply_patch/MCP), and the shim translates tool schemas and outputs so upstream models can stay in the loop. **Delegated** (Cursor routes) means Cursor executes tools autonomously; the shim suppresses Cursor `tool_call` stream events so Codex never receives executable tool items from Cursor output. “Unsupported” means the shim will not silently synthesize that tool for the route; `codex-shim doctor models` reports it clearly.
 
 
 **Reasoning on BYOK (Tier B/C):** The shim never fabricates OpenAI-native `encrypted_content` blobs. When Desktop sends reasoning with Anthropic-style `anthropic-thinking-v1:` payloads (or summaries only), the translator replays them as `reasoning_content` / Anthropic `thinking` blocks on the next turn. That preserves agent-loop continuity for supported providers; it is not cryptographic parity with ChatGPT Tier A.
@@ -1110,7 +1112,8 @@ codex-shim generate          regenerate catalog/config without starting daemon
 codex-shim start             regenerate catalog and start local shim daemon
 codex-shim enable            start daemon and write managed ~/.codex/config.toml block
 codex-shim status            health check + model count
-codex-shim doctor            explain visible and hidden configured models
+codex-shim doctor            read-only local setup diagnostics (OK/WARN/FAIL)
+codex-shim doctor models     explain visible and hidden configured models
 codex-shim doctor contract   check generated Desktop protocol contract drift
 codex-shim test <target>     smoke-test a visible route by slug/provider/model/name
 codex-shim probe compact     validate BYOK /v1/responses/compact output against running shim
@@ -1162,10 +1165,18 @@ restarting the CLI:
   `name = "..."` in `~/.codex/config.toml` so the Codex Desktop UI shows
   the selected model's display name (e.g. "Kimi K2.6") instead of the
   generic "Codex Shim" label, and optionally relaunches Codex Desktop
-  (`open -a Codex` on macOS, `taskkill` + `Codex.exe` on Windows).
+  (`open -a Codex` on macOS, `taskkill` + `Codex.exe` on Windows). This
+  state-changing endpoint requires the per-process `X-Codex-Shim-Picker-Token`
+  header embedded in `/picker`.
 
 All picker routes are behind the same `Host`-header allowlist as the rest of
-the shim, so a visited web page cannot drive them via DNS rebinding.
+the shim, so a visited web page cannot drive them via DNS rebinding. The
+state-changing `/api/switch` endpoint also requires a per-process picker token,
+so third-party pages cannot trigger model switches just because the loopback
+server is reachable.
+
+See [`docs/subscription-integration.md`](docs/subscription-integration.md) for
+ChatGPT and Cursor subscription passthrough setup and troubleshooting.
 
 ---
 
@@ -1179,6 +1190,9 @@ the shim, so a visited web page cannot drive them via DNS rebinding.
   drives the shim with your credentials. If you deliberately bind to a
   non-loopback host, add the host(s) you reach it by to
   `CODEX_SHIM_ALLOWED_HOSTS` (comma-separated).
+- The model picker protects its state-changing `/api/switch` endpoint with a
+  per-process picker token, so cross-site pages cannot switch the active model
+  or request a Desktop restart without loading the picker page.
 - API keys stay in your settings file; the generated catalog does not contain
   them.
 - Request logs are summary-level by default and avoid full prompt/API-key dumps.

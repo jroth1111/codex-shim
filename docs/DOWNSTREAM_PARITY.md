@@ -12,7 +12,7 @@ Upstream repo: `0xSero/codex-shim` (`origin`) — **not merged**; feature branch
 | `origin/feat/model-picker-web-ui` | `e9e368a` | Already present on fork |
 | `origin/fix/streaming-usage-compaction-main` | `5deecde` | Already present on fork |
 | `origin/fix/visual-feedback-passthrough` | `70e7836` | Already present on fork |
-| `origin/main` (Anthropic header, Windows launcher, Composer passthrough) | — | **Out of scope** (upstream) |
+| `origin/main` (Anthropic header, Windows launcher, Auto Router, Composer passthrough, OpenCode Go, Anthropic Messages bridge) | — | **Ported** on local `main` (adapted into modular layout) |
 
 Raw cherry-picks of the four commits are **not** recommended: they target pre-refactor paths (`codex_shim/translate.py`, monolithic `server.py`). The fork absorbed the same behavior via the modular refactor and conformance roadmap.
 

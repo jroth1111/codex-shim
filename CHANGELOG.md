@@ -13,6 +13,20 @@ and this project does not yet follow semantic versioning (pre-1.0).
 
 ### Added
 
+- `codex-shim doctor` setup diagnostics (OK/WARN/FAIL) covering Python,
+  dependencies, Codex CLI, settings, runtime files, daemon health, passthrough
+  readiness, proxy loopback bypass, and Codex config wiring. Model visibility
+  moved to `codex-shim doctor models`.
+- `docs/subscription-integration.md` covering ChatGPT/Codex and Cursor/Composer
+  subscription passthrough setup, troubleshooting, limitations, and privacy notes.
+- Protected the state-changing picker `/api/switch` endpoint with a per-process
+  picker token so third-party pages cannot trigger model switches or Desktop
+  restarts through the loopback server.
+- Image detail normalization: Codex Desktop `detail: "original"` on `input_image`
+  items is translated to `"high"` for OpenAI chat-completions providers.
+- Anthropic `/v1/messages` streaming test coverage (tools, reasoning, errors,
+  passthrough SSE).
+
 - `POST /v1/responses/compact` support. ChatGPT passthrough forwards to the
   native ChatGPT compact endpoint; BYOK OpenAI/chat and Anthropic routes run a
   non-streaming compact summarization request and return a Responses-shaped
