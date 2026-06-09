@@ -159,7 +159,23 @@ async def anthropic_error_response(upstream) -> web.Response:
         if isinstance(err, dict):
             message = str(err.get("message") or message)
             error_type = str(err.get("type") or error_type)
-    return web.json_response(
-        {"type": "error", "error": {"type": error_type, "message": message}},
-        status=upstream.status,
-    )
+        elif payload.get("message"):
+            message = str(payload["message"])
+    status_type = {
+        400: "invalid_request_error",
+        401: "authentication_error",
+        403: "permission_error",
+        404: "not_found_error",
+        413: "request_too_large",
+        429: "rate_limit_error",
+    }.get(upstream.status)
+    if status_type:
+        error_type = status_type
+    body = {
+        "type": "error",
+        "error": {"type": error_type, "message": message},
+    }
+    request_id = upstream.headers.get("request-id") or upstream.headers.get("x-request-id")
+    if request_id:
+        body["request_id"] = request_id
+    return web.json_response(body, status=upstream.status)
