@@ -20,6 +20,13 @@ class GovernanceEvent:
     selected_by: str | None = None
     retry_attempts: int = 0
     fallback_used: bool = False
+    inference_mode: str | None = None
+    metadata_mode: str | None = None
+    surface: str | None = None
+    model_prefetch_status: str | None = None
+    force_run_everything: bool = False
+    transport_selected: str | None = None
+    fallback_reason: str | None = None
 
 
 class GovernanceAuditSink:
@@ -40,6 +47,13 @@ class GovernanceAuditSink:
         retry_attempts: int = 0,
         fallback_used: bool = False,
         tool_count_override: int | None = None,
+        inference_mode: str | None = None,
+        metadata_mode: str | None = None,
+        surface: str | None = None,
+        model_prefetch_status: str | None = None,
+        force_run_everything: bool = False,
+        transport_selected: str | None = None,
+        fallback_reason: str | None = None,
     ) -> None:
         requested_tool_count = 0
         tools = body.get("tools")
@@ -58,6 +72,13 @@ class GovernanceAuditSink:
             selected_by=selected_by,
             retry_attempts=retry_attempts,
             fallback_used=fallback_used,
+            inference_mode=inference_mode,
+            metadata_mode=metadata_mode,
+            surface=surface,
+            model_prefetch_status=model_prefetch_status,
+            force_run_everything=force_run_everything,
+            transport_selected=transport_selected,
+            fallback_reason=fallback_reason,
         )
         with self._log_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(asdict(event), sort_keys=True) + "\n")
