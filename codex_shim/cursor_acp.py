@@ -10,11 +10,66 @@ import shlex
 import time
 from typing import Any
 
+from .capabilities import is_delegate_route
 from .settings import ShimModel
 from .translate import responses_to_chat
 
 
 TextCallback = Callable[[str], Awaitable[None]]
+
+DEFAULT_CURSOR_TIMEOUT = float(os.environ.get("CODEX_SHIM_CURSOR_TIMEOUT", "3600"))
+
+_DELEGATE_TOOL_ITEM_TYPES = frozenset(
+    {
+        "function_call",
+        "function_call_output",
+        "local_shell_call",
+        "web_search_call",
+        "image_generation_call",
+        "tool_search_call",
+        "mcp_tool_call",
+        "mcp_tool_call_output",
+        "custom_tool_call",
+        "custom_tool_call_output",
+        "tool_search_output",
+        "tool_result",
+        "computer_call",
+        "computer_call_output",
+    }
+)
+
+
+def filter_delegate_history_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep user/assistant messages and reasoning for cursor delegate history."""
+    kept: list[dict[str, Any]] = []
+    suppressed_tools = 0
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("type") or "")
+        if item_type in _DELEGATE_TOOL_ITEM_TYPES or item_type.endswith("_call") or item_type.endswith("_output"):
+            suppressed_tools += 1
+            continue
+        if item_type in {"message", "reasoning", "compaction", "context_compaction", "compaction_trigger"}:
+            kept.append(item)
+            continue
+        role = item.get("role")
+        if role in {"user", "assistant", "developer"}:
+            kept.append(item)
+    if suppressed_tools:
+        kept.append(
+            {
+                "type": "message",
+                "role": "developer",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": f"Prior turn: Cursor completed {suppressed_tools} tool action(s) autonomously.",
+                    }
+                ],
+            }
+        )
+    return kept
 
 
 class CursorAcpError(RuntimeError):
@@ -38,6 +93,7 @@ class CursorAcpResult:
     text: str
     usage: dict[str, Any] | None = None
     raw_result: dict[str, Any] | None = None
+    session_id: str | None = None
 
 
 async def run_cursor_acp(
@@ -46,14 +102,14 @@ async def run_cursor_acp(
     *,
     on_text: TextCallback | None = None,
     chained_from_previous: bool = False,
+    workspace: Path | None = None,
 ) -> CursorAcpResult:
-    config = cursor_acp_config(route)
-    prompt = responses_to_acp_prompt(
+    config = cursor_acp_config(route, workspace=workspace)
+    prompt = cursor_prompt_for_body(
         body,
-        route.model,
-        provider=route.provider,
-        thinking_behavior=route.thinking_behavior,
+        route,
         chained_from_previous=chained_from_previous,
+        workspace=workspace,
     )
     collected: list[str] = []
 
@@ -129,11 +185,12 @@ async def run_cursor_acp(
         await client.close()
 
 
-def cursor_acp_config(route: ShimModel) -> CursorAcpConfig:
+def cursor_acp_config(route: ShimModel, *, workspace: Path | None = None) -> CursorAcpConfig:
     raw = route.raw or {}
     command = str(_field(raw, "command", "cursor_command", "cursorCommand", default="cursor-agent") or "cursor-agent")
     args = _args(raw)
-    cwd = _optional_str(_field(raw, "cwd", "workspace", "working_directory", "workingDirectory"))
+    static_cwd = _optional_str(_field(raw, "cwd", "workspace", "working_directory", "workingDirectory"))
+    resolved_cwd = str(workspace) if workspace is not None else static_cwd
     env = {
         str(k): str(v)
         for k, v in (_field(raw, "env", "environment", default={}) or {}).items()
@@ -144,12 +201,19 @@ def cursor_acp_config(route: ShimModel) -> CursorAcpConfig:
     return CursorAcpConfig(
         command=command,
         args=args,
-        cwd=str(Path(cwd).expanduser()) if cwd else None,
+        cwd=str(Path(resolved_cwd).expanduser()) if resolved_cwd else None,
         env=env,
         mode=mode,
         model=model,
         handshake_timeout=_float_field(raw, "handshake_timeout", "handshakeTimeout", default=30.0),
-        prompt_timeout=_float_field(raw, "timeout_seconds", "timeoutSeconds", "prompt_timeout", "promptTimeout", default=600.0),
+        prompt_timeout=_float_field(
+            raw,
+            "timeout_seconds",
+            "timeoutSeconds",
+            "prompt_timeout",
+            "promptTimeout",
+            default=DEFAULT_CURSOR_TIMEOUT,
+        ),
     )
 
 
@@ -194,6 +258,126 @@ def responses_to_acp_prompt(
             parts.append("CODEX TOOL NAMES PRESENT:\n" + ", ".join(tool_names))
 
     return "\n\n".join(parts).strip() or ""
+
+
+def responses_to_upstream_parity_prompt(
+    body: dict[str, Any],
+    *,
+    chained_from_previous: bool = False,
+    resume_chat_id: str | None = None,
+    max_turns: int = 4,
+) -> str:
+    """
+    Plain cursor-agent CLI prompt: latest user line when resuming, otherwise recent text turns only.
+    Workspace is passed via ``--workspace``; no WORKSPACE: prefix.
+    """
+    from .cursor_parity import latest_user_text
+
+    plain = latest_user_text(body)
+    if resume_chat_id or chained_from_previous:
+        return plain
+    if plain:
+        return plain
+    chat = responses_to_chat(
+        body,
+        "auto",
+        "cursor-agent",
+        chained_from_previous=chained_from_previous,
+    )
+    messages = [message for message in (chat.get("messages") or []) if isinstance(message, dict)]
+    text_messages: list[str] = []
+    suppressed_tool_outputs = 0
+    from .cursor_parity import _is_shim_catalog_instructions
+
+    for message in messages:
+        role = str(message.get("role") or "user").lower()
+        if role == "system":
+            continue
+        content = _content_to_text(message.get("content"))
+        if not content or _is_shim_catalog_instructions(content):
+            continue
+        text_messages.append(f"{role.upper()}:\n{content}")
+        if message.get("tool_calls"):
+            suppressed_tool_outputs += 1
+    parts: list[str] = []
+    if suppressed_tool_outputs:
+        parts.append(
+            f"NOTE:\nPrior turn: Cursor completed {suppressed_tool_outputs} tool action(s) autonomously."
+        )
+    if text_messages:
+        parts.extend(text_messages[-max_turns:])
+    joined = "\n\n".join(parts).strip()
+    if joined:
+        return joined
+    return latest_user_text(body)
+
+
+def responses_to_delegate_prompt(
+    body: dict[str, Any],
+    upstream_model: str,
+    provider: str = "generic-chat-completion-api",
+    thinking_behavior: str | None = None,
+    *,
+    chained_from_previous: bool = False,
+    workspace: Path | None = None,
+    max_turns: int = 4,
+) -> str:
+    chat = responses_to_chat(
+        body,
+        upstream_model,
+        provider,
+        thinking_behavior=thinking_behavior,
+        chained_from_previous=chained_from_previous,
+    )
+    parts: list[str] = []
+    if workspace is not None:
+        parts.append(f"WORKSPACE:\n{workspace}")
+    messages = [message for message in (chat.get("messages") or []) if isinstance(message, dict)]
+    text_messages = []
+    suppressed_tool_outputs = 0
+    for message in messages:
+        role = str(message.get("role") or "user").upper()
+        content = _content_to_text(message.get("content"))
+        if content:
+            text_messages.append(f"{role}:\n{content}")
+            continue
+        if message.get("tool_calls"):
+            suppressed_tool_outputs += 1
+    if suppressed_tool_outputs:
+        parts.append(
+            f"NOTE:\nPrior turn: Cursor completed {suppressed_tool_outputs} tool action(s) autonomously."
+        )
+    if text_messages:
+        parts.extend(text_messages[-max_turns:])
+    return "\n\n".join(parts).strip() or ""
+
+
+def cursor_prompt_for_body(
+    body: dict[str, Any],
+    route: ShimModel,
+    *,
+    chained_from_previous: bool = False,
+    workspace: Path | None = None,
+    upstream_parity: bool = False,
+    resume_chat_id: str | None = None,
+) -> str:
+    common = {
+        "body": body,
+        "upstream_model": route.model,
+        "provider": route.provider,
+        "thinking_behavior": route.thinking_behavior,
+        "chained_from_previous": chained_from_previous,
+        "workspace": workspace,
+    }
+    if is_delegate_route(route):
+        if upstream_parity:
+            return responses_to_upstream_parity_prompt(
+                body,
+                chained_from_previous=chained_from_previous,
+                resume_chat_id=resume_chat_id,
+            )
+        return responses_to_delegate_prompt(**common)
+    return responses_to_acp_prompt(**common)
 
 
 def cursor_acp_response_payload(result: CursorAcpResult, model: str) -> dict[str, Any]:

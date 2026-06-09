@@ -3,10 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from .settings import ShimModel, TRANSPORT_CHATGPT, TRANSPORT_CURSOR_CLI, TRANSPORT_ANTHROPIC, TRANSPORT_OPENAI_CHAT
+from .settings import (
+    ShimModel,
+    TRANSPORT_CHATGPT,
+    TRANSPORT_CURSOR_ACP,
+    TRANSPORT_CURSOR_AGENT,
+    TRANSPORT_CURSOR_CLI,
+    TRANSPORT_ANTHROPIC,
+    TRANSPORT_OPENAI_CHAT,
+)
 
 
-ToolSupport = Literal["native", "mapped", "unsupported"]
+ToolSupport = Literal["native", "mapped", "delegated", "unsupported"]
+ExecutionMode = Literal["delegate", "mapped"]
 
 
 @dataclass(frozen=True)
@@ -17,6 +26,16 @@ class RouteCapabilities:
     image_generation: ToolSupport
     mcp_tools: ToolSupport
     reasoning: ToolSupport
+
+
+def is_delegate_route(route: ShimModel) -> bool:
+    return route.is_cursor_cli or route.is_cursor_agent or route.is_cursor_acp
+
+
+def execution_mode(route: ShimModel) -> ExecutionMode:
+    if is_delegate_route(route):
+        return "delegate"
+    return "mapped"
 
 
 def route_capabilities(route: ShimModel) -> RouteCapabilities:
@@ -51,14 +70,14 @@ def route_capabilities(route: ShimModel) -> RouteCapabilities:
             mcp_tools="mapped",
             reasoning="mapped",
         )
-    # Cursor CLI: model tool-loop runs in Cursor; Codex tools are still provided by Desktop.
-    if t == TRANSPORT_CURSOR_CLI:
+    # Cursor routes: Cursor executes tools; Codex receives text/thinking only.
+    if t in {TRANSPORT_CURSOR_CLI, TRANSPORT_CURSOR_AGENT, TRANSPORT_CURSOR_ACP}:
         return RouteCapabilities(
-            local_shell="mapped",
-            web_search="mapped",
-            tool_search="mapped",
+            local_shell="delegated",
+            web_search="delegated",
+            tool_search="delegated",
             image_generation="unsupported",
-            mcp_tools="mapped",
+            mcp_tools="delegated",
             reasoning="mapped",
         )
     # Default conservative: best-effort mapping, no image_generation.
@@ -70,4 +89,3 @@ def route_capabilities(route: ShimModel) -> RouteCapabilities:
         mcp_tools="mapped",
         reasoning="mapped",
     )
-

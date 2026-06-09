@@ -336,7 +336,10 @@ async def test_compact_routes_to_cursor_agent_acp(tmp_path):
     assert payload["status"] == "completed"
     assert payload["model"] == "default"
     assert payload["output"][-1]["type"] == "context_compaction"
-    assert payload["output"][-1]["summary"][0]["text"] == "Cursor ACP"
+    summary = payload["output"][-1]["summary"][0]["text"]
+    assert "Cursor ACP" in summary
+    assert "[shim-compact-warning: projection_unverified]" in summary
+    assert "old state" in summary
     assert payload["usage"]["output_tokens"] == 2
 
     await shim_client.close()

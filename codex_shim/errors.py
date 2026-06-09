@@ -51,7 +51,7 @@ def cursor_agent_error_response(exc: Exception, error_type: str) -> web.Response
     return web.json_response({"error": {"type": error_type, "message": str(exc)}}, status=502)
 
 
-def invalid_request_error_response(exc: ResponsesInputError) -> web.Response:
+def invalid_request_error_response(exc: ResponsesInputError | Exception) -> web.Response:
     return web.json_response({"error": {"type": "invalid_request_error", "message": str(exc)}}, status=400)
 
 

@@ -33,6 +33,11 @@ if capture:
     with open(capture, "a", encoding="utf-8") as handle:
         handle.write(json.dumps({"argv": sys.argv[1:]}, separators=(",", ":")) + "\n")
 
+record_cwd = os.environ.get("CURSOR_CLI_RECORD_CWD")
+if record_cwd:
+    with open(record_cwd, "w", encoding="utf-8") as handle:
+        handle.write(os.getcwd())
+
 if os.environ.get("CURSOR_CLI_PID_FILE"):
     from pathlib import Path
 
@@ -73,6 +78,36 @@ if output_format == "stream-json":
     if stream_style == "partial":
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor "}]}, "session_id": session_id, "timestamp_ms": 1}))
         print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
+    if stream_style == "duplicate-partials":
+        line = "I'll scan the repo docs."
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": line}]}, "session_id": session_id, "timestamp_ms": 1}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": line}]}, "session_id": session_id, "timestamp_ms": 2}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": line, "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
+    if stream_style == "duplicate-lines":
+        line = "I'll scan the repo docs."
+        text = f"{line}\n{line}\nDone."
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": text}]}, "session_id": session_id, "timestamp_ms": 1}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": text, "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
+    if stream_style == "cumulative":
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor "}]}, "session_id": session_id, "timestamp_ms": 1}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "Cursor CLI"}]}, "session_id": session_id, "timestamp_ms": 2}))
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "Cursor CLI", "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
+    if stream_style == "snapshot-replay":
+        mcall = "fake-model-call-id"
+        line1 = "I'll scan the repo docs."
+        line2 = "No root README found."
+        for chunk in ("I'll", " scan", " the", " repo", " docs."):
+            print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": chunk}]}, "session_id": session_id, "timestamp_ms": 1}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": f"{line1}\n"}]}, "session_id": session_id, "timestamp_ms": 2, "model_call_id": mcall}))
+        for chunk in ("\nNo", " root", " README", " found."):
+            print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": chunk}]}, "session_id": session_id, "timestamp_ms": 3}))
+        print(json.dumps({"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": f"{line2}\n"}]}, "session_id": session_id, "timestamp_ms": 4, "model_call_id": mcall}))
+        final = f"{line1}\n{line2}\n"
+        print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": final, "session_id": session_id, "usage": {"inputTokens": 3, "outputTokens": 2}}))
+        raise SystemExit(0)
     if stream_style == "invalid-before-result":
         print("not json")
     if stream_style == "unknown-events":
@@ -172,6 +207,49 @@ def test_cursor_agent_provider_loads_without_base_url(tmp_path):
     _check(model.is_cursor_acp is False)
 
 
+async def test_native_transport_attaches_shim_native_envelope(tmp_path):
+    fake = tmp_path / "fake_cursor_cli.py"
+    fake.write_text(FAKE_CURSOR_CLI)
+    capture = tmp_path / "capture.jsonl"
+    env = {"CURSOR_CLI_CAPTURE": str(capture)}
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "slug": "native-cursor",
+                        "model": "auto",
+                        "displayName": "Cursor Native",
+                        "provider": "cursor-agent",
+                        "useNativeTransport": True,
+                        "command": sys.executable,
+                        "args": [str(fake), "agent", "--print", "--trust", "--yolo", "--model", "auto"],
+                        "env": env,
+                        "baseURL": "",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={"model": "native-cursor", "input": [{"role": "user", "content": "Say hello."}]},
+    )
+
+    _check(resp.status == 200)
+    payload = await resp.json()
+    _check(payload["metadata"]["shim_route"]["transport"] == "cursor-agent-grpc")
+    _check("shim_native_envelope" in payload["metadata"])
+    envelope = payload["metadata"]["shim_native_envelope"]
+    _check("clientEnvelope" in envelope)
+
+    await shim_client.close()
+
+
 async def test_responses_routes_to_cursor_agent_cli(tmp_path):
     settings, capture = _cursor_cli_settings(tmp_path)
     shim_client = TestClient(TestServer(ShimServer(settings).app()))
@@ -191,8 +269,7 @@ async def test_responses_routes_to_cursor_agent_cli(tmp_path):
     argv = _capture(capture)[0]["argv"]
     _check(argv[:6] == ["agent", "--print", "--trust", "--yolo", "--model", "auto"])
     _check(argv[6:8] == ["--output-format", "json"])
-    _check("SYSTEM:\nBe terse." in argv[-1])
-    _check("USER:\nSay hello." in argv[-1])
+    _check(argv[-1] == "Say hello.")
 
     await shim_client.close()
 
@@ -229,6 +306,71 @@ async def test_streaming_responses_uses_aggregate_cursor_event_when_partials_are
     deltas = [event["delta"] for event in events if event.get("type") == "response.output_text.delta"]
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     _check(deltas == ["Cursor CLI"])
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI")
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_dedupes_duplicate_cursor_partials(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="duplicate-partials")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    _check(resp.status == 200)
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "I'll scan the repo docs.")
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_dedupes_duplicate_lines_in_cursor_event(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="duplicate-lines")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    _check(resp.status == 200)
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    _check(completed["response"]["output"][0]["content"][0]["text"] == "I'll scan the repo docs.\nDone.")
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_skips_model_call_snapshot_replays(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="snapshot-replay")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    _check(resp.status == 200)
+    events = _sse_events(await resp.text())
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    _check(
+        completed["response"]["output"][0]["content"][0]["text"]
+        == "I'll scan the repo docs.\nNo root README found."
+    )
+
+    await shim_client.close()
+
+
+async def test_streaming_responses_handles_cumulative_cursor_partials(tmp_path):
+    settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="cumulative")
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post("/v1/responses", json={"model": "auto", "input": "hi", "stream": True})
+
+    _check(resp.status == 200)
+    events = _sse_events(await resp.text())
+    deltas = [event["delta"] for event in events if event.get("type") == "response.output_text.delta"]
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    _check(deltas == ["Cursor ", "CLI"])
     _check(completed["response"]["output"][0]["content"][0]["text"] == "Cursor CLI")
 
     await shim_client.close()
@@ -284,7 +426,7 @@ async def test_streaming_responses_accepts_long_cursor_cli_json_lines(tmp_path):
     await shim_client.close()
 
 
-async def test_streaming_responses_emits_tool_items_from_cursor_cli_events(tmp_path):
+async def test_streaming_responses_suppresses_tool_items_in_delegate_mode(tmp_path):
     settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="tool-events")
     shim_client = TestClient(TestServer(ShimServer(settings).app()))
     await shim_client.start_server()
@@ -294,14 +436,20 @@ async def test_streaming_responses_emits_tool_items_from_cursor_cli_events(tmp_p
     _check(resp.status == 200)
     events = _sse_events(await resp.text())
     opened = [event for event in events if event.get("type") == "response.output_item.added"]
-    completed = [event for event in events if event.get("type") == "response.output_item.done"]
-    _check(any(event["item"].get("type") == "local_shell_call" for event in opened))
-    _check(any(event["item"].get("type") == "local_shell_call" for event in completed))
+    completed = [event for event in events if event.get("type") == "response.completed"][-1]
+    _check(not any(event["item"].get("type") == "local_shell_call" for event in opened))
+    _check(completed["response"]["metadata"]["shim_route"]["execution_mode"] == "delegate")
+    tool_items = [
+        item for item in completed["response"]["output"] if str(item.get("type") or "").endswith("_call")
+    ]
+    _check(not tool_items)
+    anomalies = completed["response"]["metadata"].get("shim_anomalies") or {}
+    _check(anomalies.get("delegated_tool_events_suppressed", 0) >= 1)
 
     await shim_client.close()
 
 
-async def test_streaming_responses_maps_cursor_tool_case_to_native_call(tmp_path):
+async def test_streaming_responses_delegate_mode_maps_no_native_shell_call(tmp_path):
     settings, _capture_path = _cursor_cli_settings(tmp_path, stream_style="tool-case-events")
     shim_client = TestClient(TestServer(ShimServer(settings).app()))
     await shim_client.start_server()
@@ -312,8 +460,8 @@ async def test_streaming_responses_maps_cursor_tool_case_to_native_call(tmp_path
     events = _sse_events(await resp.text())
     completed = [event for event in events if event.get("type") == "response.completed"][-1]
     tool_items = [item for item in completed["response"]["output"] if item.get("type") == "local_shell_call"]
-    _check(bool(tool_items))
-    _check(tool_items[0]["action"]["command"] == "pwd")
+    _check(not tool_items)
+    _check(completed["response"]["metadata"]["shim_route"]["execution_mode"] == "delegate")
 
     await shim_client.close()
 
@@ -337,7 +485,13 @@ async def test_responses_cursor_cli_nonzero_exit_returns_502(tmp_path):
     await shim_client.close()
 
 
-async def test_responses_cursor_cli_timeout_returns_502(tmp_path):
+async def test_responses_cursor_cli_timeout_returns_502(tmp_path, monkeypatch):
+    emitted: list[dict] = []
+
+    def _capture_emit(self, **kwargs):
+        emitted.append(kwargs)
+
+    monkeypatch.setattr("codex_shim.governance.audit.GovernanceAuditSink.emit", _capture_emit)
     settings, _capture_path = _cursor_cli_settings(
         tmp_path,
         extra_env={"CURSOR_CLI_SLEEP": "1"},
@@ -350,8 +504,37 @@ async def test_responses_cursor_cli_timeout_returns_502(tmp_path):
 
     _check(resp.status == 502)
     payload = await resp.json()
-    _check(payload["error"]["type"] == "cursor_cli_error")
+    _check(payload["error"]["type"] == "cursor_turn_timeout")
     _check("Timed out waiting for Cursor Agent command" in payload["error"]["message"])
+    _check(any(item.get("failure_category") == "cursor_turn_timeout" for item in emitted))
+
+    await shim_client.close()
+
+
+async def test_responses_cursor_cli_resolves_workspace_from_metadata(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    cwd_record = tmp_path / "cwd.txt"
+    settings, _capture_path = _cursor_cli_settings(
+        tmp_path,
+        extra_env={"CURSOR_CLI_RECORD_CWD": str(cwd_record)},
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "auto",
+            "metadata": {"cwd": str(project)},
+            "input": [{"role": "user", "content": "Say hello."}],
+        },
+    )
+
+    _check(resp.status == 200)
+    payload = await resp.json()
+    _check(payload["metadata"]["shim_route"]["workspace"] == str(project.resolve()))
+    _check(cwd_record.read_text(encoding="utf-8") == str(project.resolve()))
 
     await shim_client.close()
 
@@ -390,7 +573,10 @@ async def test_compact_routes_to_cursor_agent_cli(tmp_path):
     _check(payload["status"] == "completed")
     _check(payload["model"] == "auto")
     _check(payload["output"][-1]["type"] == "context_compaction")
-    _check(payload["output"][-1]["summary"][0]["text"] == "Cursor CLI")
+    summary = payload["output"][-1]["summary"][0]["text"]
+    _check("Cursor CLI" in summary)
+    _check("[shim-compact-warning: projection_unverified]" in summary)
+    _check("old state" in summary)
     _check(payload["usage"] == {"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})
 
     await shim_client.close()

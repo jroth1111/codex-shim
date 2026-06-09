@@ -23,7 +23,7 @@ from codex_shim.translate import validate_responses_input
 
 pytestmark = pytest.mark.live
 
-CURSOR_TIMEOUT = 600
+CURSOR_TIMEOUT = 3600
 
 
 @pytest.fixture(scope="session")
@@ -204,7 +204,7 @@ def test_cursor_agent_simple_history(shim_port: int, cursor_route, require_curso
     harness.validate_history_response(first, second)
 
 
-@pytest.mark.skip(reason="Cursor Agent CLI hosted-tool history routinely exceeds 600s HTTP timeouts")
+
 def test_cursor_agent_hosted_tool_history(shim_port: int, cursor_route, require_cursor_cli):
     info = harness.run_byok_history(shim_port, cursor_route, timeout=CURSOR_TIMEOUT)
     assert info["previous_response_id"]
@@ -233,6 +233,33 @@ _SLOW_CURSOR_FIXTURES = frozenset(
 )
 
 
+def test_native_transport_mock_recorder_when_configured(shim_port: int, settings_path, require_cursor_cli):
+    """Optional live check: POST native envelope to CODEX_SHIM_CURSOR_AGENT_MOCK_URL recorder."""
+    import os
+
+    mock_url = os.environ.get("CODEX_SHIM_CURSOR_AGENT_MOCK_URL", "").strip()
+    if not mock_url:
+        pytest.skip("Set CODEX_SHIM_CURSOR_AGENT_MOCK_URL to a local recorder for native envelope validation")
+
+    settings = ModelSettings(settings_path)
+    native_slug = None
+    for model in settings.load():
+        if model.use_native_transport:
+            native_slug = model.slug
+            break
+    if native_slug is None:
+        pytest.skip("No model with useNativeTransport in live settings")
+
+    payload = harness.post_json(
+        harness.responses_url(shim_port),
+        {"model": native_slug, "input": "native transport mock validation"},
+        label="native transport mock",
+        timeout=CURSOR_TIMEOUT,
+    )
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    assert "shim_native_envelope" in metadata
+
+
 def test_cursor_agent_desktop_fixture(
     shim_port: int, cursor_route, require_cursor_cli, cursor_desktop_fixture_name: str
 ):
@@ -240,5 +267,5 @@ def test_cursor_agent_desktop_fixture(
         if not cursor_route.capabilities.supports_image_generation:
             pytest.skip(f"{cursor_route.slug} does not support image generation")
     if cursor_desktop_fixture_name in _SLOW_CURSOR_FIXTURES:
-        pytest.skip(f"{cursor_desktop_fixture_name} is too slow for cursor-agent live CI (>600s)")
+        pytest.skip(f"{cursor_desktop_fixture_name} is too slow for cursor-agent live CI (>3600s)")
     _assert_cursor_fixture_live(shim_port, cursor_route.slug, cursor_desktop_fixture_name)
