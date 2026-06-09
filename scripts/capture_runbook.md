@@ -38,7 +38,139 @@ mitmproxy --listen-port 8080
 
 Use `CODEX_SHIM_DEBUG_DUMP=1` plus shim access log. Enough for **HTTP body keys** and routing, not for app-server RPC timing.
 
-## Per-scenario steps
+For **shim → ChatGPT** upstream captures (Tier A), also set:
+
+```bash
+export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP=1
+export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_PATH="$PWD/codex-desktop-decompiled/captures/debug/shim_to_chatgpt.json"
+# Optional full bodies (trusted machine only):
+# export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_FULL=1
+```
+
+Use a **real Desktop WS turn** (body includes `client_metadata.x-codex-turn-metadata`) for upstream golden captures. S1 probe harness alone exercises legacy CLI-shaped passthrough and will not populate turn-metadata headers on the ChatGPT hop.
+
+### D. Upstream parity (native Desktop golden vs shim outbound)
+
+System-proxy MITM **does not** capture Desktop inference (`POST …/codex/responses` bypasses macOS HTTP proxy). Use the dump proxy instead: point Desktop’s `model_provider` at a local `/v1/responses` proxy that forwards to ChatGPT and writes the outbound shape.
+
+#### Parity tiers
+
+| Tier | Command flag | Proves |
+|------|--------------|--------|
+| **A — Harness** | `--tier-a` (default for paired capture) | Shim outbound matches native golden when `reference_capture` alignment is enabled |
+| **B — Production** | `--tier-b` | Shim outbound matches native golden using promotion rules only (no reference copy) |
+
+CI uses synthetic harness fixtures (`tests/fixtures/upstream/harness_*.json`). Live Desktop capture is **manual via AppleScript** and is not a PR gate.
+
+One-shot A/B + diff:
+
+```bash
+# Tier A harness parity (reference alignment on shim leg)
+PYTHONPATH=. python3.11 scripts/capture_upstream_parity.py --tier-a
+
+# Tier B production parity (no reference alignment)
+PYTHONPATH=. python3.11 scripts/capture_upstream_parity.py --tier-b --refresh-fixtures
+```
+
+After a green Tier B run with `--refresh-fixtures`, validate live fixtures locally:
+
+```bash
+PYTHONPATH=. python3.11 -m pytest tests/test_upstream_live_fixtures.py -q
+```
+
+#### CLI upstream parity (`codex exec`)
+
+Use the same dump-proxy pattern, but drive turns with `codex exec` instead of AppleScript. CI gates synthetic CLI harness fixtures (`harness_cli_*.json`); live CLI capture is manual.
+
+```bash
+# Tier A harness parity (reference alignment on shim leg)
+PYTHONPATH=. python3.11 scripts/capture_cli_upstream_parity.py --tier-a
+
+# Tier B production parity (no reference alignment)
+PYTHONPATH=. python3.11 scripts/capture_cli_upstream_parity.py --tier-b --refresh-fixtures
+
+# Validate refreshed live CLI fixtures locally
+PYTHONPATH=. python3.11 -m pytest tests/test_upstream_cli_live_fixtures.py -q
+
+# Multi-scenario matrix (several live codex exec turns)
+PYTHONPATH=. python3.11 scripts/capture_cli_upstream_scenarios.py --tier-b
+# Artifacts: captures/debug/cli_scenarios/{scenario}_{native,shim,report}.json
+# Summary: captures/debug/cli_scenarios/matrix_report.json
+```
+
+Artifacts:
+
+| File | Meaning |
+|------|---------|
+| `captures/debug/cli_native_to_chatgpt.json` | Golden: native `codex exec` → ChatGPT (via dump proxy) |
+| `captures/debug/cli_shim_to_chatgpt.json` | Candidate: `codex exec` → shim → ChatGPT |
+| `tests/fixtures/upstream/.live-cli-refreshed` | Marker written after CLI Tier B fixture refresh |
+
+Artifacts:
+
+| File | Meaning |
+|------|---------|
+| `captures/debug/native_to_chatgpt.json` | Golden: embedded Desktop `codex` → ChatGPT (via dump proxy) |
+| `captures/debug/shim_to_chatgpt.json` | Candidate: Desktop → shim → ChatGPT |
+| `captures/debug/upstream_parity_report.json` | Normalized diff report (`headers_ok`, `body_ok`, `issue_categories`) |
+| `captures/debug/staging/` | Timestamped capture attempts (promoted on success) |
+| `tests/fixtures/upstream/.live-refreshed` | Marker written after Tier B fixture refresh |
+
+Manual pieces:
+
+```bash
+# Native golden only
+python3.11 scripts/upstream_dump_proxy.py --port 60002 \
+  --dump-path codex-desktop-decompiled/captures/debug/native_to_chatgpt.json
+
+# Shim upstream dump (env is inherited by `codex-shim start` after cli fix)
+export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP=1
+export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_FULL=1
+export CODEX_SHIM_PASSTHROUGH_UPSTREAM_DUMP_PATH="$PWD/codex-desktop-decompiled/captures/debug/shim_to_chatgpt.json"
+PYTHONPATH=. python3.11 -m codex_shim.cli enable
+
+# Diff existing captures
+python3.11 scripts/diff_upstream_capture.py \
+  codex-desktop-decompiled/captures/debug/native_to_chatgpt.json \
+  codex-desktop-decompiled/captures/debug/shim_to_chatgpt.json
+```
+
+Temporary Desktop config for native golden:
+
+```toml
+model = "gpt-5.5"
+model_provider = "upstream_dump"
+
+[model_providers.upstream_dump]
+name = "Upstream Dump Proxy"
+base_url = "http://127.0.0.1:60002/v1"
+wire_api = "responses"
+requires_openai_auth = true
+```
+
+Relaunch Codex Desktop after changing config. Desktop turns are driven with AppleScript:
+
+```bash
+python3.11 scripts/codex_desktop_control.py --relaunch "Reply with exactly: PARITY_SHIM_OK"
+```
+
+The orchestrator backs up and restores `~/.codex/config.toml` automatically.
+
+Scenario matrix (manual):
+
+```bash
+PYTHONPATH=. python3.11 scripts/capture_upstream_scenarios.py --scenario-id parity_minimal
+```
+
+#### Troubleshooting
+
+| Symptom | Likely cause | Mitigation |
+|---------|--------------|------------|
+| Only `prewarm` in jsonl, no `PARITY_OK` turn | Desktop did not complete the user turn | Relaunch Desktop; verify AppleScript focus; increase wait timeout |
+| Shim dump missing, shim.log has no `[req]` | Desktop still on wrong `model_provider` | Ensure `--tier-*` run relaunches Desktop after `cli enable` |
+| Agentic loop (growing `input` length) | Tools enabled on parity prompt | Use default parity capture (`CODEX_SHIM_PARITY_MODE=1` strips tools) |
+| `model` mismatch (`gpt-5.4` vs `gpt-5.5`) | Desktop UI model not applied | Abort shim leg; fix model picker before retry |
+| Tier B fails on `sandbox` / permissions | Desktop sends different inbound bodies per provider path | Documented limitation; Tier A verifies harness; Tier B needs equivalent Desktop inbound or future `sandboxPolicy` promotion |
 
 | ID | Steps |
 |----|--------|
@@ -52,6 +184,7 @@ Use `CODEX_SHIM_DEBUG_DUMP=1` plus shim access log. Enough for **HTTP body keys*
 | **S8** | BYOK thread with streaming; capture WebSocket to `GET /v1/responses` if Desktop uses WS. |
 | **S9** | BYOK model with image generation enabled; request image. |
 | **S10** | BYOK turn that invokes local shell tool; capture request + follow-up `input` items. |
+| **S11** | Open a known project path in Desktop (e.g. `/Users/you/project`). New thread on a **Cursor BYOK** slug. Send one short user message. Capture `POST /v1/responses` body `metadata` and request headers. Confirm workspace/cwd field names (`metadata.cwd`, `working_directory`, `x-codex-cwd`, etc.) used by Desktop for thread cwd. |
 
 ## Shim-wire captures (no Desktop UI)
 
@@ -75,6 +208,24 @@ python3 scripts/diff_captures.py \
 ```
 
 Update `codex-desktop-decompiled/RE_SCENARIO_MATRIX.md` status column.
+
+## After S11 (workspace cwd confirmation)
+
+1. Run **S11** in Desktop on a known project path (e.g. `fork-&-flag`).
+2. Ingest HAR or read `CODEX_SHIM_DEBUG_DUMP` output; note which field carries thread cwd (`metadata.cwd`, `working_directory`, header, etc.).
+3. If the winning field is not in [`codex_shim/routing/workspace.py`](../codex_shim/routing/workspace.py), add it and regenerate the contract.
+4. Regenerate committed contract:
+   ```bash
+   python3 scripts/generate_desktop_contract.py --write
+   ```
+5. Update [`docs/DESKTOP_INFERENCE_MAP.md`](../docs/DESKTOP_INFERENCE_MAP.md) S11 evidence column with the confirmed field name.
+
+Offline shim-wire regression (daemon must be running):
+
+```bash
+PYTHONPATH=. python3 scripts/record_s11_workspace_capture.py --slug cursor-auto --cwd /path/to/project
+PYTHONPATH=. python3 scripts/cursor_delegate_verify.py --slug cursor-auto --cwd /path/to/project
+```
 
 ## Manifest
 

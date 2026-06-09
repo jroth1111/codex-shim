@@ -1,0 +1,11 @@
+scenarios:
+  - id: parity_minimal
+    prompt: "Reply with exactly: PARITY_OK"
+    model: gpt-5.5
+    parity_mode: true
+    tier: b
+  - id: parity_desktop_rich
+    prompt: "Reply with exactly: PARITY_OK"
+    model: gpt-5.5
+    parity_mode: false
+    tier: b

@@ -71,6 +71,13 @@ Build `codex_shim` as a production-ready greenfield platform using a **modular m
 - Observability can answer: which provider was chosen, what tools ran, and why failures occurred.
 - CI consistently enforces quality gates before merge.
 
+### Upstream contract parity
+- **Desktop Tier A (harness):** `pytest tests/test_upstream_harness_fixtures.py` passes on synthetic paired fixtures in CI.
+- **Desktop Tier B (production):** Manual AppleScript capture via `scripts/capture_upstream_parity.py --tier-b --refresh-fixtures` produces `ok: true` diff and `tests/fixtures/upstream/.live-refreshed`; validated locally with `tests/test_upstream_live_fixtures.py`.
+- **CLI Tier A (harness):** `pytest tests/test_upstream_cli_harness_fixtures.py` and `tests/test_upstream_cli_replay.py` pass on synthetic CLI fixtures in CI.
+- **CLI Tier B (production):** Manual `codex exec` capture via `scripts/capture_cli_upstream_parity.py --tier-b --refresh-fixtures` produces `ok: true` diff and `tests/fixtures/upstream/.live-cli-refreshed`; validated locally with `tests/test_upstream_cli_live_fixtures.py`.
+- Verification source of truth: [`scripts/capture_runbook.md`](scripts/capture_runbook.md) section D.
+
 ## Checks
 Each command below must exit 0 before release:
 

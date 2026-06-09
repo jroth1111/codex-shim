@@ -50,8 +50,28 @@ Codex Desktop (Electron)
 
 See gitignored [`TOOL_EXECUTION_MATRIX.md`](../codex-desktop-decompiled/TOOL_EXECUTION_MATRIX.md).
 
-| Item type | On wire? | Local exec? | Evidence |
-|-----------|----------|-------------|----------|
+| Item type | Cursor delegate | OpenAI/Anthropic BYOK | Evidence |
+|-----------|-----------------|----------------------|----------|
+| `web_search_call` | suppressed (Cursor executes) | mapped / partial local | CAPTURE S3; STRINGS; AUDIT |
+| `local_shell_call` | suppressed (Cursor executes) | mapped / yes | CAPTURE S10; probe history; AUDIT |
+| `function_call` / MCP | suppressed on Cursor output | mapped / often | AUDIT; golden fixtures |
+| Assistant `message` | forwarded | forwarded | CAPTURE S5/S6 |
+
+Cursor routes set `metadata.shim_route.execution_mode=delegate` and `tool_authority=cursor`. Workspace cwd is resolved from Desktop request metadata/headers (S11 capture) before falling back to `models.json` `cwd`.
+
+**S11 workspace keys (shim resolver, in order):**
+
+| Priority | Source | Evidence |
+|----------|--------|----------|
+| 1 | `metadata.cwd` / `working_directory` / `workspace`, `_shim_*` body keys | CAPTURE curl smoke |
+| 2 | Headers `x-codex-cwd` / `x-codex-workspace` / `x-workspace` | CAPTURE curl smoke |
+| 3 | `client_metadata.x-codex-turn-metadata` → `thread_id` → `~/.codex/sessions/**/rollout-*-{thread_id}.jsonl` → `session_meta.payload.cwd` | CAPTURE mitm WS (Desktop does **not** send cwd on wire) |
+| 4 | Static `cwd` in `models.json` | operator config |
+
+Desktop WebSocket turns carry `thread_id` + `workspace_kind: "project"` only; cwd lives in rollout files, not in the HTTP/WS body.
+
+| Item type | On wire (non-Cursor)? | Local exec? | Evidence |
+|-----------|----------------------|-------------|----------|
 | `web_search_call` | yes | partial | CAPTURE S3; STRINGS; AUDIT |
 | `local_shell_call` | yes | yes | CAPTURE S10; probe history; AUDIT |
 | `image_generation_call` | yes | partial | CAPTURE S9; STRINGS |

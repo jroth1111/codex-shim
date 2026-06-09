@@ -1,0 +1,60 @@
+{
+  "url": "https://chatgpt.com/backend-api/codex/responses",
+  "transport": "http_upstream",
+  "headers": {
+    "Accept": "text/event-stream",
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "openai-beta": "responses_websockets=2026-02-06",
+    "originator": "codex_exec",
+    "session-id": "019ea236-0000-7000-8000-000000000002",
+    "thread-id": "019ea236-0000-7000-8000-000000000002",
+    "x-codex-turn-metadata": "{\"session_id\":\"019ea236-0000-7000-8000-000000000002\",\"thread_id\":\"019ea236-0000-7000-8000-000000000002\",\"thread_source\":\"user\",\"request_kind\":\"turn\",\"sandbox\":\"read-only\",\"workspaces\":{\"/tmp/parity-cli-project\":{\"has_changes\":true}},\"window_id\":\"019ea236-0000-7000-8000-000000000002:0\"}",
+    "x-codex-window-id": "019ea236-0000-7000-8000-000000000002:0",
+    "chatgpt-account-id": "acct-harness-cli"
+  },
+  "body": {
+    "model": "gpt-5.5",
+    "stream": true,
+    "store": false,
+    "include": [
+      "reasoning.encrypted_content"
+    ],
+    "parallel_tool_calls": true,
+    "tool_choice": "auto",
+    "instructions": "You are Codex, a coding agent powered by GPT-5.5.",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\nApproval policy is currently never.\n</permissions instructions>"
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Reply with exactly: PARITY_CLI_OK"
+          }
+        ]
+      }
+    ],
+    "client_metadata": {
+      "x-codex-turn-metadata": "{\"session_id\":\"019ea236-0000-7000-8000-000000000002\",\"thread_id\":\"019ea236-0000-7000-8000-000000000002\",\"thread_source\":\"user\",\"request_kind\":\"turn\",\"sandbox\":\"read-only\",\"workspaces\":{\"/tmp/parity-cli-project\":{\"has_changes\":true}},\"window_id\":\"019ea236-0000-7000-8000-000000000002:0\"}",
+      "x-codex-installation-id": "22222222-2222-4222-8222-222222222222",
+      "x-codex-window-id": "019ea236-0000-7000-8000-000000000002:0"
+    }
+  },
+  "upstream_response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/event-stream; charset=utf-8"
+    }
+  }
+}

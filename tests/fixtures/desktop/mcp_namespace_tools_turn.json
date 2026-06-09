@@ -1,0 +1,36 @@
+{
+  "tools": [
+    {
+      "type": "mcp",
+      "namespace": "filesystem",
+      "name": "list_files",
+      "description": "List files in a directory",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Directory path"}
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "type": "function",
+      "namespace": "git",
+      "function": {
+        "name": "status",
+        "description": "Git working tree status",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "input": [
+    {
+      "role": "user",
+      "content": [{"type": "input_text", "text": "List repo files"}]
+    }
+  ]
+}

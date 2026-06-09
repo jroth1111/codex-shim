@@ -1,0 +1,35 @@
+{
+  "scenarios": [
+    {
+      "id": "cli_exact_alpha",
+      "prompt": "Reply with exactly: TURN_ALPHA",
+      "tier": "b"
+    },
+    {
+      "id": "cli_exact_beta",
+      "prompt": "Reply with exactly: TURN_BETA",
+      "tier": "b"
+    },
+    {
+      "id": "cli_short_math",
+      "prompt": "What is 17+25? Reply with only the number.",
+      "tier": "b"
+    },
+    {
+      "id": "cli_with_agents",
+      "prompt": "Reply with exactly: TURN_AGENTS",
+      "tier": "b",
+      "codex_config": {
+        "include_project_instructions": true
+      }
+    },
+    {
+      "id": "cli_with_skills",
+      "prompt": "Reply with exactly: TURN_SKILLS",
+      "tier": "b",
+      "codex_config": {
+        "include_skill_instructions": true
+      }
+    }
+  ]
+}

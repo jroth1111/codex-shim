@@ -1,0 +1,60 @@
+{
+  "url": "https://chatgpt.com/backend-api/codex/responses",
+  "transport": "http_upstream",
+  "headers": {
+    "Accept": "text/event-stream",
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "openai-beta": "responses_websockets=2026-02-06",
+    "originator": "Codex Desktop",
+    "session-id": "019ea235-0000-7000-8000-000000000001",
+    "thread-id": "019ea235-0000-7000-8000-000000000001",
+    "x-codex-turn-metadata": "{\"session_id\":\"019ea235-0000-7000-8000-000000000001\",\"thread_id\":\"019ea235-0000-7000-8000-000000000001\",\"request_kind\":\"turn\",\"sandbox\":\"seatbelt\",\"workspace_kind\":\"project\",\"window_id\":\"019ea235-0000-7000-8000-000000000001:0\"}",
+    "x-codex-window-id": "019ea235-0000-7000-8000-000000000001:0",
+    "x-codex-installation-id": "11111111-1111-4111-8111-111111111111",
+    "chatgpt-account-id": "acct-harness"
+  },
+  "body": {
+    "model": "gpt-5.5",
+    "stream": true,
+    "store": false,
+    "include": [
+      "reasoning.encrypted_content"
+    ],
+    "parallel_tool_calls": true,
+    "tool_choice": "auto",
+    "input": [
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\nApproval policy is currently never.\n</permissions instructions>"
+          }
+        ]
+      },
+      {
+        "type": "message",
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Reply with exactly: PARITY_OK"
+          }
+        ]
+      }
+    ],
+    "client_metadata": {
+      "x-codex-turn-metadata": "{\"session_id\":\"019ea235-0000-7000-8000-000000000001\",\"thread_id\":\"019ea235-0000-7000-8000-000000000001\",\"request_kind\":\"turn\",\"sandbox\":\"seatbelt\",\"workspace_kind\":\"project\",\"window_id\":\"019ea235-0000-7000-8000-000000000001:0\"}",
+      "x-codex-window-id": "019ea235-0000-7000-8000-000000000001:0",
+      "x-codex-installation-id": "11111111-1111-4111-8111-111111111111"
+    }
+  },
+  "upstream_response": {
+    "status": 200,
+    "headers": {
+      "content-type": "text/event-stream; charset=utf-8"
+    }
+  }
+}
