@@ -28,13 +28,17 @@ def auth_present(monkeypatch, tmp_path):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
     return auth
 
 
 @pytest.fixture
 def auth_missing(monkeypatch, tmp_path):
     """Point chatgpt_passthrough_available() at a path that does not exist."""
-    monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", tmp_path / "missing-auth.json")
+    missing = tmp_path / "missing-auth.json"
+    monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
+    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
 def test_duplicate_models_get_unique_display_slugs(tmp_path):
@@ -598,8 +602,14 @@ def test_cli_rejects_chatgpt_passthrough_slug_when_auth_missing(auth_missing):
 
 
 def test_list_models_includes_chatgpt_passthrough_when_auth_present(monkeypatch, capsys, auth_present):
+    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+
     settings = auth_present.parent / "models.json"
     settings.write_text(json.dumps({"models": []}))
+    monkeypatch.setattr(
+        "codex_shim.subscription_catalog.refresh_subscription_catalog",
+        lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "error"),
+    )
     assert cli.list_models(settings) == 0
     assert "gpt-5.5" in capsys.readouterr().out
 
@@ -767,18 +777,30 @@ def test_by_slug_or_model_normalizes_gpt_5p5_alias(tmp_path, auth_present):
     assert resolved.slug == "gpt-5.5"
 
 
-def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing):
+def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing, monkeypatch):
+    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+
     catalog_path = tmp_path / "catalog.json"
+    monkeypatch.setattr(
+        "codex_shim.catalog.refresh_subscription_catalog",
+        lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "unavailable"),
+    )
     write_catalog([], catalog_path)
     data = json.loads(catalog_path.read_text())
     assert data == {"models": []}
 
 
-def test_write_catalog_includes_gpt55_when_auth_present(tmp_path, auth_present):
+def test_write_catalog_includes_gpt55_when_auth_present(tmp_path, auth_present, monkeypatch):
+    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
     catalog_path = tmp_path / "catalog.json"
-    write_catalog(ModelSettings(settings).desktop_models(), catalog_path)
+    monkeypatch.setattr(
+        "codex_shim.catalog.refresh_subscription_catalog",
+        lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "error", error="fetch failed"),
+    )
+    write_catalog(ModelSettings(settings).load(), catalog_path)
     data = json.loads(catalog_path.read_text())
     assert [model["slug"] for model in data["models"]] == ["gpt-5.5"]
 
@@ -951,6 +973,9 @@ def test_restore_app_fails_off_macos(monkeypatch, capsys):
     assert "macOS-only" in capsys.readouterr().err
 
 
+LEGACY_DESKTOP_VERSION = "26.519.81530"
+
+
 def test_desktop_bundle_patch_applies_sidebar_and_leaves_legacy_picker(tmp_path):
     assets = tmp_path / "webview" / "assets"
     assets.mkdir(parents=True)
@@ -959,11 +984,11 @@ def test_desktop_bundle_patch_applies_sidebar_and_leaves_legacy_picker(tmp_path)
     model_bundle.write_text(f"before {cli.MODEL_PICKER_NEEDLE} after")
     sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
 
-    assert cli._patch_codex_desktop_bundles(tmp_path) is True
+    assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is True
     assert cli.MODEL_PICKER_NEEDLE in model_bundle.read_text()
     assert cli.MODEL_PICKER_REPLACEMENT not in model_bundle.read_text()
     assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
-    assert cli._patch_codex_desktop_bundles(tmp_path) is False
+    assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is False
 
 
 def test_desktop_bundle_patch_fails_when_sidebar_needle_is_missing(tmp_path):
@@ -972,7 +997,7 @@ def test_desktop_bundle_patch_fails_when_sidebar_needle_is_missing(tmp_path):
     (assets / "model-queries-test.js").write_text(cli.MODEL_PICKER_NEEDLE)
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
-    assert cli._patch_codex_desktop_bundles(tmp_path) is None
+    assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is None
 
 
 def test_desktop_bundle_patch_applies_sidebar_when_legacy_picker_needle_missing(tmp_path):
@@ -982,7 +1007,7 @@ def test_desktop_bundle_patch_applies_sidebar_when_legacy_picker_needle_missing(
     sidebar_bundle = assets / "app-server-manager-signals-test.js"
     sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
 
-    assert cli._patch_codex_desktop_bundles(tmp_path) is True
+    assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is True
     assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
 
 
@@ -992,7 +1017,7 @@ def test_desktop_bundle_patch_inspection_marks_legacy_picker_as_skipped(tmp_path
     (assets / "model-queries-test.js").write_text("Desktop 26.519 build without legacy useHiddenModels gate")
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
-    inspection = cli._inspect_codex_desktop_bundles(tmp_path)
+    inspection = cli._inspect_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION)
 
     assert inspection[0]["status"] == "skipped"
     assert inspection[1]["status"] == "missing"
@@ -1005,7 +1030,7 @@ def test_desktop_bundle_patch_inspection_detects_patched_and_missing(tmp_path):
     (assets / "model-queries-test.js").write_text(cli.MODEL_PICKER_REPLACEMENT)
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
-    inspection = cli._inspect_codex_desktop_bundles(tmp_path)
+    inspection = cli._inspect_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION)
 
     assert inspection[0]["status"] == "patched"
     assert inspection[1]["status"] == "missing"
@@ -1014,7 +1039,7 @@ def test_desktop_bundle_patch_inspection_detects_patched_and_missing(tmp_path):
 
 
 def test_desktop_bundle_patch_specs_do_not_mutate_legacy_picker():
-    labels = [spec[0] for spec in cli._desktop_patch_specs()]
+    labels = [spec[0] for spec in cli._desktop_patch_specs(LEGACY_DESKTOP_VERSION)]
     assert all("model picker" not in label for label in labels)
     assert any("sidebar" in label for label in labels)
 

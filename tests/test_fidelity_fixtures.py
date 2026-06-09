@@ -58,6 +58,8 @@ def test_tool_heavy_fixture_translates_hosted_calls():
     for message in out["messages"]:
         for call in message.get("tool_calls") or []:
             tool_names.append(call["function"]["name"])
+        if message.get("role") == "assistant" and message.get("tool_calls"):
+            assert message.get("content") == "", "assistant tool-call rows must not send content=null upstream"
     assert tool_names == ["local_shell", "web_search"]
 
 

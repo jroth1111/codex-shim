@@ -35,5 +35,16 @@ jobs:
         run: python scripts/check_desktop_patch_needles.py       # skips without local RE tree
       - name: Modular boundary check
         run: python scripts/check_module_boundaries.py
+      - name: Cursor inference parity (shim self-check)
+        run: python scripts/cursor_inference_parity.py --self-check --mode plan "ci self-check"
+      - name: Upstream parity fixture check
+        run: python -m pytest tests/test_diff_upstream_capture.py tests/test_upstream_replay.py tests/test_upstream_harness_fixtures.py tests/test_upstream_cli_harness_fixtures.py tests/test_upstream_cli_replay.py -q
       - name: Run tests
         run: python -m pytest tests/ -m "not live" -q
+      - name: Compatibility probe matrix (offline)
+        run: python -m codex_shim.cli probe matrix --json
+      - name: Cursor inference parity (optional)
+        if: vars.CURSOR_SOURCE_ROOT != ''
+        env:
+          CURSOR_SOURCE_ROOT: ${{ vars.CURSOR_SOURCE_ROOT }}
+        run: python scripts/cursor_inference_parity.py --mode default "ci parity"

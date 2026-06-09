@@ -149,3 +149,111 @@ async def test_responses_websocket_nonstream_error_returns_error_payload(tmp_pat
     finally:
         await shim_client.close()
         await upstream_client.close()
+
+
+@pytest.mark.asyncio
+async def test_responses_websocket_second_turn_after_tool_output_has_no_anomalies(tmp_path):
+    call_count = {"n": 0}
+
+    async def chat(request):
+        call_count["n"] += 1
+        body = await request.json()
+        if call_count["n"] == 1:
+            response = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
+            await response.prepare(request)
+            chunk = {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": "call_ws_tool",
+                                    "function": {"name": "probe_tool", "arguments": "{}"},
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+            await response.write(f"data: {json.dumps(chunk)}\n\n".encode())
+            await response.write(b"data: [DONE]\n\n")
+            await response.write_eof()
+            return response
+        tool_messages = [
+            item for item in body.get("messages", []) if isinstance(item, dict) and item.get("role") == "tool"
+        ]
+        assert tool_messages and tool_messages[0].get("tool_call_id") == "call_ws_tool"
+        return web.json_response(
+            {
+                "id": "chatcmpl_after_tool",
+                "choices": [{"message": {"role": "assistant", "content": "tool loop ok"}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+    try:
+        ws = await shim_client.ws_connect("/v1/responses")
+        await ws.send_json(
+            {
+                "model": "real-openai",
+                "input": [{"role": "user", "content": [{"type": "input_text", "text": "run tool"}]}],
+                "stream": True,
+            }
+        )
+        first_completed = None
+        while True:
+            msg = await ws.receive()
+            if msg.type.name == "CLOSE":
+                break
+            frame = json.loads(msg.data)
+            if frame.get("type") == "response.completed":
+                first_completed = frame.get("response")
+                break
+        assert first_completed is not None
+        assert [item.get("type") for item in first_completed.get("output", [])] == ["function_call"]
+        assert "shim_anomalies" not in (first_completed.get("metadata") or {})
+
+        ws2 = await shim_client.ws_connect("/v1/responses")
+        await ws2.send_json(
+            {
+                "model": "real-openai",
+                "input": [
+                    {"type": "function_call", "call_id": "call_ws_tool", "name": "probe_tool", "arguments": "{}"},
+                    {"type": "function_call_output", "call_id": "call_ws_tool", "output": "done"},
+                    {"role": "user", "content": [{"type": "input_text", "text": "continue"}]},
+                ],
+                "stream": False,
+            }
+        )
+        second = await ws2.receive_json()
+        assert second.get("type") == "response.completed"
+        response = second["response"]
+        assert response["output"][0]["content"][0]["text"] == "tool loop ok"
+        assert "shim_anomalies" not in (response.get("metadata") or {})
+        assert call_count["n"] == 2
+    finally:
+        await shim_client.close()
+        await upstream_client.close()

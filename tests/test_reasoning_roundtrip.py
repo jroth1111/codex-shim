@@ -52,6 +52,40 @@ def test_reasoning_roundtrip_chat():
     ]
 
 
+def test_second_turn_reasoning_replay_avoids_null_content():
+    """Follow-up turns with reasoning blocks must not send content: null to chat upstreams."""
+    input_items = [
+        {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "First"}]},
+        {
+            "type": "reasoning",
+            "summary": [{"type": "summary_text", "text": "Planning tool use."}],
+        },
+        {
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "output_text", "text": "Done."}],
+        },
+        {
+            "type": "function_call",
+            "call_id": "call_1",
+            "name": "local_shell",
+            "arguments": '{"command":"echo hi"}',
+        },
+        {"type": "function_call_output", "call_id": "call_1", "output": "hi"},
+        {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "Second turn"}]},
+    ]
+
+    result = responses_to_chat(
+        {"input": input_items, "stream": True, "model": "deepseek"},
+        upstream_model="deepseek-chat",
+        provider="deepseek",
+    )
+
+    for message in result["messages"]:
+        if message.get("reasoning_content"):
+            assert message.get("content") is not None
+
+
 def test_reasoning_at_end_of_conversation():
     input_items = [
         {"type": "reasoning", "summary": [{"type": "summary_text", "text": "My final thought."}]},

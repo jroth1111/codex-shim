@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from aiohttp import web
@@ -31,6 +32,8 @@ def auth_present(monkeypatch, tmp_path):
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
     monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
     return auth
 
 
@@ -39,6 +42,7 @@ def auth_missing(monkeypatch, tmp_path):
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
     monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", missing)
+    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
 def test_sanitize_chatgpt_passthrough_body_preserves_hosted_tool_input_items():
@@ -228,6 +232,7 @@ async def test_image_generation_does_not_bypass_selected_non_image_model(monkeyp
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_img", "model": "gpt-5.5", "output": [{"type": "image_generation_call", "model": "gpt-5.5"}]}
@@ -284,6 +289,7 @@ async def test_chatgpt_image_generation_routes_to_chatgpt_passthrough(monkeypatc
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_img", "model": "gpt-5.5", "output": [{"type": "image_generation_call", "model": "gpt-5.5"}]}
@@ -328,6 +334,7 @@ async def test_chatgpt_passthrough_strips_previous_response_id_by_default(monkey
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_native_next", "model": "gpt-5.5", "output": [{"type": "message", "role": "assistant"}]}
@@ -377,6 +384,7 @@ async def test_chatgpt_passthrough_forwards_previous_response_id_when_env_set(
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_native_next", "model": "gpt-5.5", "output": [{"type": "message", "role": "assistant"}]}
@@ -454,6 +462,59 @@ async def test_responses_routes_to_openai_chat(tmp_path):
     assert payload["usage"] == {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3}
     assert captured["body"]["model"] == "real-openai"
     assert captured["headers"]["Authorization"] == "Bearer secret"
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_invalid_tools_returns_400_without_upstream_call(tmp_path):
+    captured = {"called": False}
+
+    async def chat(request):
+        captured["called"] = True
+        return web.json_response({"id": "x", "choices": [{"message": {"role": "assistant", "content": "hi"}}]})
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "or-model",
+                        "displayName": "OpenRouter",
+                        "provider": "openrouter",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses",
+        json={
+            "model": "or-model",
+            "input": "hi",
+            "tools": [
+                {"type": "function", "name": "dup", "parameters": {"type": "object"}},
+                {"type": "function", "name": "dup", "parameters": {"type": "object"}},
+            ],
+        },
+    )
+
+    assert resp.status == 400
+    payload = await resp.json()
+    assert payload["error"]["type"] == "invalid_request_error"
+    assert "duplicate" in payload["error"]["message"]
+    assert captured["called"] is False
 
     await shim_client.close()
     await upstream_client.close()
@@ -1353,7 +1414,172 @@ async def test_responses_compact_routes_to_openai_chat_and_returns_compacted_win
     assert captured["body"]["model"] == "real-openai"
     assert captured["body"]["stream"] is False
     assert "service_tier" not in captured["body"]
-    assert "Compact the conversation" in captured["body"]["messages"][0]["content"]
+    assert "LAST_USER_INTENT" in captured["body"]["messages"][0]["content"]
+    assert "implement compact" in captured["body"]["messages"][0]["content"]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_compact_augments_bad_upstream_summary(tmp_path):
+    async def chat(request):
+        return web.json_response(
+            {
+                "id": "chatcmpl_compact_bad",
+                "choices": [{"message": {"role": "assistant", "content": "Unrelated generic summary."}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={
+            "model": "real-openai",
+            "input": [{"role": "user", "content": "implement compact support now"}],
+        },
+    )
+    assert resp.status == 200
+    payload = await resp.json()
+    summary = payload["output"][0]["summary"][0]["text"]
+    assert "[shim-compact-warning: projection_unverified]" in summary
+    assert "implement compact support now" in summary
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_compact_appends_postcompact_capture(tmp_path, monkeypatch):
+    capture_path = tmp_path / "postcompact-captures.jsonl"
+    monkeypatch.setattr("codex_shim.compact.POSTCOMPACT_CAPTURE_PATH", capture_path)
+
+    async def chat(request):
+        return web.json_response(
+            {
+                "id": "chatcmpl_compact_capture",
+                "choices": [{"message": {"role": "assistant", "content": "Unrelated generic summary."}}],
+            }
+        )
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={
+            "model": "real-openai",
+            "input": [{"role": "user", "content": "capture compaction audit"}],
+        },
+    )
+    assert resp.status == 200
+    lines = capture_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["model"] == "real-openai"
+    assert record["summary_status"] == "projection_unverified"
+    assert record["augmented"] is True
+    assert record["last_user_intent"] == "capture compaction audit"
+    assert record["summary_hash"]
+    assert record["summary_excerpt"]
+
+    await shim_client.close()
+    await upstream_client.close()
+
+
+async def test_responses_compact_includes_git_status_when_workspace_present(tmp_path, monkeypatch):
+    async def chat(request):
+        captured["body"] = await request.json()
+        return web.json_response(
+            {
+                "id": "chatcmpl_compact_git",
+                "choices": [{"message": {"role": "assistant", "content": "LAST_USER_INTENT: ship"}}],
+            }
+        )
+
+    captured: dict[str, Any] = {}
+
+    upstream = web.Application()
+    upstream.router.add_post("/v1/chat/completions", chat)
+    upstream_client = TestClient(TestServer(upstream))
+    await upstream_client.start_server()
+
+    settings = tmp_path / "settings.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "customModels": [
+                    {
+                        "model": "real-openai",
+                        "displayName": "Real OpenAI",
+                        "provider": "openai",
+                        "baseUrl": str(upstream_client.make_url("/v1")),
+                        "apiKey": "secret",
+                    }
+                ]
+            }
+        )
+    )
+    shim_client = TestClient(TestServer(ShimServer(settings).app()))
+    await shim_client.start_server()
+
+    monkeypatch.setattr(
+        "codex_shim.sessions.service.git_status_short",
+        lambda workspace: " M compact.py",
+    )
+
+    resp = await shim_client.post(
+        "/v1/responses/compact",
+        json={
+            "model": "real-openai",
+            "metadata": {"cwd": str(tmp_path)},
+            "input": [{"role": "user", "content": "ship compaction"}],
+        },
+    )
+    assert resp.status == 200
+    assert "GIT_STATUS:  M compact.py" in captured["body"]["messages"][0]["content"]
 
     await shim_client.close()
     await upstream_client.close()
@@ -1514,6 +1740,7 @@ async def test_responses_compact_chatgpt_passthrough_uses_compact_endpoint(monke
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_compact", "model": "gpt-5.5", "output": [{"type": "message", "model": "gpt-5.5"}]}
@@ -1788,6 +2015,7 @@ async def test_chat_routes_to_anthropic(tmp_path):
     assert payload["choices"][0]["message"]["content"] == "anthropic hello"
     assert captured["body"]["model"] == "claude-real"
     assert captured["headers"]["x-api-key"] == "secret"
+    assert "Authorization" not in captured["headers"]
 
     await shim_client.close()
     await upstream_client.close()
@@ -2047,6 +2275,7 @@ async def test_chatgpt_passthrough_forwards_codex_and_metadata_headers(monkeypat
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_headers", "model": "gpt-5.5", "output": []}
@@ -2096,6 +2325,7 @@ async def test_chatgpt_passthrough_compact_returns_native_shape(monkeypatch, tmp
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {"id": "resp_compact_native", "model": "gpt-5.5", **fixture}
@@ -2131,6 +2361,7 @@ async def test_chatgpt_passthrough_compact_forwards_headers(monkeypatch, tmp_pat
     class FakeUpstream:
         status = 200
         content_type = "application/json"
+        headers = {"Content-Type": "application/json"}
 
         async def json(self, content_type=None):
             return {

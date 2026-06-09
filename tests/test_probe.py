@@ -160,6 +160,52 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
     from codex_shim.settings import ShimModel
 
     route = ShimModel(
+        slug="openai-test",
+        model="gpt-test",
+        display_name="OpenAI",
+        provider="openai",
+        base_url="http://127.0.0.1:9/v1",
+        transport="openai_chat",
+    )
+    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    captured: dict[str, int] = {}
+
+    def _fake_post_json(*_args, **kwargs):
+        captured["timeout"] = int(kwargs.get("timeout", 0))
+        return {
+            "status": "completed",
+            "output": [{"type": "local_shell_call", "call_id": "c1", "action": {"command": "pwd"}}],
+            "metadata": {
+                "shim_route": {
+                    "transport": "openai_chat",
+                    "capabilities": {"local_shell": "mapped"},
+                }
+            },
+        }
+
+    monkeypatch.setattr(
+        "codex_shim.probe.harness.post_json",
+        _fake_post_json,
+    )
+    _check(probe_tools(tmp_path / "settings.json", 8765) == 0)
+    _check(captured["timeout"] == 120)
+
+
+def test_probe_matrix_offline_passes_without_daemon(tmp_path):
+    from codex_shim.probe import probe_matrix
+
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        '{"customModels":[{"model":"m","displayName":"M","provider":"openai","baseUrl":"http://127.0.0.1:9/v1"}]}'
+    )
+    assert probe_matrix(settings, port=59999, as_json=True) == 0
+
+
+def test_probe_delegate_checks_message_only_output(monkeypatch, tmp_path):
+    from codex_shim.probe import probe_delegate
+    from codex_shim.settings import ShimModel
+
+    route = ShimModel(
         slug="cursor-auto",
         model="auto",
         display_name="Cursor",
@@ -174,11 +220,18 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
         captured["timeout"] = int(kwargs.get("timeout", 0))
         return {
             "status": "completed",
-            "output": [{"type": "local_shell_call", "call_id": "c1", "action": {"command": "pwd"}}],
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": "done"}],
+                }
+            ],
             "metadata": {
                 "shim_route": {
                     "transport": "cursor_cli",
-                    "capabilities": {"local_shell": "mapped"},
+                    "execution_mode": "delegate",
+                    "capabilities": {"local_shell": "delegated"},
                 }
             },
         }
@@ -187,5 +240,54 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
         "codex_shim.probe.harness.post_fixture_turn",
         _fake_post_fixture_turn,
     )
-    _check(probe_tools(tmp_path / "settings.json", 8765) == 0)
-    _check(captured["timeout"] == 600)
+    _check(probe_delegate(tmp_path / "settings.json", 8765) == 0)
+    _check(captured["timeout"] == 3600)
+
+
+def test_probe_compact_reports_summary_status(monkeypatch, tmp_path):
+    from codex_shim.probe import probe_compact
+    from codex_shim.settings import ShimModel
+
+    route = ShimModel(
+        slug="openai-test",
+        model="gpt-test",
+        display_name="OpenAI",
+        provider="openai",
+        base_url="http://127.0.0.1:9/v1",
+        transport="openai_chat",
+    )
+    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    monkeypatch.setattr(
+        "codex_shim.probe.harness.run_byok_compact",
+        lambda _port, _route: (
+            "context_compaction",
+            "[shim-compact-warning: projection_unverified]\nLAST_USER_INTENT: ship",
+        ),
+    )
+    captured: list[str] = []
+
+    def _fake_print(*args, **kwargs):
+        captured.append(" ".join(str(arg) for arg in args))
+
+    monkeypatch.setattr("builtins.print", _fake_print)
+    assert probe_compact(tmp_path / "settings.json", 8765) == 0
+    joined = "\n".join(captured)
+    assert "summary_status: projection_unverified" in joined
+    assert "augmented: True" in joined
+
+
+def test_probe_tools_rejects_cursor_delegate_routes(monkeypatch, tmp_path):
+    from codex_shim.probe import probe_tools
+    from codex_shim.settings import ShimModel
+
+    route = ShimModel(
+        slug="cursor-auto",
+        model="auto",
+        display_name="Cursor",
+        provider="cursor-agent",
+        base_url="",
+        transport="cursor_cli",
+    )
+    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    with pytest.raises(CompactProbeError, match="probe delegate"):
+        probe_tools(tmp_path / "settings.json", 8765)
