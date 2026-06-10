@@ -33,7 +33,7 @@ class ProviderRuntime:
     settings: ModelSettings
     operational_store: Any
     cursor_thread_sessions: "CursorThreadSessionStore"
-    cursor_agent_transport: "CursorAgentTransport | None"
+    cursor_agent_transport: "CursorAgentTransport"
     store_history: Callable[..., None]
     emit_governance_error: Callable[..., None]
 

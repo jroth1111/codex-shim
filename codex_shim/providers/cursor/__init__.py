@@ -2,6 +2,7 @@
 from .acp import (
     DEFAULT_CURSOR_TIMEOUT,
     CursorAcpError,
+    CursorAcpResult,
     cursor_acp_chat_payload,
     cursor_acp_response_payload,
     cursor_prompt_for_body,
@@ -26,6 +27,7 @@ from .passthrough_handlers import cursor_passthrough_handler
 __all__ = [
     "DEFAULT_CURSOR_TIMEOUT",
     "CursorAcpError",
+    "CursorAcpResult",
     "CursorCliError",
     "CursorThreadSessionStore",
     "build_cursor_cli_turn_options",

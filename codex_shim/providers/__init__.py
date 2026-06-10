@@ -42,11 +42,31 @@ from .cursor import (
     run_cursor_cli,
 )
 from .cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
+from .cursor_transports import (
+    cursor_workspace,
+    post_cursor_acp,
+    post_cursor_agent,
+    post_cursor_agent_native,
+    post_cursor_cli,
+    prepare_cursor_agent_native,
+    stream_cursor_acp,
+    stream_cursor_agent_native,
+    stream_cursor_cli,
+)
 from .dispatcher import ProviderDispatcher
 from .http import anthropic_headers, anthropic_text, join_url, normalize_roles, openai_headers
 from .openai_chat import post_openai_chat, stream_openai_chat
 
 __all__ = [
+    "cursor_workspace",
+    "post_cursor_acp",
+    "post_cursor_agent",
+    "post_cursor_agent_native",
+    "post_cursor_cli",
+    "prepare_cursor_agent_native",
+    "stream_cursor_acp",
+    "stream_cursor_agent_native",
+    "stream_cursor_cli",
     "ProviderRuntime",
     "anthropic_headers",
     "anthropic_text",
