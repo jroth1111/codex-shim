@@ -766,7 +766,12 @@ async def run_ws_streaming_async(
             "stream": True,
         }
     async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(url, timeout=aiohttp.ClientWSTimeout(ws_receive=timeout)) as ws:
+        # pyright can't synthesize ClientWSTimeout's attrs-style __init__ (old
+        # attr.ib(type=...) API in aiohttp); the kwarg is correct at runtime.
+        async with session.ws_connect(
+            url,
+            timeout=aiohttp.ClientWSTimeout(ws_receive=timeout),  # pyright: ignore[reportCallIssue]
+        ) as ws:
             await ws.send_json(payload)
             completed = None
             saw_delta = False

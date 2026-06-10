@@ -90,13 +90,6 @@ async def handle_responses_websocket(
     return ws
 
 
-async def _relay_sse_stream_to_websocket(ws: web.WebSocketResponse, stream: web.StreamResponse) -> None:
-    relay = WsStreamResponse(ws)
-    async for chunk in stream.body_iterator:
-        await relay.write(chunk)
-    await relay.write_eof()
-
-
 def _response_json_payload(result: web.Response) -> dict[str, Any]:
     raw = result.body if isinstance(result.body, (bytes, bytearray)) else b"{}"
     try:

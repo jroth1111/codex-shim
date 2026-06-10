@@ -216,7 +216,8 @@ def chatgpt_passthrough_available(auth_path: Path | None = None) -> bool:
     if auth_path is None:
         import sys as _sys
 
-        auth_path = getattr(_sys.modules[__name__], "DEFAULT_CODEX_AUTH")
+        # Module-attribute lookup so test monkeypatches of DEFAULT_CODEX_AUTH apply.
+        auth_path = Path(getattr(_sys.modules[__name__], "DEFAULT_CODEX_AUTH"))
     expanded = Path(auth_path).expanduser()
     if not expanded.exists():
         return False

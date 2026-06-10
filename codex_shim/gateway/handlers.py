@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from aiohttp import web
 
 from ..responses_ws import WsStreamResponse, handle_responses_websocket
+
+if TYPE_CHECKING:
+    from ..server import ShimServer
 
 
 class GatewayDispatch(Protocol):
@@ -57,4 +60,8 @@ class GatewayHandlers:
     async def anthropic_messages(self, request: web.Request) -> web.StreamResponse:
         from ..anthropic_messages_gateway import anthropic_messages_handler
 
-        return await anthropic_messages_handler(self._dispatcher, request)
+        # The /v1/messages bridge needs the full ShimServer surface (auto_router,
+        # _route, timeout), not just GatewayDispatch; the runtime dispatcher is
+        # always ShimServer. Phase 6 of the migration replaces this with explicit
+        # dependencies.
+        return await anthropic_messages_handler(cast("ShimServer", self._dispatcher), request)

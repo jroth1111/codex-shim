@@ -101,7 +101,8 @@ def parse_inference_context(
     resolved_model_id: str | None = None,
     prefetch_status: PrefetchStatus = "skipped",
 ) -> InferenceContext:
-    base_metadata = body.get("metadata") if isinstance(body.get("metadata"), dict) else {}
+    raw_metadata = body.get("metadata")
+    base_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     metadata = _merge_shim_internal_metadata(body, base_metadata)
     cli_mode = _parse_cli_mode(body, metadata)
     agent_mode = agent_mode_for_cli_mode(cli_mode)

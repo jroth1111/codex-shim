@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import AsyncIterator
 from typing import Any
 
 from aiohttp import web
@@ -628,7 +629,7 @@ async def write_sse(response: web.StreamResponse, payload: dict[str, Any]) -> No
 _MAX_SSE_BUFFER = 10 * 1024 * 1024  # 10 MB
 
 
-async def sse_lines(upstream) -> Any:
+async def sse_lines(upstream) -> AsyncIterator[str]:
     buffer = b""
     async for chunk in upstream.content.iter_chunked(4096):
         buffer += chunk

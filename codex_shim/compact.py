@@ -205,7 +205,7 @@ async def as_compact_response(
     git_status: str | None = None,
     workspace: str | None = None,
     audit_callback: Any | None = None,
-) -> web.Response:
+) -> web.StreamResponse:
     if not isinstance(response, web.Response) or response.status >= 400:
         return response
     try:
