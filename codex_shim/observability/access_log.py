@@ -6,7 +6,7 @@ from typing import Any
 
 from aiohttp import web
 
-from .settings import ShimModel
+from ..settings import ShimModel
 
 
 def log_incoming_request(endpoint: str, body: dict[str, Any]) -> None:

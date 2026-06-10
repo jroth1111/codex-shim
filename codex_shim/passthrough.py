@@ -10,9 +10,10 @@ from typing import TYPE_CHECKING, Any
 from aiohttp import ClientSession, web
 
 from . import settings
-from .access_log import elapsed_ms as _elapsed_ms
-from .access_log import log_access as _log_access
 from .errors import error_response
+from .observability import capture_value
+from .observability import elapsed_ms as _elapsed_ms
+from .observability import log_access as _log_access
 from .passthrough_prepare import prepare_chatgpt_passthrough_body
 from .passthrough_upstream import (
     UpstreamProfile,
@@ -27,7 +28,6 @@ from .passthrough_upstream import (
 )
 from .settings import CHATGPT_MODEL_SLUG, ShimModel
 from .translate import SHIM_ENCRYPTED_CONTENT_PREFIX
-from .upstream_capture import capture_value
 from .wire import ClientDisconnected, WsStreamResponse, open_stream_sink, safe_write, sse_lines, write_sse
 
 if TYPE_CHECKING:

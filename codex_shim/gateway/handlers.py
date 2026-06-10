@@ -59,7 +59,7 @@ class GatewayHandlers:
         return await self._dispatcher.responses_compact_from_body(request, body_or_error)
 
     async def anthropic_messages(self, request: web.Request) -> web.StreamResponse:
-        from ..anthropic_messages_gateway import anthropic_messages_handler
+        from .anthropic_messages import anthropic_messages_handler
 
         # The /v1/messages bridge needs the full ShimServer surface (auto_router,
         # _route, timeout), not just GatewayDispatch; the runtime dispatcher is

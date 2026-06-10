@@ -5,18 +5,18 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientSession, web
 
-from .debug_dump import dump_debug_request
-from .errors import error_response
-from .translate import (
+from ..errors import error_response
+from ..observability import dump_debug_request
+from ..translate import (
     AnthropicMessagesStreamState,
     anthropic_messages_to_chat,
     chat_completion_to_anthropic_message,
 )
-from .wire import ClientDisconnected, safe_write, sse_lines, sse_response, write_anthropic_sse
+from ..wire import ClientDisconnected, safe_write, sse_lines, sse_response, write_anthropic_sse
 
 if TYPE_CHECKING:
-    from .server import ShimServer
-    from .settings import ShimModel
+    from ..server import ShimServer
+    from ..settings import ShimModel
 
 
 async def anthropic_messages_handler(server: ShimServer, request: web.Request) -> web.StreamResponse:
@@ -39,7 +39,7 @@ async def post_openai_chat_as_anthropic(
     route: ShimModel,
     body: dict[str, Any],
 ) -> web.StreamResponse:
-    from .server import _join_url, _openai_headers
+    from ..server import _join_url, _openai_headers
 
     url = route.endpoint_url or _join_url(route.base_url, "/chat/completions")
     headers = _openai_headers(route)
@@ -61,7 +61,7 @@ async def post_anthropic_messages(
     route: ShimModel,
     body: dict[str, Any],
 ) -> web.StreamResponse:
-    from .server import _anthropic_headers, _join_url
+    from ..server import _anthropic_headers, _join_url
 
     url = _join_url(route.base_url, "/messages")
     headers = _anthropic_headers(route)

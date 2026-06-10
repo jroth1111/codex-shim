@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from codex_shim.debug_dump import dump_debug_request
+from codex_shim.observability.debug_dump import dump_debug_request
 
 
 def test_debug_dump_disabled_by_default(tmp_path, monkeypatch):

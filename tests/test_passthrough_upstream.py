@@ -174,7 +174,7 @@ def test_prepare_upstream_request_preserves_tools_without_parity_mode(tmp_path, 
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.delenv("CODEX_SHIM_PARITY_MODE", raising=False)
     monkeypatch.setattr(
-        "codex_shim.upstream_capture.read_capture_config",
+        "codex_shim.observability.upstream_capture.read_capture_config",
         lambda: {"tier": "b", "parity_mode": False},
     )
 

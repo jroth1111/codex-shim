@@ -40,7 +40,7 @@ from capture_upstream_parity import (  # noqa: E402
 )
 
 from codex_shim.codex_config import repair_codex_config  # noqa: E402
-from codex_shim.upstream_capture import clear_capture_config  # noqa: E402
+from codex_shim.observability.upstream_capture import clear_capture_config  # noqa: E402
 
 DEFAULT_NATIVE = DEBUG_DIR / "cli_native_to_chatgpt.json"
 DEFAULT_SHIM = DEBUG_DIR / "cli_shim_to_chatgpt.json"

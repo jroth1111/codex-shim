@@ -39,6 +39,7 @@ from .cursor_passthrough import (
     is_cursor_passthrough_slug,
 )
 from .migrate import apply_postgres_migrations
+from .observability import clear_capture_config, read_capture_config, write_capture_config
 from .opencode_go import (
     OPENCODE_GO_API_KEY_ENV,
     OPENCODE_GO_BASE_URL,
@@ -61,7 +62,6 @@ from .settings import (
     fetch_vibeproxy_model_rows,
     usable_byok_models,
 )
-from .upstream_capture import clear_capture_config, read_capture_config, write_capture_config
 from .workers import main as worker_main
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

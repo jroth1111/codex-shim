@@ -24,7 +24,7 @@ from codex_shim.codex_config import (  # noqa: E402
     validate_toml_text,
     write_codex_config,
 )
-from codex_shim.upstream_capture import clear_capture_config, write_capture_config  # noqa: E402
+from codex_shim.observability.upstream_capture import clear_capture_config, write_capture_config  # noqa: E402
 
 DEBUG_DIR = ROOT / "codex-desktop-decompiled" / "captures" / "debug"
 DEFAULT_NATIVE = DEBUG_DIR / "native_to_chatgpt.json"

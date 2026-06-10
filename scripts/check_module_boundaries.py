@@ -73,8 +73,6 @@ ENTRYPOINTS = frozenset({"cli", "server", "workers", "__init__"})
 # definition-of-done deletes the entries it resolves.
 LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
     {
-        ('codex_shim/access_log.py', 'UNASSIGNED'),
-        ('codex_shim/anthropic_messages_gateway.py', 'UNASSIGNED'),
         ('codex_shim/auth_tokens.py', 'UNASSIGNED'),
         ('codex_shim/catalog.py', 'UNASSIGNED'),
         ('codex_shim/codex_config.py', 'UNASSIGNED'),
@@ -84,12 +82,10 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/cursor_parity.py', 'UNASSIGNED'),
         ('codex_shim/cursor_passthrough.py', 'UNASSIGNED'),
         ('codex_shim/cursor_passthrough_handlers.py', 'UNASSIGNED'),
-        ('codex_shim/debug_dump.py', 'UNASSIGNED'),
         ('codex_shim/errors.py', 'cursor_acp'),
         ('codex_shim/errors.py', 'translate'),
-        ('codex_shim/gateway/handlers.py', 'anthropic_messages_gateway'),
+        ('codex_shim/gateway/anthropic_messages.py', 'server'),
         ('codex_shim/gateway/handlers.py', 'server'),
-        ('codex_shim/hostguard.py', 'UNASSIGNED'),
         ('codex_shim/integration_harness.py', 'UNASSIGNED'),
         ('codex_shim/migrate.py', 'UNASSIGNED'),
         ('codex_shim/opencode_go.py', 'UNASSIGNED'),
@@ -113,7 +109,6 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/settings.py', 'cursor_passthrough'),
         ('codex_shim/settings.py', 'routing'),
         ('codex_shim/smoke.py', 'UNASSIGNED'),
-        ('codex_shim/upstream_capture.py', 'UNASSIGNED'),
         ('codex_shim/workers.py', 'deep:persistence.job_queue'),
     }
 )

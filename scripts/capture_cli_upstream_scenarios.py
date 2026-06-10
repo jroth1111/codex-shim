@@ -26,7 +26,7 @@ from capture_cli_upstream_parity import (  # noqa: E402
     capture_paired_cli_session,
 )
 
-from codex_shim.upstream_capture import clear_capture_config  # noqa: E402
+from codex_shim.observability.upstream_capture import clear_capture_config  # noqa: E402
 
 DEFAULT_SCENARIOS = Path(__file__).with_name("capture_cli_upstream_scenarios.json")
 SCENARIO_DIR = ROOT / "codex-desktop-decompiled" / "captures" / "debug" / "cli_scenarios"

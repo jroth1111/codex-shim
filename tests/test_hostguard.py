@@ -5,7 +5,7 @@ import json
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim.hostguard import build_allowed_hosts, host_only
+from codex_shim.gateway.hostguard import build_allowed_hosts, host_only
 from codex_shim.server import ShimServer
 
 

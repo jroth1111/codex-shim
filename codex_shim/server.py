@@ -13,9 +13,6 @@ from urllib.parse import urljoin
 
 from aiohttp import ClientSession, ClientTimeout, web
 
-from .access_log import elapsed_ms as _elapsed_ms
-from .access_log import log_access as _log_access
-from .access_log import log_incoming_request as _log_incoming_request
 from .capabilities import execution_mode, is_delegate_route, route_capabilities
 from .catalog import CATALOG_PATH, write_catalog
 from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
@@ -27,7 +24,6 @@ from .cursor_passthrough import (
     is_cursor_passthrough_slug,
 )
 from .cursor_passthrough_handlers import cursor_passthrough_handler
-from .debug_dump import dump_debug_request as _dump_debug_request
 from .errors import (
     cursor_acp_error_response as _cursor_acp_error_response,
 )
@@ -49,10 +45,13 @@ from .errors import (
 from .errors import (
     unsupported_compact_response as _unsupported_compact_response,
 )
-from .gateway import GatewayHandlers
+from .gateway import GatewayHandlers, build_allowed_hosts, host_guard_middleware
 from .governance import GovernanceAuditSink
-from .hostguard import build_allowed_hosts, host_guard_middleware
 from .observability import ObservabilitySink
+from .observability import dump_debug_request as _dump_debug_request
+from .observability import elapsed_ms as _elapsed_ms
+from .observability import log_access as _log_access
+from .observability import log_incoming_request as _log_incoming_request
 from .passthrough import (
     chatgpt_compact_passthrough,
     chatgpt_passthrough,

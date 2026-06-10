@@ -11,12 +11,11 @@ from typing import Any
 from aiohttp import web
 
 from .catalog import chatgpt_passthrough_entry
-from .debug_dump import DEBUG_DIR, _redacted, _truthy
+from .observability import DEBUG_DIR, _redacted, _truthy, capture_flag, capture_value
 from .sessions import header_value as _header_value
 from .sessions import parse_turn_metadata, resolve_thread_and_session_ids
 from .sessions import truthy_id as _truthy_id
 from .settings import DEFAULT_CODEX_AUTH
-from .upstream_capture import capture_flag, capture_value
 
 DEFAULT_DESKTOP_ORIGINATOR = "Codex Desktop"
 DEFAULT_CLI_ORIGINATOR = "codex_cli_rs"
@@ -353,7 +352,7 @@ def preserve_cli_turn_metadata(request: web.Request, body: dict[str, Any]) -> st
 
 def parity_mode_enabled() -> bool:
     try:
-        from .upstream_capture import parity_mode_enabled as _capture_parity_mode_enabled
+        from .observability import parity_mode_enabled as _capture_parity_mode_enabled
 
         return _capture_parity_mode_enabled()
     except ImportError:
