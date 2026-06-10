@@ -27,7 +27,7 @@ from codex_shim.integration_harness import (  # noqa: E402
     responses_url,
     tier_a_passthrough_body,
 )
-from codex_shim.passthrough import _prepare_upstream_request  # noqa: E402
+from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request  # noqa: E402
 from codex_shim.settings import CHATGPT_MODEL_SLUG, DEFAULT_CODEX_AUTH  # noqa: E402
 
 CODEX_REPO = Path("/tmp/codex")

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from codex_shim.passthrough_prepare import (
+from codex_shim.providers.chatgpt.prepare import (
     normalize_chatgpt_passthrough_input,
     prepare_chatgpt_passthrough_body,
 )

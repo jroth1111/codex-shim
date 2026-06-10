@@ -16,6 +16,13 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 PROVIDER_NAME = "codex_shim"
 CHATGPT_MODEL_SLUG = "gpt-5.5"
+PLAN_TIERS = ["free", "plus", "pro", "team", "business", "enterprise"]
+
+
+def websockets_enabled() -> bool:
+    raw = os.environ.get("CODEX_SHIM_ENABLE_WEBSOCKETS", "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
 CURSOR_CLI_PROVIDERS = {"cursor-agent", "cursor-agent-cli", "cursor-cli"}
 CURSOR_ACP_PROVIDERS = {"cursor-acp", "cursor-agent-acp"}
 CURSOR_LOCAL_PROVIDERS = CURSOR_CLI_PROVIDERS | CURSOR_ACP_PROVIDERS

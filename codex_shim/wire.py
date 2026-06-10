@@ -51,10 +51,15 @@ class WsStreamResponse:
                 await self.ws.send_json(payload)
 
 
+# Either a real aiohttp StreamResponse or the WS-backed stand-in; both expose
+# prepare/write/write_eof, which is all the writers below use.
+StreamSink = web.StreamResponse | WsStreamResponse
+
+
 async def open_stream_sink(
     request: web.Request,
     stream_response: WsStreamResponse | None,
-) -> web.StreamResponse | WsStreamResponse:
+) -> StreamSink:
     if stream_response is not None:
         await stream_response.prepare(request)
         return stream_response
@@ -74,7 +79,7 @@ def sse_response() -> web.StreamResponse:
     )
 
 
-async def safe_write(response: web.StreamResponse, data: bytes) -> None:
+async def safe_write(response: StreamSink, data: bytes) -> None:
     try:
         await response.write(data)
     except (ConnectionResetError, ConnectionError) as exc:
@@ -89,7 +94,7 @@ async def safe_write(response: web.StreamResponse, data: bytes) -> None:
         raise
 
 
-async def write_sse(response: web.StreamResponse, payload: dict[str, Any]) -> None:
+async def write_sse(response: StreamSink, payload: dict[str, Any]) -> None:
     try:
         await response.write(f"data: {json.dumps(payload, separators=(',', ':'))}\n\n".encode())
     except (ConnectionResetError, ConnectionError) as exc:
@@ -104,7 +109,7 @@ async def write_sse(response: web.StreamResponse, payload: dict[str, Any]) -> No
         raise
 
 
-async def write_anthropic_sse(response: web.StreamResponse, event: str, payload: dict[str, Any]) -> None:
+async def write_anthropic_sse(response: StreamSink, event: str, payload: dict[str, Any]) -> None:
     data = json.dumps(payload, separators=(",", ":"))
     try:
         await response.write(f"event: {event}\ndata: {data}\n\n".encode())

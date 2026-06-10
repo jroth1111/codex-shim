@@ -10,12 +10,12 @@ from typing import Any
 
 from aiohttp import web
 
-from .catalog import chatgpt_passthrough_entry
-from .observability import DEBUG_DIR, _redacted, _truthy, capture_flag, capture_value
-from .sessions import header_value as _header_value
-from .sessions import parse_turn_metadata, resolve_thread_and_session_ids
-from .sessions import truthy_id as _truthy_id
-from .settings import DEFAULT_CODEX_AUTH
+from ...observability import DEBUG_DIR, _redacted, _truthy, capture_flag, capture_value
+from ...sessions import header_value as _header_value
+from ...sessions import parse_turn_metadata, resolve_thread_and_session_ids
+from ...sessions import truthy_id as _truthy_id
+from ...settings import DEFAULT_CODEX_AUTH
+from .catalog_entry import chatgpt_passthrough_entry
 
 DEFAULT_DESKTOP_ORIGINATOR = "Codex Desktop"
 DEFAULT_CLI_ORIGINATOR = "codex_cli_rs"
@@ -352,7 +352,7 @@ def preserve_cli_turn_metadata(request: web.Request, body: dict[str, Any]) -> st
 
 def parity_mode_enabled() -> bool:
     try:
-        from .observability import parity_mode_enabled as _capture_parity_mode_enabled
+        from ...observability import parity_mode_enabled as _capture_parity_mode_enabled
 
         return _capture_parity_mode_enabled()
     except ImportError:
@@ -407,9 +407,12 @@ def promote_desktop_direct_upstream_body(body: dict[str, Any]) -> dict[str, Any]
 
 
 def _turn_metadata_dict(capture: dict[str, Any]) -> dict[str, Any] | None:
-    headers = capture.get("headers") if isinstance(capture.get("headers"), dict) else {}
-    body = capture.get("body") if isinstance(capture.get("body"), dict) else {}
-    client_metadata = body.get("client_metadata") if isinstance(body.get("client_metadata"), dict) else {}
+    raw_headers = capture.get("headers")
+    headers = raw_headers if isinstance(raw_headers, dict) else {}
+    raw_body = capture.get("body")
+    body = raw_body if isinstance(raw_body, dict) else {}
+    raw_client_metadata = body.get("client_metadata")
+    client_metadata = raw_client_metadata if isinstance(raw_client_metadata, dict) else {}
     raw = headers.get(X_CODEX_TURN_METADATA) or client_metadata.get(X_CODEX_TURN_METADATA)
     if not isinstance(raw, str):
         return None
@@ -446,7 +449,8 @@ def align_upstream_to_reference(
 ) -> tuple[dict[str, Any], dict[str, str]]:
     aligned_body = deepcopy(forwarded)
     aligned_headers = dict(upstream_headers)
-    reference_body = reference.get("body") if isinstance(reference.get("body"), dict) else {}
+    raw_reference_body = reference.get("body")
+    reference_body = raw_reference_body if isinstance(raw_reference_body, dict) else {}
     reference_tm = _turn_metadata_dict(reference)
     if reference_tm:
         encoded = _serialize_turn_metadata(normalize_desktop_turn_metadata(deepcopy(reference_tm)))

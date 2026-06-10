@@ -12,8 +12,8 @@ sys.path.insert(0, str(ROOT))
 
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.passthrough import _prepare_upstream_request
-from codex_shim.passthrough_upstream import DEFAULT_EXEC_ORIGINATOR
+from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request
+from codex_shim.providers.chatgpt.upstream import DEFAULT_EXEC_ORIGINATOR
 
 FIXTURE_DIR = Path(__file__).resolve().parent
 HARNESS_CLI_NATIVE = FIXTURE_DIR / "harness_cli_native_to_chatgpt.json"

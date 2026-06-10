@@ -1,5 +1,15 @@
-from . import cursor
+from . import chatgpt, cursor
 from .auth_tokens import auth_command_for_route, resolve_bearer_token
+from .chatgpt import (
+    chatgpt_compact_passthrough,
+    chatgpt_passthrough,
+    chatgpt_passthrough_entry,
+    merge_codex_forward_headers,
+    metadata_as_forward_headers,
+    passthrough_forward_headers,
+    rewrite_response_model,
+    sanitize_chatgpt_passthrough_body,
+)
 from .cursor import (
     DEFAULT_CURSOR_TIMEOUT,
     CursorAcpError,
@@ -25,6 +35,15 @@ from .cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
 from .dispatcher import ProviderDispatcher
 
 __all__ = [
+    "chatgpt",
+    "chatgpt_compact_passthrough",
+    "chatgpt_passthrough",
+    "chatgpt_passthrough_entry",
+    "merge_codex_forward_headers",
+    "metadata_as_forward_headers",
+    "passthrough_forward_headers",
+    "rewrite_response_model",
+    "sanitize_chatgpt_passthrough_body",
     "DEFAULT_CURSOR_TIMEOUT",
     "CursorAcpError",
     "CursorCliError",

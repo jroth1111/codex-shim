@@ -274,7 +274,7 @@ def subscription_catalog_entries(
     if snapshot.models:
         return [dict(model) for model in snapshot.models]
     if chatgpt_passthrough_available(auth_path):
-        from ..catalog import chatgpt_passthrough_entry
+        from ..providers import chatgpt_passthrough_entry
 
         return [chatgpt_passthrough_entry()]
     return []

@@ -5,7 +5,7 @@ import os
 from copy import deepcopy
 from typing import Any
 
-from .catalog import chatgpt_passthrough_entry
+from .catalog_entry import chatgpt_passthrough_entry
 
 _STRIP_TOP_LEVEL = frozenset({"metadata", "max_output_tokens", "trace_id", "request_id"})
 _CALL_ID_PREFIX = {

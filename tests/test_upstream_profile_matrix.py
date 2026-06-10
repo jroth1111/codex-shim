@@ -5,8 +5,8 @@ import json
 import pytest
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.passthrough import chatgpt_openai_beta_header
-from codex_shim.passthrough_upstream import (
+from codex_shim.providers.chatgpt.handlers import chatgpt_openai_beta_header
+from codex_shim.providers.chatgpt.upstream import (
     DEFAULT_CLI_ORIGINATOR,
     DEFAULT_DESKTOP_ORIGINATOR,
     DEFAULT_EXEC_ORIGINATOR,

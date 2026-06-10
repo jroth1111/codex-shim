@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from codex_shim.catalog import build_merged_catalog, write_catalog
-from codex_shim.passthrough import rewrite_response_model
+from codex_shim.providers.chatgpt.handlers import rewrite_response_model
 from codex_shim.routing.subscription_catalog import (
     SubscriptionCatalogSnapshot,
     fetch_subscription_models,

@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.passthrough import _prepare_upstream_request
-from codex_shim.passthrough_upstream import DEFAULT_EXEC_ORIGINATOR, X_CODEX_TURN_METADATA
+from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request
+from codex_shim.providers.chatgpt.upstream import DEFAULT_EXEC_ORIGINATOR, X_CODEX_TURN_METADATA
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -31,7 +31,7 @@ def auth_env(tmp_path, monkeypatch):
         json.dumps({"tokens": {"access_token": "token", "account_id": "acct-harness-cli"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr("codex_shim.passthrough.settings.DEFAULT_CODEX_AUTH", auth_path)
+    monkeypatch.setattr("codex_shim.providers.chatgpt.handlers.settings.DEFAULT_CODEX_AUTH", auth_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     (codex_home / "installation_id").write_text("22222222-2222-4222-8222-222222222222\n", encoding="utf-8")
 

@@ -9,13 +9,16 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientSession, web
 
-from . import settings
-from .errors import error_response
-from .observability import capture_value
-from .observability import elapsed_ms as _elapsed_ms
-from .observability import log_access as _log_access
-from .passthrough_prepare import prepare_chatgpt_passthrough_body
-from .passthrough_upstream import (
+from ... import settings
+from ...errors import error_response
+from ...observability import capture_value
+from ...observability import elapsed_ms as _elapsed_ms
+from ...observability import log_access as _log_access
+from ...settings import CHATGPT_MODEL_SLUG, ShimModel
+from ...translate import SHIM_ENCRYPTED_CONTENT_PREFIX
+from ...wire import ClientDisconnected, StreamSink, WsStreamResponse, open_stream_sink, safe_write, sse_lines, write_sse
+from .prepare import prepare_chatgpt_passthrough_body
+from .upstream import (
     UpstreamProfile,
     align_upstream_to_reference,
     apply_parity_mode,
@@ -26,12 +29,9 @@ from .passthrough_upstream import (
     snapshot_upstream_response,
     uses_websockets_upstream_beta,
 )
-from .settings import CHATGPT_MODEL_SLUG, ShimModel
-from .translate import SHIM_ENCRYPTED_CONTENT_PREFIX
-from .wire import ClientDisconnected, WsStreamResponse, open_stream_sink, safe_write, sse_lines, write_sse
 
 if TYPE_CHECKING:
-    from .server import ShimServer
+    from ...server import ShimServer
 
 
 _DROP_ITEM = object()
@@ -78,7 +78,7 @@ def rewrite_response_model(
     if not model:
         return
     if subscription_slugs is None:
-        from .routing import known_subscription_slugs
+        from ...routing import known_subscription_slugs
 
         subscription_slugs = known_subscription_slugs()
     if isinstance(payload, dict):
@@ -255,7 +255,7 @@ async def chatgpt_passthrough(
     *,
     response_model_override: str | None = None,
     ws_stream: WsStreamResponse | None = None,
-) -> web.StreamResponse:
+) -> StreamSink:
     """Forward a Responses request to chatgpt.com using the user's Codex auth."""
     try:
         forwarded, headers = _prepare_upstream_request(request, body, compact=False)
@@ -295,7 +295,7 @@ async def chatgpt_passthrough(
             upstream.release()
             provider_ms = _elapsed_ms(provider_started_at)
             rewrite_response_model(payload, response_model_override)
-            from .sessions import prepare_passthrough_store_request
+            from ...sessions import prepare_passthrough_store_request
 
             prepared = prepare_passthrough_store_request(request, body)
             shim._store_response_history(prepared, payload)
@@ -397,6 +397,6 @@ async def chatgpt_compact_passthrough(
 
 
 def responses_items_from_input(value: Any) -> list[dict[str, Any]]:
-    from .sessions import responses_items_from_input as _items_from_input
+    from ...sessions import responses_items_from_input as _items_from_input
 
     return _items_from_input(value)

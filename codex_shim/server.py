@@ -31,15 +31,6 @@ from .observability import dump_debug_request as _dump_debug_request
 from .observability import elapsed_ms as _elapsed_ms
 from .observability import log_access as _log_access
 from .observability import log_incoming_request as _log_incoming_request
-from .passthrough import (
-    chatgpt_compact_passthrough,
-    chatgpt_passthrough,
-    merge_codex_forward_headers,
-    metadata_as_forward_headers,
-    passthrough_forward_headers,
-    rewrite_response_model,
-    sanitize_chatgpt_passthrough_body,
-)
 from .persistence import JsonOperationalStore
 from .picker import PICKER_TOKEN_HEADER
 from .picker import current_managed_model as _current_managed_model
@@ -52,14 +43,21 @@ from .providers import (
     CursorThreadSessionStore,
     ProviderDispatcher,
     build_cursor_cli_turn_options,
+    chatgpt_compact_passthrough,
+    chatgpt_passthrough,
     cursor_acp_chat_payload,
     cursor_acp_response_payload,
     cursor_passthrough_available,
     cursor_passthrough_display_names,
     cursor_passthrough_handler,
     is_cursor_passthrough_slug,
+    merge_codex_forward_headers,
+    metadata_as_forward_headers,
+    passthrough_forward_headers,
+    rewrite_response_model,
     run_cursor_acp,
     run_cursor_cli,
+    sanitize_chatgpt_passthrough_body,
 )
 from .providers import cursor_acp_error_response as _cursor_acp_error_response
 from .providers import cursor_acp_stream_error as _cursor_acp_stream_error

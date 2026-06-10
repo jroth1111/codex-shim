@@ -133,7 +133,7 @@ async def _smoke_anthropic(route: ShimModel, body: dict[str, Any]) -> SmokeResul
 
 
 async def _smoke_chatgpt(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .passthrough import metadata_as_forward_headers as _metadata_as_forward_headers
+    from .providers import metadata_as_forward_headers as _metadata_as_forward_headers
 
     auth = json.loads(settings_module.DEFAULT_CODEX_AUTH.expanduser().read_text())
     tokens = auth.get("tokens") or {}

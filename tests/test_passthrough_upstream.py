@@ -7,8 +7,8 @@ from copy import deepcopy
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.passthrough import _prepare_upstream_request
-from codex_shim.passthrough_upstream import (
+from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request
+from codex_shim.providers.chatgpt.upstream import (
     DEFAULT_CLI_ORIGINATOR,
     DEFAULT_DESKTOP_ORIGINATOR,
     DEFAULT_EXEC_ORIGINATOR,
@@ -170,7 +170,7 @@ def test_prepare_upstream_request_preserves_tools_without_parity_mode(tmp_path, 
         json.dumps({"tokens": {"access_token": "token", "account_id": "acct"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr("codex_shim.passthrough.settings.DEFAULT_CODEX_AUTH", auth_path)
+    monkeypatch.setattr("codex_shim.providers.chatgpt.handlers.settings.DEFAULT_CODEX_AUTH", auth_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.delenv("CODEX_SHIM_PARITY_MODE", raising=False)
     monkeypatch.setattr(
@@ -440,7 +440,7 @@ def test_prepare_upstream_request_end_to_end(tmp_path, monkeypatch):
         json.dumps({"tokens": {"access_token": "token", "account_id": "acct"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr("codex_shim.passthrough.settings.DEFAULT_CODEX_AUTH", auth_path)
+    monkeypatch.setattr("codex_shim.providers.chatgpt.handlers.settings.DEFAULT_CODEX_AUTH", auth_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     thread_id = "019ea0f1-eeee-ffff-0000-111111111111"
@@ -464,7 +464,7 @@ def test_prepare_upstream_request_preserves_permissions_block(tmp_path, monkeypa
         json.dumps({"tokens": {"access_token": "token", "account_id": "acct"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr("codex_shim.passthrough.settings.DEFAULT_CODEX_AUTH", auth_path)
+    monkeypatch.setattr("codex_shim.providers.chatgpt.handlers.settings.DEFAULT_CODEX_AUTH", auth_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     permissions = "<permissions instructions>\nread-only sandbox\n</permissions instructions>"
@@ -522,7 +522,7 @@ def test_prepare_upstream_request_preserves_reference_model(tmp_path, monkeypatc
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("codex_shim.passthrough.settings.DEFAULT_CODEX_AUTH", auth_path)
+    monkeypatch.setattr("codex_shim.providers.chatgpt.handlers.settings.DEFAULT_CODEX_AUTH", auth_path)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
     monkeypatch.setenv("CODEX_SHIM_PASSTHROUGH_REFERENCE_CAPTURE", str(reference_path))
 
