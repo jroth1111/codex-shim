@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from codex_shim import integration_harness as harness
+from codex_shim.verification import harness
 
 pytestmark = pytest.mark.live
 

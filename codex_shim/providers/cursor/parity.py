@@ -11,7 +11,7 @@ from typing import Any
 from aiohttp import web
 
 from ...sessions import parse_turn_metadata, resolve_thread_and_session_ids, responses_items_from_input
-from ...settings import ShimModel
+from ...settings import RUNTIME_DIR, ShimModel
 
 
 def _truthy(value: Any) -> bool:
@@ -46,7 +46,7 @@ def default_session_store_path() -> Path:
     env = os.environ.get("CODEX_SHIM_CURSOR_SESSION_STORE", "").strip()
     if env:
         return Path(env).expanduser()
-    return Path(__file__).resolve().parents[1] / ".codex-shim" / "cursor_thread_sessions.sqlite"
+    return RUNTIME_DIR / "cursor_thread_sessions.sqlite"
 
 
 def extract_desktop_thread_id(request: web.Request | None, body: dict[str, Any]) -> str | None:

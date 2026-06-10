@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 from typing import Any
 
-CAPTURE_CONFIG_PATH = Path(__file__).resolve().parents[1] / ".codex-shim" / "upstream_capture.json"
+from ..settings import RUNTIME_DIR
+
+CAPTURE_CONFIG_PATH = RUNTIME_DIR / "upstream_capture.json"
 
 
 def _truthy(value: Any) -> bool:

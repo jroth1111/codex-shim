@@ -8,8 +8,8 @@ from codex_shim.desktop_validate import (
     assert_local_shell_action,
     assert_web_search_action,
 )
-from codex_shim.probe import validate_compact_response
 from codex_shim.translate import function_call_to_native_item, responses_to_chat, validate_responses_input
+from codex_shim.verification.probe import validate_compact_response
 
 FIXTURES = Path(__file__).parent / "fixtures" / "desktop"
 

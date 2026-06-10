@@ -5,9 +5,13 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
-from . import integration_harness as harness
-from .settings import DEFAULT_SETTINGS, ModelSettings, chatgpt_passthrough_available
+from ..settings import DEFAULT_SETTINGS, PROJECT_ROOT, ModelSettings, chatgpt_passthrough_available
+from . import harness
+
+if TYPE_CHECKING:
+    from ..wire import StreamSink
 
 CompactProbeError = harness.CompactProbeError
 TIER_A_PROBE_INSTRUCTIONS = harness.TIER_A_PROBE_INSTRUCTIONS
@@ -76,7 +80,7 @@ def _fixture_dir() -> Path:
 
 def probe_fidelity() -> int:
     """Offline translation fidelity checks (no daemon required)."""
-    from .translate import responses_to_chat, tool_call_to_response_item, validate_responses_input
+    from ..translate import responses_to_chat, tool_call_to_response_item, validate_responses_input
 
     fixture_dir = _fixture_dir()
     tool_payload = json.loads((fixture_dir / "tool_heavy_turn.json").read_text())
@@ -113,7 +117,7 @@ def probe_fidelity() -> int:
     action = web_item.get("action")
     if not isinstance(action, dict) or action.get("type") != "search":
         raise CompactProbeError("Fidelity probe web_search: action.type must be 'search'.")
-    from .desktop_validate import assert_image_generation_action, assert_local_shell_action, assert_web_search_action
+    from ..desktop_validate import assert_image_generation_action, assert_local_shell_action, assert_web_search_action
 
     assert_web_search_action(action)
     shell_item = tool_call_to_response_item(
@@ -345,7 +349,7 @@ class MatrixStepResult:
 
 
 def _matrix_offline_reasoning_tool_turn() -> MatrixStepResult:
-    from .translate import responses_to_chat
+    from ..translate import responses_to_chat
 
     input_items = [
         {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "First"}]},
@@ -375,9 +379,9 @@ def _matrix_offline_reasoning_tool_turn() -> MatrixStepResult:
 
 
 def _matrix_offline_mcp_namespace() -> MatrixStepResult:
-    from .translate import responses_to_chat
+    from ..translate import responses_to_chat
 
-    fixture_path = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "desktop" / "mcp_namespace_tools_turn.json"
+    fixture_path = PROJECT_ROOT / "tests" / "fixtures" / "desktop" / "mcp_namespace_tools_turn.json"
     try:
         payload = json.loads(fixture_path.read_text())
         out = responses_to_chat(
@@ -393,7 +397,7 @@ def _matrix_offline_mcp_namespace() -> MatrixStepResult:
 
 
 def _matrix_offline_ws_after_tool() -> MatrixStepResult:
-    from .translate import ResponsesStreamState
+    from ..translate import ResponsesStreamState
 
     class _Sink:
         def __init__(self):
@@ -403,7 +407,8 @@ def _matrix_offline_ws_after_tool() -> MatrixStepResult:
             self._chunks.append(data)
 
     async def _run() -> MatrixStepResult:
-        sink = _Sink()
+        # Duck-typed sink double: the stream state only calls .write().
+        sink = cast("StreamSink", _Sink())
         state = ResponsesStreamState("probe-model")
         await state.start(sink)
         await state.write_chat_delta(
@@ -435,7 +440,7 @@ def _matrix_offline_ws_after_tool() -> MatrixStepResult:
         if output_types != ["function_call"]:
             return MatrixStepResult("ws_after_tool", "fail", f"unexpected output types: {output_types}")
 
-        sink2 = _Sink()
+        sink2 = cast("StreamSink", _Sink())
         state2 = ResponsesStreamState("probe-model")
         await state2.start(sink2)
         await state2.write_chat_delta(sink2, {"choices": [{"delta": {"content": "after tool"}}]})
@@ -466,7 +471,7 @@ def probe_one_turn(settings_path: Path, port: int, slug: str | None = None) -> i
 
 
 def _matrix_offline_helper_policy() -> MatrixStepResult:
-    from .routing.helper_models import apply_helper_model_policy, is_helper_model_slug
+    from ..routing.helper_models import apply_helper_model_policy, is_helper_model_slug
 
     if not is_helper_model_slug("codex-auto-review"):
         return MatrixStepResult("helper_slug_policy", "fail", "helper slug detector failed")

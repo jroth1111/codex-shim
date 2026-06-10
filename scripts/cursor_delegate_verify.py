@@ -17,8 +17,8 @@ def main() -> int:
     parser.add_argument("--cwd", help="Optional workspace path to send in metadata/headers")
     args = parser.parse_args()
 
-    from codex_shim import integration_harness as harness
-    from codex_shim.probe import CompactProbeError, probe_delegate
+    from codex_shim.verification import harness
+    from codex_shim.verification.probe import CompactProbeError, probe_delegate
 
     route = harness.resolve_byok_slug(args.settings, args.slug)
     if not (route.is_cursor_cli or route.is_cursor_agent or route.is_cursor_acp):

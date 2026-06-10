@@ -10,6 +10,12 @@ from typing import Any
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
+# Repo root and the gitignored runtime dir. Single home: every module that
+# anchors paths at the repo root must use these, not its own parents[] math
+# (which silently breaks when files move between package levels).
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_DIR = PROJECT_ROOT / ".codex-shim"
+
 DEFAULT_SETTINGS = Path.home() / ".codex-shim" / "models.json"
 DEFAULT_CODEX_AUTH = Path.home() / ".codex" / "auth.json"
 DEFAULT_HOST = "127.0.0.1"

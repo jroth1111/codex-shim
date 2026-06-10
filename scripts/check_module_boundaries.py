@@ -51,6 +51,7 @@ MODULES = frozenset(
         "persistence",
         "translate",
         "clientconfig",
+        "verification",
     }
 )
 
@@ -82,17 +83,14 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/gateway/responses.py', 'deep:routing.helper_models'),
         ('codex_shim/gateway/responses.py', 'deep:translate.tool_validate'),
         ('codex_shim/gateway/responses.py', 'server'),
-        ('codex_shim/integration_harness.py', 'UNASSIGNED'),
         ('codex_shim/migrate.py', 'UNASSIGNED'),
-        ('codex_shim/probe.py', 'UNASSIGNED'),
-        ('codex_shim/probe.py', 'deep:routing.helper_models'),
         ('codex_shim/providers/chatgpt/handlers.py', 'server'),
         ('codex_shim/providers/cursor/cli.py', 'cli'),
         ('codex_shim/providers/cursor/passthrough_handlers.py', 'server'),
         ('codex_shim/server.py', 'deep:providers.cursor_agent'),
         ('codex_shim/settings.py', 'providers'),
         ('codex_shim/settings.py', 'routing'),
-        ('codex_shim/smoke.py', 'UNASSIGNED'),
+        ('codex_shim/verification/probe.py', 'deep:routing.helper_models'),
         ('codex_shim/workers.py', 'deep:persistence.job_queue'),
     }
 )

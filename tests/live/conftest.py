@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from codex_shim import integration_harness as harness
 from codex_shim.settings import DEFAULT_SETTINGS, chatgpt_passthrough_available
+from codex_shim.verification import harness
 
 pytestmark = pytest.mark.live
 

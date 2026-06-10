@@ -816,7 +816,7 @@ def doctor_catalog(settings_path: Path) -> int:
 
 
 def probe_fidelity_route() -> int:
-    from .probe import CompactProbeError, probe_fidelity
+    from .verification import CompactProbeError, probe_fidelity
 
     try:
         return probe_fidelity()
@@ -826,7 +826,7 @@ def probe_fidelity_route() -> int:
 
 
 def probe_history_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_history
+    from .verification import CompactProbeError, probe_history
 
     try:
         return probe_history(Path(settings_path).expanduser(), port, slug)
@@ -842,7 +842,7 @@ def probe_history_route(settings_path: Path, port: int, slug: str | None) -> int
 
 
 def probe_streaming_history_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_streaming_history
+    from .verification import CompactProbeError, probe_streaming_history
 
     try:
         return probe_streaming_history(Path(settings_path).expanduser(), port, slug)
@@ -858,7 +858,7 @@ def probe_streaming_history_route(settings_path: Path, port: int, slug: str | No
 
 
 def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_ws_streaming
+    from .verification import CompactProbeError, probe_ws_streaming
 
     try:
         return probe_ws_streaming(Path(settings_path).expanduser(), port, slug)
@@ -874,7 +874,7 @@ def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -
 
 
 def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_tools
+    from .verification import CompactProbeError, probe_tools
 
     try:
         return probe_tools(Path(settings_path).expanduser(), port, slug)
@@ -884,7 +884,7 @@ def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
 
 
 def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_delegate
+    from .verification import CompactProbeError, probe_delegate
 
     try:
         return probe_delegate(Path(settings_path).expanduser(), port, slug)
@@ -900,7 +900,7 @@ def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> in
 
 
 def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: bool) -> int:
-    from .probe import CompactProbeError, probe_all
+    from .verification import CompactProbeError, probe_all
 
     try:
         return probe_all(Path(settings_path).expanduser(), port, slug, live=live)
@@ -916,7 +916,7 @@ def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: b
 
 
 def probe_passthrough_route(port: int, *, live: bool) -> int:
-    from .probe import CompactProbeError, probe_passthrough
+    from .verification import CompactProbeError, probe_passthrough
 
     try:
         return probe_passthrough(port, live=live)
@@ -926,7 +926,7 @@ def probe_passthrough_route(port: int, *, live: bool) -> int:
 
 
 def probe_passthrough_compact_route(port: int, *, live: bool) -> int:
-    from .probe import CompactProbeError, probe_passthrough_compact
+    from .verification import CompactProbeError, probe_passthrough_compact
 
     try:
         return probe_passthrough_compact(port, live=live)
@@ -936,7 +936,7 @@ def probe_passthrough_compact_route(port: int, *, live: bool) -> int:
 
 
 def probe_live_matrix_route(settings_path: Path, port: int) -> int:
-    from .probe import CompactProbeError, probe_live_matrix
+    from .verification import CompactProbeError, probe_live_matrix
 
     try:
         return probe_live_matrix(Path(settings_path).expanduser(), port)
@@ -953,7 +953,7 @@ def probe_matrix_route(
     live: bool,
     as_json: bool,
 ) -> int:
-    from .probe import CompactProbeError, probe_matrix
+    from .verification import CompactProbeError, probe_matrix
 
     try:
         return probe_matrix(Path(settings_path).expanduser(), port, slug, live=live, as_json=as_json)
@@ -1366,8 +1366,7 @@ def doctor_models(settings_path: Path) -> int:
 
 
 def test_provider_route(settings_path: Path, target: str) -> int:
-    from .probe import CompactProbeError, probe_fidelity
-    from .smoke import resolve_smoke_target, run_provider_smoke
+    from .verification import CompactProbeError, probe_fidelity, resolve_smoke_target, run_provider_smoke
 
     try:
         probe_fidelity()
@@ -1406,7 +1405,7 @@ def test_provider_route(settings_path: Path, target: str) -> int:
 
 
 def probe_compact_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .probe import CompactProbeError, probe_compact
+    from .verification import CompactProbeError, probe_compact
 
     try:
         return probe_compact(Path(settings_path).expanduser(), port, slug)

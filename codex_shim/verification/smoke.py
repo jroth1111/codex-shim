@@ -8,10 +8,10 @@ from typing import Any
 
 from aiohttp import ClientConnectorError, ClientResponseError, ClientSession, ClientTimeout
 
-from . import settings as settings_module
-from .providers import CursorAcpError, CursorCliError, run_cursor_acp, run_cursor_cli
-from .settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_model
-from .translate import responses_to_anthropic, responses_to_chat
+from .. import settings as settings_module
+from ..providers import CursorAcpError, CursorCliError, run_cursor_acp, run_cursor_cli
+from ..settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_model
+from ..translate import responses_to_anthropic, responses_to_chat
 
 
 @dataclass(frozen=True)
@@ -106,7 +106,7 @@ async def run_provider_smoke(route: ShimModel) -> SmokeResult:
 
 
 async def _smoke_openai_chat(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .providers import openai_headers as _openai_headers
+    from ..providers import openai_headers as _openai_headers
 
     forwarded = responses_to_chat(body, route.model, route.provider, thinking_behavior=route.thinking_behavior)
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:
@@ -120,8 +120,8 @@ async def _smoke_openai_chat(route: ShimModel, body: dict[str, Any]) -> SmokeRes
 
 
 async def _smoke_anthropic(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .providers import anthropic_headers as _anthropic_headers
-    from .providers import join_url as _join_url
+    from ..providers import anthropic_headers as _anthropic_headers
+    from ..providers import join_url as _join_url
 
     forwarded = responses_to_anthropic(body, route.model, route.max_output_tokens)
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:
@@ -134,7 +134,7 @@ async def _smoke_anthropic(route: ShimModel, body: dict[str, Any]) -> SmokeResul
 
 
 async def _smoke_chatgpt(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .providers import metadata_as_forward_headers as _metadata_as_forward_headers
+    from ..providers import metadata_as_forward_headers as _metadata_as_forward_headers
 
     auth = json.loads(settings_module.DEFAULT_CODEX_AUTH.expanduser().read_text())
     tokens = auth.get("tokens") or {}

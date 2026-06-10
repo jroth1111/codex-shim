@@ -14,6 +14,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+from ..settings import RUNTIME_DIR
+
 DEFAULT_MAX_ITEMS = 256
 
 
@@ -21,7 +23,7 @@ def default_store_path() -> Path:
     env = os.environ.get("CODEX_SHIM_RESPONSE_STORE", "").strip()
     if env:
         return Path(env).expanduser()
-    return Path(__file__).resolve().parents[1] / ".codex-shim" / "response_store.sqlite"
+    return RUNTIME_DIR / "response_store.sqlite"
 
 
 def default_max_items() -> int:

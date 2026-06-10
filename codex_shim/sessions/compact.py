@@ -4,11 +4,11 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from aiohttp import web
 
+from ..settings import PROJECT_ROOT as _PROJECT_ROOT
 from ..wire import StreamSink
 from .compact_frontier import (
     CompactFrontier,
@@ -17,7 +17,7 @@ from .compact_frontier import (
     preserves_last_user_intent,
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = _PROJECT_ROOT
 POSTCOMPACT_CAPTURE_PATH = PROJECT_ROOT / ".codex-shim" / "postcompact-captures.jsonl"
 SUMMARY_EXCERPT_LIMIT = 1200
 

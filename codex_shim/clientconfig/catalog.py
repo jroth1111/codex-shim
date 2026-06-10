@@ -15,8 +15,9 @@ from ..settings import (
     default_model_slug,
     websockets_enabled,
 )
+from ..settings import PROJECT_ROOT as _PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = _PROJECT_ROOT
 CATALOG_PATH = PROJECT_ROOT / ".codex-shim" / "custom_model_catalog.json"
 
 

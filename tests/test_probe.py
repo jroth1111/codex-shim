@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from codex_shim.probe import (
+from codex_shim.verification.probe import (
     CompactProbeError,
     validate_compact_response,
     validate_passthrough_compact_response,
@@ -68,13 +68,13 @@ def test_validate_compact_response_rejects_missing_trigger_when_expected():
 
 
 def test_probe_fidelity_offline():
-    from codex_shim.probe import probe_fidelity
+    from codex_shim.verification.probe import probe_fidelity
 
     _check(probe_fidelity() == 0)
 
 
 def test_probe_all_offline_without_daemon(tmp_path):
-    from codex_shim.probe import probe_all
+    from codex_shim.verification.probe import probe_all
 
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
@@ -82,29 +82,29 @@ def test_probe_all_offline_without_daemon(tmp_path):
 
 
 def test_probe_passthrough_skips_without_auth(monkeypatch):
-    from codex_shim.probe import probe_passthrough
+    from codex_shim.verification.probe import probe_passthrough
 
-    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: False)
+    monkeypatch.setattr("codex_shim.verification.probe.chatgpt_passthrough_available", lambda: False)
     _check(probe_passthrough(8765, live=True) == 0)
 
 
 def test_probe_passthrough_skips_without_live_flag(monkeypatch):
-    from codex_shim.probe import probe_passthrough
+    from codex_shim.verification.probe import probe_passthrough
 
-    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: True)
+    monkeypatch.setattr("codex_shim.verification.probe.chatgpt_passthrough_available", lambda: True)
     monkeypatch.delenv("CODEX_SHIM_PROBE_PASSTHROUGH", raising=False)
     _check(probe_passthrough(8765, live=False) == 0)
 
 
 def test_probe_passthrough_compact_skips_without_auth(monkeypatch):
-    from codex_shim.probe import probe_passthrough_compact
+    from codex_shim.verification.probe import probe_passthrough_compact
 
-    monkeypatch.setattr("codex_shim.probe.chatgpt_passthrough_available", lambda: False)
+    monkeypatch.setattr("codex_shim.verification.probe.chatgpt_passthrough_available", lambda: False)
     _check(probe_passthrough_compact(8765, live=True) == 0)
 
 
 def test_probe_ws_streaming_skips_when_daemon_unreachable(tmp_path):
-    from codex_shim.probe import CompactProbeError, probe_ws_streaming
+    from codex_shim.verification.probe import CompactProbeError, probe_ws_streaming
 
     settings = tmp_path / "models.json"
     settings.write_text(
@@ -156,8 +156,8 @@ def test_validate_compact_response_rejects_message_shape():
 
 
 def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
-    from codex_shim.probe import probe_tools
     from codex_shim.settings import ShimModel
+    from codex_shim.verification.probe import probe_tools
 
     route = ShimModel(
         slug="openai-test",
@@ -167,7 +167,7 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
         base_url="http://127.0.0.1:9/v1",
         transport="openai_chat",
     )
-    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    monkeypatch.setattr("codex_shim.verification.probe.harness.resolve_byok_slug", lambda _p, _s: route)
     captured: dict[str, int] = {}
 
     def _fake_post_json(*_args, **kwargs):
@@ -184,7 +184,7 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
         }
 
     monkeypatch.setattr(
-        "codex_shim.probe.harness.post_json",
+        "codex_shim.verification.probe.harness.post_json",
         _fake_post_json,
     )
     _check(probe_tools(tmp_path / "settings.json", 8765) == 0)
@@ -192,7 +192,7 @@ def test_probe_tools_checks_metadata_and_tool_items(monkeypatch, tmp_path):
 
 
 def test_probe_matrix_offline_passes_without_daemon(tmp_path):
-    from codex_shim.probe import probe_matrix
+    from codex_shim.verification.probe import probe_matrix
 
     settings = tmp_path / "models.json"
     settings.write_text(
@@ -202,8 +202,8 @@ def test_probe_matrix_offline_passes_without_daemon(tmp_path):
 
 
 def test_probe_delegate_checks_message_only_output(monkeypatch, tmp_path):
-    from codex_shim.probe import probe_delegate
     from codex_shim.settings import ShimModel
+    from codex_shim.verification.probe import probe_delegate
 
     route = ShimModel(
         slug="cursor-auto",
@@ -213,7 +213,7 @@ def test_probe_delegate_checks_message_only_output(monkeypatch, tmp_path):
         base_url="",
         transport="cursor_cli",
     )
-    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    monkeypatch.setattr("codex_shim.verification.probe.harness.resolve_byok_slug", lambda _p, _s: route)
     captured: dict[str, int] = {}
 
     def _fake_post_fixture_turn(*_args, **kwargs):
@@ -237,7 +237,7 @@ def test_probe_delegate_checks_message_only_output(monkeypatch, tmp_path):
         }
 
     monkeypatch.setattr(
-        "codex_shim.probe.harness.post_fixture_turn",
+        "codex_shim.verification.probe.harness.post_fixture_turn",
         _fake_post_fixture_turn,
     )
     _check(probe_delegate(tmp_path / "settings.json", 8765) == 0)
@@ -245,8 +245,8 @@ def test_probe_delegate_checks_message_only_output(monkeypatch, tmp_path):
 
 
 def test_probe_compact_reports_summary_status(monkeypatch, tmp_path):
-    from codex_shim.probe import probe_compact
     from codex_shim.settings import ShimModel
+    from codex_shim.verification.probe import probe_compact
 
     route = ShimModel(
         slug="openai-test",
@@ -256,9 +256,9 @@ def test_probe_compact_reports_summary_status(monkeypatch, tmp_path):
         base_url="http://127.0.0.1:9/v1",
         transport="openai_chat",
     )
-    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    monkeypatch.setattr("codex_shim.verification.probe.harness.resolve_byok_slug", lambda _p, _s: route)
     monkeypatch.setattr(
-        "codex_shim.probe.harness.run_byok_compact",
+        "codex_shim.verification.probe.harness.run_byok_compact",
         lambda _port, _route: (
             "context_compaction",
             "[shim-compact-warning: projection_unverified]\nLAST_USER_INTENT: ship",
@@ -277,8 +277,8 @@ def test_probe_compact_reports_summary_status(monkeypatch, tmp_path):
 
 
 def test_probe_tools_rejects_cursor_delegate_routes(monkeypatch, tmp_path):
-    from codex_shim.probe import probe_tools
     from codex_shim.settings import ShimModel
+    from codex_shim.verification.probe import probe_tools
 
     route = ShimModel(
         slug="cursor-auto",
@@ -288,6 +288,6 @@ def test_probe_tools_rejects_cursor_delegate_routes(monkeypatch, tmp_path):
         base_url="",
         transport="cursor_cli",
     )
-    monkeypatch.setattr("codex_shim.probe.harness.resolve_byok_slug", lambda _p, _s: route)
+    monkeypatch.setattr("codex_shim.verification.probe.harness.resolve_byok_slug", lambda _p, _s: route)
     with pytest.raises(CompactProbeError, match="probe delegate"):
         probe_tools(tmp_path / "settings.json", 8765)

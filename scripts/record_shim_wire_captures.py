@@ -17,7 +17,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from codex_shim.desktop_decompiled import desktop_decompiled_root  # noqa: E402
-from codex_shim.integration_harness import (  # noqa: E402
+from codex_shim.settings import (  # noqa: E402
+    CHATGPT_MODEL_SLUG,
+    ModelSettings,
+    chatgpt_passthrough_available,
+)
+from codex_shim.verification.harness import (  # noqa: E402
     compact_url,
     default_port,
     load_desktop_fixture,
@@ -28,11 +33,6 @@ from codex_shim.integration_harness import (  # noqa: E402
     tier_a_compact_body,
     tier_a_passthrough_body,
     tier_a_tool_heavy_body,
-)
-from codex_shim.settings import (  # noqa: E402
-    CHATGPT_MODEL_SLUG,
-    ModelSettings,
-    chatgpt_passthrough_available,
 )
 
 DEFAULT_SCENARIOS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")

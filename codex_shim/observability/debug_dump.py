@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-DEBUG_DIR = Path(__file__).resolve().parents[1] / ".codex-shim"
+from ..settings import RUNTIME_DIR
+
+DEBUG_DIR = RUNTIME_DIR
 
 SENSITIVE_KEYS = {
     "content",

@@ -20,15 +20,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from codex_shim.integration_harness import (  # noqa: E402
+from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request  # noqa: E402
+from codex_shim.settings import CHATGPT_MODEL_SLUG, DEFAULT_CODEX_AUTH  # noqa: E402
+from codex_shim.verification.harness import (  # noqa: E402
     PROBE_OUTPUT_TEXT_KEY,
     default_port,
     post_json_streaming,
     responses_url,
     tier_a_passthrough_body,
 )
-from codex_shim.providers.chatgpt.handlers import _prepare_upstream_request  # noqa: E402
-from codex_shim.settings import CHATGPT_MODEL_SLUG, DEFAULT_CODEX_AUTH  # noqa: E402
 
 CODEX_REPO = Path("/tmp/codex")
 UPSTREAM_RESPONSES = "https://chatgpt.com/backend-api/codex/responses"

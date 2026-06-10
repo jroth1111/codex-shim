@@ -7,7 +7,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim import cli
-from codex_shim.smoke import resolve_smoke_target, run_provider_smoke
+from codex_shim.verification.smoke import resolve_smoke_target, run_provider_smoke
 
 
 async def test_provider_smoke_openai_compatible_success(tmp_path):

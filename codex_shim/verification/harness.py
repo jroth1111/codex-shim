@@ -9,8 +9,15 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .providers import DEFAULT_CURSOR_TIMEOUT
-from .settings import CHATGPT_MODEL_SLUG, DEFAULT_SETTINGS, ModelSettings, ShimModel, chatgpt_passthrough_available
+from ..providers import DEFAULT_CURSOR_TIMEOUT
+from ..settings import (
+    CHATGPT_MODEL_SLUG,
+    DEFAULT_SETTINGS,
+    PROJECT_ROOT,
+    ModelSettings,
+    ShimModel,
+    chatgpt_passthrough_available,
+)
 
 
 class IntegrationHarnessError(RuntimeError):
@@ -31,7 +38,7 @@ LIVE_SLUG_ENV = {
     "cursor": "CODEX_SHIM_LIVE_SLUG_CURSOR",
 }
 
-DESKTOP_FIXTURE_DIR = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "desktop"
+DESKTOP_FIXTURE_DIR = PROJECT_ROOT / "tests" / "fixtures" / "desktop"
 DESKTOP_INPUT_FIXTURES = (
     "tool_heavy_turn.json",
     "compaction_turn.json",
@@ -47,7 +54,7 @@ def default_port() -> int:
     raw = os.environ.get("CODEX_SHIM_PORT", "").strip()
     if raw.isdigit():
         return int(raw)
-    from .settings import DEFAULT_PORT
+    from ..settings import DEFAULT_PORT
 
     return DEFAULT_PORT
 
@@ -872,7 +879,7 @@ def run_live_matrix(settings_path: Path, port: int) -> list[LiveMatrixResult]:
 
 
 def tier_a_route() -> ShimModel:
-    from .settings import chatgpt_passthrough_model
+    from ..settings import chatgpt_passthrough_model
 
     route = chatgpt_passthrough_model()
     if route is None:

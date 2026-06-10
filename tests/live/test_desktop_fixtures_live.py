@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from codex_shim import integration_harness as harness
 from codex_shim.desktop_validate import (
     assert_image_generation_action,
     assert_local_shell_action,
@@ -12,6 +11,7 @@ from codex_shim.desktop_validate import (
 )
 from codex_shim.settings import CHATGPT_MODEL_SLUG
 from codex_shim.translate import validate_responses_input
+from codex_shim.verification import harness
 
 pytestmark = pytest.mark.live
 
