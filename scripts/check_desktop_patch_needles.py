@@ -8,8 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from codex_shim.cli import _inspect_codex_desktop_bundles, _inspection_has_missing_patch  # noqa: E402
-from codex_shim.desktop_decompiled import app_asar_extracted_dir, missing_message, require_available  # noqa: E402
 from codex_shim.clientconfig.patch_specs import INSPECTION_SPECS_BY_VERSION  # noqa: E402
+from codex_shim.desktop_decompiled import app_asar_extracted_dir, missing_message, require_available  # noqa: E402
 
 
 def main() -> int:

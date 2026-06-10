@@ -50,6 +50,7 @@ __all__ = [
     "REDACTED_VALUE",
     "SIDEBAR_RECENT_THREADS_NEEDLE",
     "SIDEBAR_RECENT_THREADS_REPLACEMENT",
+    "_toml_escape",
     "build_merged_catalog",
     "catalog_entry",
     "codex_config_overrides",
