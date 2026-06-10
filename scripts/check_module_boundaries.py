@@ -1,82 +1,280 @@
 #!/usr/bin/env python3
+"""Enforce modular-monolith boundaries across the whole codex_shim package.
+
+This script is the registry of the architecture during the migration:
+
+- MODULES: sealed-or-sealing domain packages. Files inside one may import
+  their own module (any depth), other modules' top-level surface, PLATFORM,
+  and stdlib/third-party. Anything else is debt.
+- PLATFORM: leaf modules importable by everyone, allowed to import only
+  PLATFORM.
+- ENTRYPOINTS: composition roots (cli, server, workers, package __init__).
+  Exempt from edge rules except the deep-import rule.
+- Everything else flat under codex_shim/ is LEGACY: its existence is debt
+  (an UNASSIGNED entry), and edge rules don't apply to it beyond the
+  deep-import rule.
+
+Rules (each violation must appear in LEGACY_DEBT or the check fails):
+  R1 deep-import: no file may import the internals of a module dir it does
+     not belong to (codex_shim.routing.service); import the module surface
+     (codex_shim.routing) instead.
+  R2 module-edges: module files may not import LEGACY or ENTRYPOINT targets.
+  R3 platform-edges: PLATFORM files may not import non-PLATFORM codex_shim
+     targets.
+  R4 legacy-files: every LEGACY file is one ("path", "UNASSIGNED") entry.
+
+LEGACY_DEBT is a ratchet: the check fails if a real violation is missing
+from the list (regression) OR if a listed entry no longer matches reality
+(stale entry masking future violations). Migration phases shrink the list;
+nothing may add to it silently. Run with --emit-debt to print the current
+violation set as a Python literal when updating the list in a phase commit.
+"""
 from __future__ import annotations
 
+import ast
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PKG_ROOT = REPO_ROOT / "codex_shim"
+PKG_NAME = "codex_shim"
 
-MODULES = {
-    "gateway",
-    "routing",
-    "providers",
-    "tools",
-    "sessions",
-    "governance",
-    "observability",
-    "persistence",
-}
+MODULES = frozenset(
+    {
+        "gateway",
+        "routing",
+        "providers",
+        "tools",
+        "sessions",
+        "governance",
+        "observability",
+        "persistence",
+        "translate",
+    }
+)
+
+PLATFORM = frozenset(
+    {
+        "settings",
+        "errors",
+        "capabilities",
+        "desktop_contract",
+        "desktop_app_server_contract",
+        "desktop_validate",
+        "desktop_decompiled",
+    }
+)
+
+ENTRYPOINTS = frozenset({"cli", "server", "workers", "__init__"})
+
+# (relative file path, imported codex_shim target or "UNASSIGNED").
+# Ratchet: entries may only be removed, never added. Each migration phase's
+# definition-of-done deletes the entries it resolves.
+LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
+    {
+        ('codex_shim/access_log.py', 'UNASSIGNED'),
+        ('codex_shim/anthropic_messages_gateway.py', 'UNASSIGNED'),
+        ('codex_shim/auth_tokens.py', 'UNASSIGNED'),
+        ('codex_shim/auto_router_service.py', 'UNASSIGNED'),
+        ('codex_shim/catalog.py', 'UNASSIGNED'),
+        ('codex_shim/codex_config.py', 'UNASSIGNED'),
+        ('codex_shim/compact.py', 'UNASSIGNED'),
+        ('codex_shim/compact_frontier.py', 'UNASSIGNED'),
+        ('codex_shim/config_redaction.py', 'UNASSIGNED'),
+        ('codex_shim/cursor_acp.py', 'UNASSIGNED'),
+        ('codex_shim/cursor_cli.py', 'UNASSIGNED'),
+        ('codex_shim/cursor_parity.py', 'UNASSIGNED'),
+        ('codex_shim/cursor_passthrough.py', 'UNASSIGNED'),
+        ('codex_shim/cursor_passthrough_handlers.py', 'UNASSIGNED'),
+        ('codex_shim/debug_dump.py', 'UNASSIGNED'),
+        ('codex_shim/errors.py', 'cursor_acp'),
+        ('codex_shim/errors.py', 'translate'),
+        ('codex_shim/gateway/handlers.py', 'anthropic_messages_gateway'),
+        ('codex_shim/gateway/handlers.py', 'responses_ws'),
+        ('codex_shim/gateway/handlers.py', 'server'),
+        ('codex_shim/hostguard.py', 'UNASSIGNED'),
+        ('codex_shim/image_gate.py', 'UNASSIGNED'),
+        ('codex_shim/integration_harness.py', 'UNASSIGNED'),
+        ('codex_shim/migrate.py', 'UNASSIGNED'),
+        ('codex_shim/opencode_go.py', 'UNASSIGNED'),
+        ('codex_shim/passthrough.py', 'UNASSIGNED'),
+        ('codex_shim/passthrough_prepare.py', 'UNASSIGNED'),
+        ('codex_shim/passthrough_upstream.py', 'UNASSIGNED'),
+        ('codex_shim/patch_specs.py', 'UNASSIGNED'),
+        ('codex_shim/picker.py', 'UNASSIGNED'),
+        ('codex_shim/probe.py', 'UNASSIGNED'),
+        ('codex_shim/probe.py', 'deep:routing.helper_models'),
+        ('codex_shim/providers/cursor_agent/decode.py', 'streaming'),
+        ('codex_shim/providers/cursor_agent/envelope.py', 'responses_request'),
+        ('codex_shim/providers/cursor_agent/transport.py', 'cursor_acp'),
+        ('codex_shim/providers/dispatcher.py', 'responses_request'),
+        ('codex_shim/providers/dispatcher.py', 'responses_ws'),
+        ('codex_shim/response_store.py', 'UNASSIGNED'),
+        ('codex_shim/responses_request.py', 'UNASSIGNED'),
+        ('codex_shim/responses_ws.py', 'UNASSIGNED'),
+        ('codex_shim/router.py', 'UNASSIGNED'),
+        ('codex_shim/routing/inference_context.py', 'responses_request'),
+        ('codex_shim/routing/service.py', 'image_gate'),
+        ('codex_shim/routing/workspace.py', 'passthrough_upstream'),
+        ('codex_shim/routing/workspace.py', 'responses_request'),
+        ('codex_shim/server.py', 'deep:providers.cursor_agent'),
+        ('codex_shim/server.py', 'deep:providers.cursor_agent.decode'),
+        ('codex_shim/server.py', 'deep:providers.cursor_agent.live_http1'),
+        ('codex_shim/server.py', 'deep:providers.cursor_agent.live_run'),
+        ('codex_shim/server.py', 'deep:routing.helper_models'),
+        ('codex_shim/server.py', 'deep:routing.workspace'),
+        ('codex_shim/server.py', 'deep:translate.common'),
+        ('codex_shim/server.py', 'deep:translate.tool_validate'),
+        ('codex_shim/sessions/service.py', 'compact'),
+        ('codex_shim/sessions/service.py', 'compact_frontier'),
+        ('codex_shim/sessions/service.py', 'cursor_acp'),
+        ('codex_shim/sessions/service.py', 'response_store'),
+        ('codex_shim/sessions/service.py', 'responses_request'),
+        ('codex_shim/settings.py', 'cursor_passthrough'),
+        ('codex_shim/settings.py', 'router'),
+        ('codex_shim/settings.py', 'subscription_catalog'),
+        ('codex_shim/smoke.py', 'UNASSIGNED'),
+        ('codex_shim/streaming.py', 'UNASSIGNED'),
+        ('codex_shim/subscription_catalog.py', 'UNASSIGNED'),
+        ('codex_shim/thinking.py', 'UNASSIGNED'),
+        ('codex_shim/tools/policy.py', 'image_gate'),
+        ('codex_shim/translate/__init__.py', 'thinking'),
+        ('codex_shim/translate/anthropic.py', 'thinking'),
+        ('codex_shim/translate/input.py', 'thinking'),
+        ('codex_shim/translate/output.py', 'thinking'),
+        ('codex_shim/upstream_capture.py', 'UNASSIGNED'),
+        ('codex_shim/workers.py', 'deep:persistence.job_queue'),
+    }
+)
 
 
-def _iter_python_files() -> list[Path]:
-    files: list[Path] = []
-    for module in MODULES:
-        module_dir = PKG_ROOT / module
-        if not module_dir.exists():
-            continue
-        files.extend(sorted(module_dir.rglob("*.py")))
-    return files
+def _classify(path: Path) -> tuple[str, str]:
+    """Return (kind, name) where kind is module|platform|entrypoint|legacy."""
+    rel = path.relative_to(PKG_ROOT)
+    top = rel.parts[0]
+    if len(rel.parts) > 1:
+        return ("module", top) if top in MODULES else ("legacy", top)
+    stem = path.stem
+    if stem in MODULES:
+        return ("module", stem)
+    if stem in PLATFORM:
+        return ("platform", stem)
+    if stem in ENTRYPOINTS:
+        return ("entrypoint", stem)
+    return ("legacy", stem)
 
 
-def _module_name(path: Path) -> str:
-    return path.relative_to(PKG_ROOT).parts[0]
+def _import_targets(path: Path, tree: ast.AST) -> list[tuple[int, str]]:
+    """Yield (lineno, dotted codex_shim-relative target) for package imports."""
+    rel_parts = path.relative_to(PKG_ROOT).parts
+    targets: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == PKG_NAME or alias.name.startswith(PKG_NAME + "."):
+                    targets.append((node.lineno, alias.name.removeprefix(PKG_NAME).lstrip(".")))
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                if node.module and (node.module == PKG_NAME or node.module.startswith(PKG_NAME + ".")):
+                    targets.append((node.lineno, node.module.removeprefix(PKG_NAME).lstrip(".")))
+                continue
+            # Relative import: resolve against this file's package.
+            package_parts = list(rel_parts[:-1])
+            up = node.level - 1
+            if up > len(package_parts):
+                continue  # escapes the package; not ours to police
+            base = package_parts[: len(package_parts) - up]
+            module_parts = node.module.split(".") if node.module else []
+            targets.append((node.lineno, ".".join(base + module_parts)))
+    return targets
 
 
-def _check_imports(path: Path) -> list[str]:
-    current = _module_name(path)
+def _violations() -> tuple[list[str], set[tuple[str, str]]]:
     errors: list[str] = []
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        stripped = line.strip()
-        # Relative imports: forbid deep imports into other module internals.
-        if stripped.startswith("from .."):
-            target = stripped[len("from ..") :].split()[0]
-            target_module = target.split(".")[0]
-            is_deep_import = "." in target
-            if target_module in MODULES and target_module != current and is_deep_import:
-                errors.append(
-                    f"{path.relative_to(REPO_ROOT)}:{line_no} cross-module deep import to '{target}' is disallowed; import via '..{target_module}'"
-                )
+    found_debt: set[tuple[str, str]] = set()
+
+    for path in sorted(PKG_ROOT.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        rel_str = str(path.relative_to(REPO_ROOT))
+        kind, own = _classify(path)
+
+        if kind == "legacy":
+            found_debt.add((rel_str, "UNASSIGNED"))
+
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError as exc:
+            errors.append(f"{rel_str}: unparseable ({exc})")
             continue
 
-        # Absolute imports: forbid deep imports across codex_shim.<module>.*
-        if stripped.startswith("from codex_shim.") or stripped.startswith("import codex_shim."):
-            # Examples:
-            #   from codex_shim.routing.service import X   (forbidden)
-            #   from codex_shim.routing import X           (allowed)
-            #   import codex_shim.routing.service          (forbidden)
-            parts = stripped.split()
-            if stripped.startswith("from codex_shim."):
-                target = parts[1].removeprefix("codex_shim.")
-            else:
-                target = parts[1].removeprefix("codex_shim.")
-            target_module = target.split(".")[0]
-            is_deep_import = "." in target
-            if target_module in MODULES and target_module != current and is_deep_import:
-                errors.append(
-                    f"{path.relative_to(REPO_ROOT)}:{line_no} cross-module deep import to 'codex_shim.{target}' is disallowed; import via 'codex_shim.{target_module}'"
-                )
-    return errors
+        for lineno, target in _import_targets(path, tree):
+            if not target:
+                continue  # plain "import codex_shim" / "from . import x"
+            head, _, rest = target.partition(".")
+
+            if kind == "module" and head == own:
+                continue  # own module, any depth
+
+            # R1: deep import into someone else's module dir.
+            if head in MODULES and rest:
+                edge = (rel_str, f"deep:{target}")
+                found_debt.add(edge)
+                if edge not in LEGACY_DEBT:
+                    errors.append(
+                        f"{rel_str}:{lineno} deep import into codex_shim.{target}; "
+                        f"import via the codex_shim.{head} surface"
+                    )
+                continue
+
+            if kind == "module":
+                if head in MODULES or head in PLATFORM:
+                    continue
+                edge = (rel_str, head)
+                found_debt.add(edge)
+                if edge not in LEGACY_DEBT:
+                    errors.append(
+                        f"{rel_str}:{lineno} module '{own}' imports non-platform flat "
+                        f"'codex_shim.{head}' (not in LEGACY_DEBT)"
+                    )
+            elif kind == "platform":
+                if head in PLATFORM:
+                    continue
+                edge = (rel_str, head)
+                found_debt.add(edge)
+                if edge not in LEGACY_DEBT:
+                    errors.append(
+                        f"{rel_str}:{lineno} platform module imports non-platform "
+                        f"'codex_shim.{head}' (not in LEGACY_DEBT)"
+                    )
+            # entrypoint/legacy: only R1 applies.
+
+    # Ratchet integrity: every listed entry must still match reality, and every
+    # legacy file must be listed.
+    for rel_str, target in sorted(LEGACY_DEBT - found_debt):
+        errors.append(f"stale LEGACY_DEBT entry ({rel_str!r}, {target!r}); remove it in this commit")
+    for rel_str, target in sorted(found_debt - LEGACY_DEBT):
+        if target == "UNASSIGNED":
+            errors.append(f"{rel_str}: new flat module without a LEGACY_DEBT entry")
+
+    return errors, found_debt
 
 
 def main() -> int:
-    violations: list[str] = []
-    for file_path in _iter_python_files():
-        violations.extend(_check_imports(file_path))
-    if violations:
-        for row in violations:
+    errors, found_debt = _violations()
+    if "--emit-debt" in sys.argv:
+        print("LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(")
+        print("    {")
+        for rel_str, target in sorted(found_debt):
+            print(f"        ({rel_str!r}, {target!r}),")
+        print("    }")
+        print(")")
+        return 0
+    if errors:
+        for row in errors:
             print(row)
         return 1
-    print("module boundary checks passed")
+    print(f"module boundary checks passed ({len(found_debt)} debt entries remaining)")
     return 0
 
 

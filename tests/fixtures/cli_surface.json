@@ -1,0 +1,383 @@
+{
+  "prog": "codex-shim",
+  "options": [
+    "--port",
+    "--settings",
+    "-h/--help"
+  ],
+  "subcommands": {
+    "app": {
+      "options": [
+        "-h/--help",
+        "-m/--model"
+      ],
+      "positionals": [
+        "path"
+      ]
+    },
+    "codex": {
+      "options": [
+        "-h/--help"
+      ],
+      "positionals": [
+        "args"
+      ]
+    },
+    "config": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "export": {
+          "options": [
+            "--include-secrets",
+            "-h/--help"
+          ],
+          "positionals": [
+            "output"
+          ]
+        },
+        "import": {
+          "options": [
+            "-h/--help"
+          ],
+          "positionals": [
+            "source"
+          ]
+        }
+      }
+    },
+    "configure": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "cursor": {
+          "options": [
+            "--command",
+            "--display-name",
+            "--mode",
+            "--model",
+            "--transport",
+            "-h/--help"
+          ]
+        },
+        "nim": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        },
+        "zai": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--coding-plan",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        }
+      }
+    },
+    "disable": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "doctor": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "catalog": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "contract": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "models": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "patch": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "routing": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "setup": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "subscription": {
+          "options": [
+            "-h/--help"
+          ]
+        }
+      }
+    },
+    "enable": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "generate": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "import-vibeproxy": {
+      "options": [
+        "--direct",
+        "--direct-catalog",
+        "--direct-config",
+        "--output",
+        "--provider",
+        "--provider-base-url",
+        "-h/--help"
+      ],
+      "positionals": [
+        "base_url"
+      ]
+    },
+    "install-dock-shortcut": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "list": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "migrate": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "model": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "list": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "use": {
+          "options": [
+            "-h/--help"
+          ],
+          "positionals": [
+            "model_slug"
+          ]
+        }
+      }
+    },
+    "one-shot": {
+      "options": [
+        "--keep-shim-running",
+        "--require-patch",
+        "--skip-patch",
+        "-h/--help",
+        "-m/--model"
+      ],
+      "positionals": [
+        "path"
+      ]
+    },
+    "opencode-go": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "refresh": {
+          "options": [
+            "--api-key-env",
+            "--base-url",
+            "--prefer",
+            "--timeout",
+            "-h/--help"
+          ]
+        }
+      }
+    },
+    "patch-app": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "patch-auto": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "patch-status": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "probe": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "all": {
+          "options": [
+            "--live",
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "compact": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "delegate": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "fidelity": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "history": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "live-matrix": {
+          "options": [
+            "-h/--help"
+          ]
+        },
+        "matrix": {
+          "options": [
+            "--json",
+            "--live",
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "passthrough": {
+          "options": [
+            "--live",
+            "-h/--help"
+          ]
+        },
+        "passthrough-compact": {
+          "options": [
+            "--live",
+            "-h/--help"
+          ]
+        },
+        "streaming-history": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "tools": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        },
+        "ws-streaming": {
+          "options": [
+            "--slug",
+            "-h/--help"
+          ]
+        }
+      }
+    },
+    "repair-config": {
+      "options": [
+        "--path",
+        "-h/--help"
+      ]
+    },
+    "restart": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "restore-app": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "start": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "status": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "stop": {
+      "options": [
+        "-h/--help"
+      ]
+    },
+    "test": {
+      "options": [
+        "-h/--help"
+      ],
+      "positionals": [
+        "target"
+      ]
+    },
+    "worker": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "enqueue": {
+          "options": [
+            "--payload",
+            "-h/--help"
+          ],
+          "positionals": [
+            "job_type"
+          ]
+        },
+        "run": {
+          "options": [
+            "--once",
+            "-h/--help"
+          ]
+        }
+      }
+    }
+  }
+}
