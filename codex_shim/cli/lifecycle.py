@@ -29,6 +29,7 @@ from ..settings import (
     DEFAULT_HOST,
     PROVIDER_NAME,
     default_model_slug,
+    with_loopback_no_proxy,
 )
 
 
@@ -228,15 +229,7 @@ def _set_loopback_no_proxy_env() -> None:
 
 
 def _with_loopback_no_proxy(env: MutableMapping[str, str]) -> MutableMapping[str, str]:
-    loopback = ["127.0.0.1", "localhost", "::1"]
-    for key in ("NO_PROXY", "no_proxy"):
-        values = [part.strip() for part in env.get(key, "").split(",") if part.strip()]
-        lower_values = {value.lower() for value in values}
-        for host in loopback:
-            if host.lower() not in lower_values:
-                values.append(host)
-        env[key] = ",".join(values)
-    return env
+    return with_loopback_no_proxy(env)
 
 
 def _codex_desktop_running() -> bool:

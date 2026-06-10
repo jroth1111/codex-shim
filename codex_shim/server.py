@@ -13,26 +13,21 @@ from .governance import GovernanceAuditSink
 from .observability import ObservabilitySink
 from .persistence import JsonOperationalStore
 from .providers import (
+    CursorAgentTransport,
     CursorThreadSessionStore,
     ProviderDispatcher,
     ProviderRuntime,
-    merge_codex_forward_headers,
-    metadata_as_forward_headers,
-    passthrough_forward_headers,
     post_anthropic,
     post_cursor_acp,
     post_cursor_agent,
     post_cursor_cli,
     post_openai_chat,
-    rewrite_response_model,
-    sanitize_chatgpt_passthrough_body,
 )
 from .providers import anthropic_headers as _anthropic_headers
 from .providers import anthropic_text as _anthropic_text
 from .providers import governance_inference_kwargs as _governance_inference_kwargs
 from .providers import join_url as _join_url
 from .providers import openai_headers as _openai_headers
-from .providers.cursor_agent import CursorAgentTransport
 from .routing import AutoRouterService, refresh_subscription_catalog
 from .routing import auto_router as router_module
 from .sessions import (
@@ -50,15 +45,6 @@ from .settings import (
 )
 from .tools import ToolPolicy
 from .wire import StreamSink, WsStreamResponse
-
-# Compatibility aliases: tests/test_server.py imports the underscore names from
-# codex_shim.server. Delete once test imports are repointed at codex_shim.passthrough
-# (migration phase 10).
-_merge_codex_forward_headers = merge_codex_forward_headers
-_metadata_as_forward_headers = metadata_as_forward_headers
-_passthrough_forward_headers = passthrough_forward_headers
-_rewrite_response_model = rewrite_response_model
-_sanitize_chatgpt_passthrough_body = sanitize_chatgpt_passthrough_body
 
 
 class ShimServer:

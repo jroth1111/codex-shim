@@ -471,7 +471,7 @@ def probe_one_turn(settings_path: Path, port: int, slug: str | None = None) -> i
 
 
 def _matrix_offline_helper_policy() -> MatrixStepResult:
-    from ..routing.helper_models import apply_helper_model_policy, is_helper_model_slug
+    from ..routing import apply_helper_model_policy, is_helper_model_slug
 
     if not is_helper_model_slug("codex-auto-review"):
         return MatrixStepResult("helper_slug_policy", "fail", "helper slug detector failed")

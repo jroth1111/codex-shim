@@ -13,15 +13,13 @@ from codex_shim.clientconfig.picker import PICKER_TOKEN_HEADER
 from codex_shim.clientconfig.picker import current_managed_model as _current_managed_model
 from codex_shim.clientconfig.picker import picker_html as _picker_html
 from codex_shim.clientconfig.picker import set_active_model as _set_active_model
+from codex_shim.providers import merge_codex_forward_headers as _merge_codex_forward_headers
+from codex_shim.providers import metadata_as_forward_headers as _metadata_as_forward_headers
+from codex_shim.providers import passthrough_forward_headers as _passthrough_forward_headers
+from codex_shim.providers import rewrite_response_model as _rewrite_response_model
+from codex_shim.providers import sanitize_chatgpt_passthrough_body as _sanitize_chatgpt_passthrough_body
 from codex_shim.routing import needs_image_generation
-from codex_shim.server import (
-    ShimServer,
-    _merge_codex_forward_headers,
-    _metadata_as_forward_headers,
-    _passthrough_forward_headers,
-    _rewrite_response_model,
-    _sanitize_chatgpt_passthrough_body,
-)
+from codex_shim.server import ShimServer
 from codex_shim.translate import (
     SHIM_ENCRYPTED_CONTENT_PREFIX,
     ResponsesStreamState,

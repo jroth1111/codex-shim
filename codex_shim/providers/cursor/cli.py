@@ -11,7 +11,7 @@ from typing import Any
 
 from aiohttp import web
 
-from ...settings import ShimModel
+from ...settings import ShimModel, with_loopback_no_proxy
 from .acp import (
     DEFAULT_CURSOR_TIMEOUT,
     CursorAcpResult,
@@ -45,9 +45,7 @@ def _capture_proxy_env() -> dict[str, str]:
     if cert.is_file():
         merged["SSL_CERT_FILE"] = str(cert)
         merged["NODE_EXTRA_CA_CERTS"] = str(cert)
-    from ...cli import _with_loopback_no_proxy
-
-    _with_loopback_no_proxy(merged)  # mutates in place
+    with_loopback_no_proxy(merged)
     return merged
 
 

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Sequence
 
-from .persistence.job_queue import JsonlJobQueue
+from .persistence import JsonlJobQueue
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_QUEUE_PATH = PROJECT_ROOT / ".codex-shim" / "jobs.jsonl"

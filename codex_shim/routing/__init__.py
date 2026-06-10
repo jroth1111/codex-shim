@@ -1,6 +1,7 @@
 from . import auto_router
 from .auto_router import load_router_config, router_is_active
 from .auto_router_service import AutoRouterService, active_router
+from .helper_models import apply_helper_model_policy, is_helper_model_slug
 from .image_gate import needs_image_generation
 from .inference_context import (
     AGENT_MODE_AGENT,
@@ -35,6 +36,8 @@ __all__ = [
     "active_router",
     "auto_router",
     "known_subscription_slugs",
+    "apply_helper_model_policy",
+    "is_helper_model_slug",
     "load_router_config",
     "merge_desktop_models",
     "needs_image_generation",

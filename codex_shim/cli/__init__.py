@@ -24,12 +24,12 @@ from ..clientconfig import (  # noqa: F401
     write_config,
     write_direct_responses_config,
 )
-from ..migrate import apply_postgres_migrations  # noqa: F401
 from ..observability import (  # noqa: F401
     clear_capture_config,
     read_capture_config,
     write_capture_config,
 )
+from ..persistence import apply_postgres_migrations  # noqa: F401
 from ..providers import (  # noqa: F401
     cursor_passthrough_available,
     cursor_passthrough_display_names,
@@ -73,16 +73,6 @@ MANAGED_TOP_LEVEL_KEYS = {"model", "model_provider", "model_catalog_json"}
 CODEX_APP_ASAR_PATH = Path("/Applications/Codex.app/Contents/Resources/app.asar")
 APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
-from ..clientconfig import (  # noqa: F401, E402
-    MODEL_PICKER_NEEDLE,
-    MODEL_PICKER_REPLACEMENT,
-    REDACTED_VALUE,  # noqa: F401, E402
-    SIDEBAR_RECENT_THREADS_NEEDLE,
-    SIDEBAR_RECENT_THREADS_REPLACEMENT,
-    inspection_specs_for_version,
-    patch_specs_for_version,
-)
-
 DESKTOP_CATALOG_KEYS = {
     "slug",
     "display_name",

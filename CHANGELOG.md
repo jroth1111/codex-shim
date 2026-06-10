@@ -7,6 +7,33 @@ and this project does not yet follow semantic versioning (pre-1.0).
 
 ## Unreleased
 
+### Changed
+
+- Completed the modular-monolith migration: all flat modules now live in their
+  domain packages (`gateway/`, `routing/`, `providers/`, `sessions/`,
+  `observability/`, `persistence/`, `clientconfig/`, `verification/`,
+  `translate/`), with `server.py` reduced to a ~450-line composition root and
+  the CLI split into command submodules under `cli/`. Boundaries are
+  CI-enforced by an AST-based checker with a shrinking debt ratchet
+  (72 → 2 entries); see `docs/MODULAR_ARCHITECTURE.md`.
+- Added ruff + pyright CI gates (pinned), a one-command local
+  `scripts/preflight.sh`, and pinned public-surface tests (exact `/v1` route
+  table, full CLI parser tree). The whole package now type-checks clean with
+  no pyright exclusions.
+
+### Fixed
+
+- Native cursor-agent live completions crashed with `AttributeError`: the live
+  collectors return CLI-shaped dicts but the payload builders use attribute
+  access; results are now wrapped into `CursorAcpResult`.
+- Repo-root path anchors (`response_store.sqlite`, postcompact captures, debug
+  dumps, capture config, cursor thread sessions, catalog output) silently
+  pointed inside the package after the module moves; all now derive from a
+  single `settings.PROJECT_ROOT`/`RUNTIME_DIR` home.
+- Auth/connection error causes are preserved (`raise ... from exc`) in the
+  ChatGPT passthrough and SSE writers; assorted dead code and unused imports
+  removed by the new lint gate.
+
 ### Notes
 
 - Verified parity with four downstream `origin` feature branches (`feat/compact-native-tools`, `feat/model-picker-web-ui`, `fix/streaming-usage-compaction-main`, `fix/visual-feedback-passthrough`); see [`docs/DOWNSTREAM_PARITY.md`](docs/DOWNSTREAM_PARITY.md). No additional code ports required beyond the modular fork refactor.

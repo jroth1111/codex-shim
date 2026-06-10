@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+from collections.abc import MutableMapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,19 @@ DEFAULT_PORT = 8765
 PROVIDER_NAME = "codex_shim"
 CHATGPT_MODEL_SLUG = "gpt-5.5"
 PLAN_TIERS = ["free", "plus", "pro", "team", "business", "enterprise"]
+
+
+def with_loopback_no_proxy(env: MutableMapping[str, str]) -> MutableMapping[str, str]:
+    """Ensure loopback hosts bypass any configured HTTP proxy (mutates env)."""
+    loopback = ["127.0.0.1", "localhost", "::1"]
+    for key in ("NO_PROXY", "no_proxy"):
+        values = [part.strip() for part in env.get(key, "").split(",") if part.strip()]
+        lower_values = {value.lower() for value in values}
+        for host in loopback:
+            if host.lower() not in lower_values:
+                values.append(host)
+        env[key] = ",".join(values)
+    return env
 
 
 def websockets_enabled() -> bool:

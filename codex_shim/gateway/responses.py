@@ -21,8 +21,13 @@ from ..providers import (
 )
 from ..providers import governance_inference_kwargs as _governance_inference_kwargs
 from ..providers import normalize_roles as _normalize_roles
-from ..routing import RouteResolution, resolve_model_route, resolve_workspace
-from ..routing.helper_models import apply_helper_model_policy, is_helper_model_slug
+from ..routing import (
+    RouteResolution,
+    apply_helper_model_policy,
+    is_helper_model_slug,
+    resolve_model_route,
+    resolve_workspace,
+)
 from ..sessions import (
     PreparedResponsesRequest,
     extract_compact_frontier,
@@ -32,13 +37,15 @@ from ..sessions import as_compact_response as _as_compact_response
 from ..settings import CHATGPT_MODEL_SLUG, COMPACT_UNSUPPORTED, ShimModel
 from ..translate import (
     ResponsesInputError,
+    ToolValidationError,
     chat_to_anthropic,
     chat_to_responses_request,
     responses_to_anthropic,
     responses_to_chat,
+    validate_anthropic_tools,
+    validate_chat_tools,
     validate_responses_input,
 )
-from ..translate.tool_validate import ToolValidationError, validate_anthropic_tools, validate_chat_tools
 from ..wire import StreamSink, WsStreamResponse
 
 if TYPE_CHECKING:

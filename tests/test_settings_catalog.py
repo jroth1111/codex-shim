@@ -9,6 +9,13 @@ import sys
 import pytest
 
 from codex_shim import cli
+from codex_shim.clientconfig import (
+    MODEL_PICKER_NEEDLE,
+    MODEL_PICKER_REPLACEMENT,
+    REDACTED_VALUE,
+    SIDEBAR_RECENT_THREADS_NEEDLE,
+    SIDEBAR_RECENT_THREADS_REPLACEMENT,
+)
 from codex_shim.clientconfig.catalog import catalog_entry, codex_config_overrides, write_catalog, write_config
 from codex_shim.settings import (
     THINKING_DROP,
@@ -500,9 +507,9 @@ def test_export_config_redacts_secrets_by_default(tmp_path):
 
     exported = json.loads(output.read_text())
     row = exported["models"][0]
-    assert row["apiKey"] == cli.REDACTED_VALUE
-    assert row["extra_headers"]["Authorization"] == cli.REDACTED_VALUE
-    assert row["extra_headers"]["x-api-key"] == cli.REDACTED_VALUE
+    assert row["apiKey"] == REDACTED_VALUE
+    assert row["extra_headers"]["Authorization"] == REDACTED_VALUE
+    assert row["extra_headers"]["x-api-key"] == REDACTED_VALUE
     assert row["model"] == "secret-model"
 
 
@@ -527,8 +534,8 @@ def test_export_config_redacts_credential_token_fields(tmp_path):
     output = tmp_path / "export.json"
     assert cli.export_config(settings, output) == 0
     row = json.loads(output.read_text())["models"][0]
-    assert row["access_token"] == cli.REDACTED_VALUE
-    assert row["refresh_token"] == cli.REDACTED_VALUE
+    assert row["access_token"] == REDACTED_VALUE
+    assert row["refresh_token"] == REDACTED_VALUE
 
 
 def test_export_config_preserves_non_secret_token_limit_fields(tmp_path):
@@ -981,20 +988,20 @@ def test_desktop_bundle_patch_applies_sidebar_and_leaves_legacy_picker(tmp_path)
     assets.mkdir(parents=True)
     model_bundle = assets / "model-queries-test.js"
     sidebar_bundle = assets / "app-server-manager-signals-test.js"
-    model_bundle.write_text(f"before {cli.MODEL_PICKER_NEEDLE} after")
-    sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
+    model_bundle.write_text(f"before {MODEL_PICKER_NEEDLE} after")
+    sidebar_bundle.write_text(f"before {SIDEBAR_RECENT_THREADS_NEEDLE} after")
 
     assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is True
-    assert cli.MODEL_PICKER_NEEDLE in model_bundle.read_text()
-    assert cli.MODEL_PICKER_REPLACEMENT not in model_bundle.read_text()
-    assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
+    assert MODEL_PICKER_NEEDLE in model_bundle.read_text()
+    assert MODEL_PICKER_REPLACEMENT not in model_bundle.read_text()
+    assert SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
     assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is False
 
 
 def test_desktop_bundle_patch_fails_when_sidebar_needle_is_missing(tmp_path):
     assets = tmp_path / "webview" / "assets"
     assets.mkdir(parents=True)
-    (assets / "model-queries-test.js").write_text(cli.MODEL_PICKER_NEEDLE)
+    (assets / "model-queries-test.js").write_text(MODEL_PICKER_NEEDLE)
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
     assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is None
@@ -1005,10 +1012,10 @@ def test_desktop_bundle_patch_applies_sidebar_when_legacy_picker_needle_missing(
     assets.mkdir(parents=True)
     (assets / "model-queries-test.js").write_text("Desktop 26.519 build without legacy useHiddenModels gate")
     sidebar_bundle = assets / "app-server-manager-signals-test.js"
-    sidebar_bundle.write_text(f"before {cli.SIDEBAR_RECENT_THREADS_NEEDLE} after")
+    sidebar_bundle.write_text(f"before {SIDEBAR_RECENT_THREADS_NEEDLE} after")
 
     assert cli._patch_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION) is True
-    assert cli.SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
+    assert SIDEBAR_RECENT_THREADS_REPLACEMENT in sidebar_bundle.read_text()
 
 
 def test_desktop_bundle_patch_inspection_marks_legacy_picker_as_skipped(tmp_path):
@@ -1027,7 +1034,7 @@ def test_desktop_bundle_patch_inspection_marks_legacy_picker_as_skipped(tmp_path
 def test_desktop_bundle_patch_inspection_detects_patched_and_missing(tmp_path):
     assets = tmp_path / "webview" / "assets"
     assets.mkdir(parents=True)
-    (assets / "model-queries-test.js").write_text(cli.MODEL_PICKER_REPLACEMENT)
+    (assets / "model-queries-test.js").write_text(MODEL_PICKER_REPLACEMENT)
     (assets / "app-server-manager-signals-test.js").write_text("different build")
 
     inspection = cli._inspect_codex_desktop_bundles(tmp_path, version=LEGACY_DESKTOP_VERSION)

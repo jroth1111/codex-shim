@@ -103,10 +103,12 @@ def encode_mcp_tools(mcp_tools: dict[str, Any]) -> bytes:
 def encode_agent_run_request(run_request: dict[str, Any]) -> bytes:
     parts: list[bytes] = []
     action = run_request.get("action") or {}
-    inner = action.get("action") if isinstance(action.get("action"), dict) else action
+    raw_inner = action.get("action") if isinstance(action, dict) else None
+    inner = raw_inner if isinstance(raw_inner, dict) else action
     if isinstance(inner, dict):
         case = inner.get("case")
-        value = inner.get("value") if isinstance(inner.get("value"), dict) else {}
+        raw_value = inner.get("value")
+        value = raw_value if isinstance(raw_value, dict) else {}
         if case in {"userMessageAction", "user_message_action"}:
             user_message = value.get("userMessage") or value.get("user_message") or {}
             if user_message:
@@ -146,10 +148,13 @@ def encode_agent_client_message_run_request(run_request: dict[str, Any]) -> byte
 
 def encode_client_envelope_bytes(skeleton: dict[str, Any]) -> bytes:
     """Encode JSON skeleton from build_run_request_skeleton to AgentClientMessage bytes."""
-    envelope = skeleton.get("clientEnvelope") or skeleton
-    message = envelope.get("message") if isinstance(envelope.get("message"), dict) else {}
+    raw_envelope = skeleton.get("clientEnvelope")
+    envelope = raw_envelope if isinstance(raw_envelope, dict) else skeleton
+    raw_message = envelope.get("message")
+    message = raw_message if isinstance(raw_message, dict) else {}
     case = message.get("case")
-    value = message.get("value") if isinstance(message.get("value"), dict) else {}
+    raw_value = message.get("value")
+    value = raw_value if isinstance(raw_value, dict) else {}
     if case not in {"runRequest", "run_request"}:
         raise ValueError(f"unsupported client envelope case: {case!r}")
     return encode_agent_client_message_run_request(value)

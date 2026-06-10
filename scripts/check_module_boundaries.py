@@ -71,27 +71,17 @@ PLATFORM = frozenset(
 ENTRYPOINTS = frozenset({"cli", "server", "workers", "__init__"})
 
 # (relative file path, imported codex_shim target or "UNASSIGNED").
-# Ratchet: entries may only be removed, never added. Each migration phase's
-# definition-of-done deletes the entries it resolves.
+# Ratchet: entries may only be removed, never added.
+#
+# The two remaining entries are the settings.py platform inversion: settings
+# conflates the config schema (platform) with model *discovery*
+# (chatgpt/cursor passthrough availability, subscription merge, router
+# config), which lazily reaches into routing/providers. Resolving it means
+# moving discovery out of settings — tracked as a follow-up bead.
 LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
     {
-        ('codex_shim/errors.py', 'translate'),
-        ('codex_shim/gateway/admin.py', 'server'),
-        ('codex_shim/gateway/anthropic_messages.py', 'server'),
-        ('codex_shim/gateway/app.py', 'server'),
-        ('codex_shim/gateway/handlers.py', 'server'),
-        ('codex_shim/gateway/responses.py', 'deep:routing.helper_models'),
-        ('codex_shim/gateway/responses.py', 'deep:translate.tool_validate'),
-        ('codex_shim/gateway/responses.py', 'server'),
-        ('codex_shim/migrate.py', 'UNASSIGNED'),
-        ('codex_shim/providers/chatgpt/handlers.py', 'server'),
-        ('codex_shim/providers/cursor/cli.py', 'cli'),
-        ('codex_shim/providers/cursor/passthrough_handlers.py', 'server'),
-        ('codex_shim/server.py', 'deep:providers.cursor_agent'),
         ('codex_shim/settings.py', 'providers'),
         ('codex_shim/settings.py', 'routing'),
-        ('codex_shim/verification/probe.py', 'deep:routing.helper_models'),
-        ('codex_shim/workers.py', 'deep:persistence.job_queue'),
     }
 )
 
@@ -116,11 +106,28 @@ def _classify(path: Path) -> tuple[str, str]:
     return ("legacy", stem)
 
 
+def _type_checking_spans(tree: ast.AST) -> list[tuple[int, int]]:
+    """Line spans of `if TYPE_CHECKING:` bodies — type-only imports are not
+    runtime coupling and are exempt from boundary rules."""
+    spans: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            test = node.test
+            name = getattr(test, "id", None) or getattr(test, "attr", None)
+            if name == "TYPE_CHECKING":
+                spans.append((node.lineno, node.end_lineno or node.lineno))
+    return spans
+
+
 def _import_targets(path: Path, tree: ast.AST) -> list[tuple[int, str]]:
     """Yield (lineno, dotted codex_shim-relative target) for package imports."""
     rel_parts = path.relative_to(PKG_ROOT).parts
+    type_only = _type_checking_spans(tree)
     targets: list[tuple[int, str]] = []
     for node in ast.walk(tree):
+        lineno = getattr(node, "lineno", None)
+        if lineno is not None and any(s <= lineno <= e for s, e in type_only):
+            continue
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name == PKG_NAME or alias.name.startswith(PKG_NAME + "."):

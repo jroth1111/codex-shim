@@ -15,8 +15,8 @@ from ..clientconfig import (
     OPENCODE_GO_API_KEY_ENV,
     OPENCODE_GO_BASE_URL,
 )
-from ..migrate import apply_postgres_migrations
 from ..observability import clear_capture_config
+from ..persistence import apply_postgres_migrations
 from ..settings import (
     DEFAULT_PORT,
     DEFAULT_SETTINGS,

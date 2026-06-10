@@ -42,6 +42,7 @@ from .cursor import (
     run_cursor_acp,
     run_cursor_cli,
 )
+from .cursor_agent import CursorAgentTransport, CursorAgentTransportError
 from .cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
 from .cursor_transports import (
     cursor_workspace,
@@ -99,6 +100,8 @@ __all__ = [
     "CursorCliError",
     "CursorThreadSessionStore",
     "ProviderDispatcher",
+    "CursorAgentTransport",
+    "CursorAgentTransportError",
     "auth_command_for_route",
     "build_cursor_cli_turn_options",
     "cursor",

@@ -21,6 +21,7 @@ from .streaming import (
     anthropic_stream_to_chat_chunk,
 )
 from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
+from .tool_validate import ToolValidationError, validate_anthropic_tools, validate_chat_tools
 from .tools import (
     HOSTED_CALL_FALLBACK_NAMES,
     NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME,
@@ -42,6 +43,9 @@ MAX_INLINE_MEDIA_BYTES = _content_module.MAX_INLINE_MEDIA_BYTES
 
 __all__ = [
     "merge_extra_body_params",
+    "ToolValidationError",
+    "validate_anthropic_tools",
+    "validate_chat_tools",
     "AnthropicMessagesStreamState",
     "ResponsesStreamState",
     "anthropic_stream_to_chat_chunk",
