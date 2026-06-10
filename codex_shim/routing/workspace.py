@@ -7,8 +7,7 @@ from typing import Any
 
 from aiohttp import web
 
-from ..passthrough_upstream import parse_turn_metadata
-from ..responses_request import SHIM_INTERNAL_KEY_PREFIX
+from ..sessions import SHIM_INTERNAL_KEY_PREFIX, parse_turn_metadata
 from ..settings import ShimModel
 
 _WORKSPACE_METADATA_KEYS = (

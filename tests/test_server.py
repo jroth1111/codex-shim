@@ -1472,7 +1472,7 @@ async def test_responses_compact_augments_bad_upstream_summary(tmp_path):
 
 async def test_responses_compact_appends_postcompact_capture(tmp_path, monkeypatch):
     capture_path = tmp_path / "postcompact-captures.jsonl"
-    monkeypatch.setattr("codex_shim.compact.POSTCOMPACT_CAPTURE_PATH", capture_path)
+    monkeypatch.setattr("codex_shim.sessions.compact.POSTCOMPACT_CAPTURE_PATH", capture_path)
 
     async def chat(request):
         return web.json_response(

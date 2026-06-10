@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from aiohttp import web
 
-from ..responses_request import SHIM_INTERNAL_KEY_PREFIX
+from ..sessions import SHIM_INTERNAL_KEY_PREFIX
 
 CliMode = Literal["default", "plan", "ask", "debug"]
 MetadataMode = Literal["default", "plan", "search", "debug"]

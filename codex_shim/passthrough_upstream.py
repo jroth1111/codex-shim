@@ -12,6 +12,9 @@ from aiohttp import web
 
 from .catalog import chatgpt_passthrough_entry
 from .debug_dump import DEBUG_DIR, _redacted, _truthy
+from .sessions import header_value as _header_value
+from .sessions import parse_turn_metadata, resolve_thread_and_session_ids
+from .sessions import truthy_id as _truthy_id
 from .settings import DEFAULT_CODEX_AUTH
 from .upstream_capture import capture_flag, capture_value
 
@@ -50,21 +53,6 @@ def _codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME", DEFAULT_CODEX_AUTH.parent)).expanduser()
 
 
-def parse_turn_metadata(raw: Any) -> dict[str, Any] | None:
-    if isinstance(raw, dict):
-        return deepcopy(raw)
-    if not isinstance(raw, str):
-        return None
-    text = raw.strip()
-    if not text:
-        return None
-    try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
 def _turn_metadata_raw(request: web.Request, body: dict[str, Any]) -> Any:
     header_value = request.headers.get(X_CODEX_TURN_METADATA)
     if header_value:
@@ -73,23 +61,6 @@ def _turn_metadata_raw(request: web.Request, body: dict[str, Any]) -> Any:
     if isinstance(client_metadata, dict):
         return client_metadata.get(X_CODEX_TURN_METADATA)
     return None
-
-
-def _header_value(request: web.Request, *names: str) -> str | None:
-    for name in names:
-        value = request.headers.get(name)
-        if value:
-            text = str(value).strip()
-            if text:
-                return text
-    return None
-
-
-def _truthy_id(value: Any) -> str | None:
-    if value in (None, ""):
-        return None
-    text = str(value).strip()
-    return text or None
 
 
 def _client_metadata_dict(body: dict[str, Any]) -> dict[str, Any] | None:
@@ -219,23 +190,6 @@ def should_promote_desktop_parity(request: web.Request, body: dict[str, Any]) ->
 
 def uses_websockets_upstream_beta(profile: UpstreamProfile) -> bool:
     return profile in {UpstreamProfile.DESKTOP, UpstreamProfile.CLI}
-
-
-def resolve_thread_and_session_ids(
-    request: web.Request,
-    body: dict[str, Any],
-    turn_metadata: dict[str, Any] | None,
-) -> tuple[str | None, str | None]:
-    thread_id = _header_value(request, "thread-id", "thread_id")
-    session_id = _header_value(request, "session-id", "session_id")
-    if turn_metadata:
-        thread_id = thread_id or _truthy_id(turn_metadata.get("thread_id"))
-        session_id = session_id or _truthy_id(turn_metadata.get("session_id"))
-    if thread_id and not session_id:
-        session_id = thread_id
-    if session_id and not thread_id:
-        thread_id = session_id
-    return thread_id, session_id
 
 
 def _parse_window_id(value: str | None) -> tuple[str | None, int | None]:

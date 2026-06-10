@@ -3,15 +3,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from codex_shim.compact import (
+from codex_shim.sessions import (
+    CompactFrontier,
     CompactQuality,
     append_postcompact_capture,
     build_emulated_compact_instructions,
     compact_audit_record,
     evaluate_compact_summary,
+    extract_compact_frontier,
     finalize_compact_summary,
+    git_status_short,
 )
-from codex_shim.compact_frontier import CompactFrontier, extract_compact_frontier, git_status_short
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "desktop" / "compaction_turn.json"
 
@@ -107,7 +109,7 @@ def test_compact_audit_record_shape():
 
 def test_append_postcompact_capture_writes_jsonl(tmp_path, monkeypatch):
     capture_path = tmp_path / "postcompact-captures.jsonl"
-    monkeypatch.setattr("codex_shim.compact.POSTCOMPACT_CAPTURE_PATH", capture_path)
+    monkeypatch.setattr("codex_shim.sessions.compact.POSTCOMPACT_CAPTURE_PATH", capture_path)
     append_postcompact_capture({"model": "probe-slug", "summary_status": "projection_verified"})
     append_postcompact_capture({"model": "probe-slug", "summary_status": "projection_unverified", "augmented": True})
     lines = capture_path.read_text(encoding="utf-8").splitlines()

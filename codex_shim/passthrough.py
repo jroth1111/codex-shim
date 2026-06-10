@@ -296,7 +296,7 @@ async def chatgpt_passthrough(
             upstream.release()
             provider_ms = _elapsed_ms(provider_started_at)
             rewrite_response_model(payload, response_model_override)
-            from .responses_request import prepare_passthrough_store_request
+            from .sessions import prepare_passthrough_store_request
 
             prepared = prepare_passthrough_store_request(request, body)
             shim._store_response_history(prepared, payload)
@@ -398,6 +398,6 @@ async def chatgpt_compact_passthrough(
 
 
 def responses_items_from_input(value: Any) -> list[dict[str, Any]]:
-    from .responses_request import responses_items_from_input as _items_from_input
+    from .sessions import responses_items_from_input as _items_from_input
 
     return _items_from_input(value)

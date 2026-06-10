@@ -4,9 +4,9 @@ from typing import Any, Awaitable, Callable
 
 from aiohttp import web
 
-from ..responses_request import PreparedResponsesRequest
 from ..responses_ws import WsStreamResponse
 from ..routing import RoutingPolicy
+from ..sessions import PreparedResponsesRequest
 from ..settings import ShimModel
 
 ProviderHandler = Callable[

@@ -1317,7 +1317,7 @@ def _bool_text(value) -> str:
 def doctor_models(settings_path: Path) -> int:
     from .capabilities import execution_mode, route_capabilities
     from .catalog import websockets_enabled
-    from .response_store import default_store_path, store_scope
+    from .sessions import default_store_path, store_scope
 
     models = _load_models(settings_path)
     desktop_models = _desktop_models(settings_path)

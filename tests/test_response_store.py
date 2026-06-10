@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from codex_shim.response_store import ResponseStore
+from codex_shim.sessions import ResponseStore
 
 
 def test_response_store_persists_across_instances(tmp_path):

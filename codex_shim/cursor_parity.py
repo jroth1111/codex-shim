@@ -10,8 +10,7 @@ from typing import Any
 
 from aiohttp import web
 
-from .passthrough_upstream import parse_turn_metadata, resolve_thread_and_session_ids
-from .responses_request import responses_items_from_input
+from .sessions import parse_turn_metadata, resolve_thread_and_session_ids, responses_items_from_input
 from .settings import ShimModel
 
 

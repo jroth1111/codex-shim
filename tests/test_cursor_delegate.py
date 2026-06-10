@@ -5,8 +5,9 @@ import json
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.cursor_acp import filter_delegate_history_items, responses_to_delegate_prompt
+from codex_shim.cursor_acp import responses_to_delegate_prompt
 from codex_shim.routing.workspace import resolve_workspace
+from codex_shim.sessions import filter_delegate_history_items
 from codex_shim.settings import ShimModel
 
 

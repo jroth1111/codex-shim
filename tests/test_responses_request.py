@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from codex_shim.response_store import ResponseStore
-from codex_shim.responses_request import (
+from codex_shim.sessions import (
+    ResponseStore,
     prepare_byok_responses_request,
     prepare_passthrough_store_request,
     should_persist_instructions,

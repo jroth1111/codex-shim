@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from codex_shim.response_store import ResponseStore
-from codex_shim.responses_request import PreparedResponsesRequest, responses_items_from_input
-from codex_shim.sessions.service import SessionService
+from codex_shim.sessions import (
+    PreparedResponsesRequest,
+    ResponseStore,
+    SessionService,
+    responses_items_from_input,
+)
 from codex_shim.settings import ShimModel
 
 
