@@ -29,6 +29,9 @@ dependencies = [
 dev = [
   "pytest>=8",
   "pytest-asyncio>=0.23",
+  # Pinned so CI and local lint/type gates can't drift on rule changes.
+  "ruff==0.15.13",
+  "pyright==1.1.410",
 ]
 
 [project.urls]

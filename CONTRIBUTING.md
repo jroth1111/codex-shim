@@ -12,8 +12,18 @@ git clone https://github.com/jroth1111/codex-shim
 cd codex-shim
 python3 -m pip install -e ".[dev]"
 
-python3 -m pytest tests/ -q
+scripts/preflight.sh   # everything CI gates on: compileall, ruff, pyright,
+                       # contract/needle/boundary checks, parity self-check,
+                       # and the non-live pytest suite
+```
+
+Or run the pieces individually:
+
+```bash
+python3 -m pytest tests/ -m "not live" -q
 python3 -m compileall codex_shim/ -q
+python3 -m ruff check .
+python3 -m pyright
 python3 scripts/generate_desktop_contract.py --check           # skips if no local RE tree
 python3 scripts/generate_desktop_app_server_contract.py --check
 python3 scripts/check_desktop_patch_needles.py                 # exits 1 if RE tree exists but needles drift
