@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from ..desktop_contract import DESKTOP_RESPONSE_ITEM_TYPES, SHIM_EXTRA_RESPONSE_INPUT_TYPES
-from ..thinking import decode_thinking_payload
 from .common import ResponsesInputError
 from .content import (
     computer_output_to_chat_content,
@@ -12,6 +11,7 @@ from .content import (
     responses_content_to_chat_content,
     visual_feedback_chat_content,
 )
+from .thinking import decode_thinking_payload
 from .tools import compaction_to_system_message, hosted_call_to_function_tool, normalize_hosted_call_item
 
 KNOWN_RESPONSE_INPUT_TYPES = DESKTOP_RESPONSE_ITEM_TYPES | SHIM_EXTRA_RESPONSE_INPUT_TYPES

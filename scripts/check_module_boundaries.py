@@ -117,11 +117,7 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/settings.py', 'routing'),
         ('codex_shim/smoke.py', 'UNASSIGNED'),
         ('codex_shim/streaming.py', 'UNASSIGNED'),
-        ('codex_shim/thinking.py', 'UNASSIGNED'),
-        ('codex_shim/translate/__init__.py', 'thinking'),
-        ('codex_shim/translate/anthropic.py', 'thinking'),
-        ('codex_shim/translate/input.py', 'thinking'),
-        ('codex_shim/translate/output.py', 'thinking'),
+        ('codex_shim/streaming.py', 'deep:translate.thinking'),
         ('codex_shim/upstream_capture.py', 'UNASSIGNED'),
         ('codex_shim/workers.py', 'deep:persistence.job_queue'),
     }

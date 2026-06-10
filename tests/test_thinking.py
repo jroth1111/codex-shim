@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from codex_shim.thinking import decode_thinking_payload, encode_thinking_payload
+from codex_shim.translate.thinking import decode_thinking_payload, encode_thinking_payload
 
 
 def test_thinking_payload_roundtrips_shared_codec():
@@ -15,7 +15,7 @@ def test_thinking_payload_decode_rejects_unknown_blob():
 
 
 def test_is_signed_thinking_block_requires_non_empty_signature():
-    from codex_shim.thinking import is_signed_thinking_block, reasoning_encrypted_content
+    from codex_shim.translate.thinking import is_signed_thinking_block, reasoning_encrypted_content
 
     assert is_signed_thinking_block({"type": "thinking", "thinking": "plan", "signature": "sig"}) is True
     assert is_signed_thinking_block({"type": "thinking", "thinking": "plan", "signature": ""}) is False

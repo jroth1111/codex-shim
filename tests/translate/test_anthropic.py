@@ -22,7 +22,7 @@ def test_responses_to_anthropic_skips_summary_only_reasoning_without_signature()
 
 
 def test_responses_to_anthropic_drops_unsigned_thinking_blob_on_replay():
-    from codex_shim.thinking import encode_thinking_payload
+    from codex_shim.translate.thinking import encode_thinking_payload
 
     unsigned = encode_thinking_payload({"type": "thinking", "thinking": "unsigned", "signature": ""})
     body = {
@@ -45,7 +45,7 @@ def test_responses_to_anthropic_messages():
 
 
 def test_responses_to_anthropic_converts_tools_and_reasoning():
-    from codex_shim.thinking import encode_thinking_payload
+    from codex_shim.translate.thinking import encode_thinking_payload
 
     signed_reasoning = {
         "id": "rs_0",

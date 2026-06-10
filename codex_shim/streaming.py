@@ -9,7 +9,6 @@ from typing import Any
 from aiohttp import web
 
 from .responses_ws import WsStreamResponse
-from .thinking import reasoning_encrypted_content
 from .translate import (
     build_streaming_tool_output_types,
     chat_finish_to_anthropic_stop,
@@ -19,6 +18,7 @@ from .translate import (
     streaming_tool_open_item,
     streaming_tool_output_type,
 )
+from .translate.thinking import reasoning_encrypted_content
 
 
 class ClientDisconnected(Exception):

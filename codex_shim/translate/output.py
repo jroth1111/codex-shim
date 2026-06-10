@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..thinking import encode_thinking_payload, reasoning_encrypted_content
 from .common import jsonish, strip_think
 from .messages import minimax_reasoning
+from .thinking import encode_thinking_payload, reasoning_encrypted_content
 from .tools import tool_call_to_response_item
 from .usage import normalize_responses_usage
 

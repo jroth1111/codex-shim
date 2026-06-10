@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from ..thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
 from . import content as _content_module
 from .anthropic import anthropic_to_chat_response, responses_to_anthropic
 from .anthropic_messages import anthropic_messages_to_chat, chat_completion_to_anthropic_message
@@ -15,6 +14,7 @@ from .common import (
 from .content import SUPPORTED_AUDIO_FORMATS, SUPPORTED_AUDIO_MIME_FORMATS
 from .input import KNOWN_RESPONSE_INPUT_TYPES, responses_input_to_messages, validate_responses_input
 from .output import anthropic_to_response, chat_completion_to_response
+from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
 from .tools import (
     HOSTED_CALL_FALLBACK_NAMES,
     NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME,
