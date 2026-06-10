@@ -7,7 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -16,16 +15,14 @@ from codex_shim.desktop_decompiled import (  # noqa: E402
     provenance_readme,
     require_available,
 )
-
-from scripts.desktop_re_common import (  # noqa: E402
-    parse_thread_settings_fields,
-    parse_thread_start_param_fields,
-)
-
 from codex_shim.routing.workspace import (  # noqa: E402
     DESKTOP_WORKSPACE_REQUEST_KEYS,
     WORKSPACE_HEADER_KEYS,
     WORKSPACE_METADATA_KEYS,
+)
+from scripts.desktop_re_common import (  # noqa: E402
+    parse_thread_settings_fields,
+    parse_thread_start_param_fields,
 )
 
 STRINGS_PATH = codex_strings_path()

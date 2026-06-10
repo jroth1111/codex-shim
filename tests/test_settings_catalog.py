@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import plistlib
 import struct
 import sys
@@ -9,7 +9,7 @@ import sys
 import pytest
 
 from codex_shim import cli
-from codex_shim.catalog import catalog_entry, write_catalog, codex_config_overrides, write_config
+from codex_shim.catalog import catalog_entry, codex_config_overrides, write_catalog, write_config
 from codex_shim.settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,

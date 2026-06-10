@@ -5,9 +5,9 @@ from typing import Any, Callable
 
 from aiohttp import web
 
+from ..capabilities import is_delegate_route
 from ..compact import compact_request_body
 from ..compact_frontier import extract_compact_frontier, git_status_short
-from ..capabilities import is_delegate_route
 from ..cursor_acp import filter_delegate_history_items
 from ..response_store import ResponseStore
 from ..responses_request import (

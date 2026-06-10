@@ -5,7 +5,6 @@ import pytest
 from codex_shim.translate import (
     ResponsesInputError,
     responses_to_chat,
-    validate_responses_input,
 )
 
 

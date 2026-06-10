@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..thinking import decode_thinking_payload, encode_thinking_payload, is_signed_thinking_block, reasoning_encrypted_content
+from ..thinking import (
+    decode_thinking_payload,
+    is_signed_thinking_block,
+)
 from .common import anthropic_stop, copy_if_present, jsonish, strip_think
 from .content import chat_content_to_anthropic_blocks, chat_content_to_anthropic_content, content_to_text
 from .input import responses_input_to_messages
 from .tool_schema import responses_tools_to_anthropic_tools
+
 
 def responses_to_anthropic(
     body: dict[str, Any],

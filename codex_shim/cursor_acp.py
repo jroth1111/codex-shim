@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
 import json
 import os
-from pathlib import Path
 import shlex
 import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from .capabilities import is_delegate_route
 from .settings import ShimModel
 from .translate import responses_to_chat
-
 
 TextCallback = Callable[[str], Awaitable[None]]
 

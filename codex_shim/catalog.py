@@ -13,7 +13,6 @@ from .settings import (
     ShimModel,
     available_model_slugs,
     default_model_slug,
-    usable_byok_models,
 )
 from .subscription_catalog import SubscriptionCatalogSnapshot, refresh_subscription_catalog
 

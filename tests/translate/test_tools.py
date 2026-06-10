@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pytest
 
 def test_tool_call_to_response_item_emits_native_web_search_call():
     from codex_shim.translate import tool_call_to_response_item

@@ -7,8 +7,8 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim import router
-from codex_shim.server import ShimServer
 from codex_shim.catalog import write_catalog
+from codex_shim.server import ShimServer
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,6 @@ def auth_missing(monkeypatch, tmp_path):
     """Keep ChatGPT passthrough out of discovery so model lists are deterministic."""
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", missing)
     monkeypatch.setattr("codex_shim.cursor_passthrough.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.server.cursor_passthrough_available", lambda **_: False)
 

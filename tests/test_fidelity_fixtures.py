@@ -11,7 +11,6 @@ from codex_shim.desktop_validate import (
 from codex_shim.probe import validate_compact_response
 from codex_shim.translate import function_call_to_native_item, responses_to_chat, validate_responses_input
 
-
 FIXTURES = Path(__file__).parent / "fixtures" / "desktop"
 
 DESKTOP_INPUT_FIXTURES = (

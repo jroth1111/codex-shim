@@ -4,15 +4,14 @@ from dataclasses import dataclass
 from typing import Literal
 
 from .settings import (
-    ShimModel,
+    TRANSPORT_ANTHROPIC,
     TRANSPORT_CHATGPT,
     TRANSPORT_CURSOR_ACP,
     TRANSPORT_CURSOR_AGENT,
     TRANSPORT_CURSOR_CLI,
-    TRANSPORT_ANTHROPIC,
     TRANSPORT_OPENAI_CHAT,
+    ShimModel,
 )
-
 
 ToolSupport = Literal["native", "mapped", "delegated", "unsupported"]
 ExecutionMode = Literal["delegate", "mapped"]

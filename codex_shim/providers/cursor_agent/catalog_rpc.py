@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from aiohttp import ClientSession, ClientTimeout
 
 from .auth import load_cursor_access_token
 from .connect_framing import parse_connect_frames
 from .headers import endpoint_urls
-from .proto_decode import decode_fields, get_field_bytes, get_field_string
+from .proto_decode import decode_fields, get_field_string
 from .types import CursorAgentTransportError
 
 

@@ -7,7 +7,6 @@ from aiohttp import web
 
 from codex_shim.routing.helper_models import (
     apply_helper_model_policy,
-    helper_model_policy,
     is_helper_model_slug,
 )
 from codex_shim.settings import ModelSettings

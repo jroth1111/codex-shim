@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 
-from aiohttp import web
 import pytest
+from aiohttp import web
 
 from codex_shim.governance import GovernanceAuditSink
+from codex_shim.image_gate import needs_image_generation
 from codex_shim.observability import ObservabilitySink
+from codex_shim.persistence import JsonOperationalStore
 from codex_shim.providers import ProviderDispatcher
 from codex_shim.providers.cursor_agent import build_run_request_skeleton
 from codex_shim.providers.cursor_agent.envelope import structural_self_check
@@ -20,14 +22,12 @@ from codex_shim.routing import (
     parse_inference_context,
     resolve_model_route,
 )
-from codex_shim.routing.model_resolution import resolve_auto_model, resolve_model_with_prefetch
 from codex_shim.routing.model_catalog import prefetch_model_catalog
-from codex_shim.persistence import JsonOperationalStore
-from codex_shim.image_gate import needs_image_generation
-from codex_shim.settings import ModelSettings, TRANSPORT_CURSOR_AGENT
+from codex_shim.routing.model_resolution import resolve_auto_model, resolve_model_with_prefetch
+from codex_shim.server import _executed_tool_count_from_response_payload
+from codex_shim.settings import TRANSPORT_CURSOR_AGENT, ModelSettings
 from codex_shim.tools import ToolPolicy
 from codex_shim.workers import enqueue_job, run_worker_once
-from codex_shim.server import _executed_tool_count_from_response_payload
 
 
 def test_resolve_model_route_returns_selected_slug(tmp_path):
@@ -450,7 +450,7 @@ def test_prefetch_model_catalog_live_rpc(monkeypatch, tmp_path):
     )
     monkeypatch.setenv("CODEX_SHIM_CURSOR_CATALOG_LIVE", "1")
     monkeypatch.setattr(
-        "codex_shim.providers.cursor_agent.catalog_rpc.fetch_usable_model_ids_sync",
+        "codex_shim.providers.fetch_usable_model_ids_sync",
         lambda **_: ["live-model-a", "live-model-b"],
     )
     snap = prefetch_model_catalog(ModelSettings(settings_path), store=None, force_refresh=True)

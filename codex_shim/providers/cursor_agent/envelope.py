@@ -4,8 +4,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from ...routing import InferenceContext
 from ...responses_request import responses_items_from_input
+from ...routing import InferenceContext
 
 
 def _prompt_text(body: dict[str, Any]) -> str:

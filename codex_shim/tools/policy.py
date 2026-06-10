@@ -4,7 +4,7 @@ from typing import Any
 
 from aiohttp import web
 
-from ..capabilities import RouteCapabilities, execution_mode, is_delegate_route, route_capabilities
+from ..capabilities import RouteCapabilities, execution_mode, route_capabilities
 from ..image_gate import needs_image_generation
 from ..routing import InferenceContext
 from ..settings import ShimModel

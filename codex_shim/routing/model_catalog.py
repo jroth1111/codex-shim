@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from .inference_context import PrefetchStatus
 
@@ -105,7 +105,7 @@ def _snapshot_from_live_rpc() -> ModelCatalogSnapshot | None:
     if not _live_catalog_enabled():
         return None
     try:
-        from ..providers.cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
+        from ..providers import fetch_usable_model_ids_sync
 
         model_ids = fetch_usable_model_ids_sync(timeout_seconds=PREFETCH_TIMEOUT_SECONDS)
     except Exception:

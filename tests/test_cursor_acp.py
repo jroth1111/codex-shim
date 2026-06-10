@@ -10,7 +10,6 @@ from aiohttp.test_utils import TestClient, TestServer
 from codex_shim.server import ShimServer
 from codex_shim.settings import ModelSettings
 
-
 FAKE_ACP = r'''
 from __future__ import annotations
 

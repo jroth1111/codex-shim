@@ -7,7 +7,6 @@ import sys
 from contextlib import suppress
 
 import pytest
-
 from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim.cursor_cli import cursor_cli_config, run_cursor_cli

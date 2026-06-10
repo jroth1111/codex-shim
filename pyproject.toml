@@ -40,6 +40,27 @@ Upstream = "https://github.com/0xSero/codex-shim"
 [project.scripts]
 codex-shim = "codex_shim.cli:_entrypoint"
 
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = [
+  "E501", # long literals/URLs; formatter territory, revisit after the modular migration
+  "B009", # deliberate getattr/setattr string-literal pattern: the request-attribute
+  "B010", # channel (_codex_shim_*) dodges static attribute checks on aiohttp objects
+]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path bootstrap before imports; intentional
+"codex_shim/cli.py" = ["E402"]
+"scripts/desktop_re_common.py" = ["E402"]
+"tests/fixtures/upstream/build_cli_synthetic.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["codex_shim"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

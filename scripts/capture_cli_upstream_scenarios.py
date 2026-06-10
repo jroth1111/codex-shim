@@ -25,6 +25,7 @@ from capture_cli_upstream_parity import (  # noqa: E402
     _run,
     capture_paired_cli_session,
 )
+
 from codex_shim.upstream_capture import clear_capture_config  # noqa: E402
 
 DEFAULT_SCENARIOS = Path(__file__).with_name("capture_cli_upstream_scenarios.json")

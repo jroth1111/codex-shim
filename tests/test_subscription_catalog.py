@@ -9,14 +9,13 @@ import pytest
 
 from codex_shim.catalog import build_merged_catalog, write_catalog
 from codex_shim.passthrough import rewrite_response_model
-from codex_shim.settings import ModelSettings, TRANSPORT_OPENAI_CHAT
+from codex_shim.settings import TRANSPORT_OPENAI_CHAT, ModelSettings
 from codex_shim.subscription_catalog import (
     SubscriptionCatalogSnapshot,
     fetch_subscription_models,
     refresh_subscription_catalog,
     subscription_passthrough_models,
 )
-
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "subscription_models.json"
 

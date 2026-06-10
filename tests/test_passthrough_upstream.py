@@ -3,9 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from copy import deepcopy
-from pathlib import Path
 
-import pytest
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_request
 
@@ -18,7 +16,6 @@ from codex_shim.passthrough_upstream import (
     UpstreamProfile,
     apply_parity_mode,
     apply_upstream_shape,
-    canonical_turn_metadata_value,
     detect_desktop_upstream_shape,
     enrich_upstream_body,
     ensure_installation_id,

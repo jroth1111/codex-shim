@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from contextlib import suppress
 import json
 import re
 import secrets
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -15,99 +15,113 @@ from aiohttp import ClientSession, ClientTimeout, web
 
 from . import router as router_module
 from .access_log import elapsed_ms as _elapsed_ms
-from .anthropic_messages_gateway import anthropic_messages_handler
-from .auto_router_service import AutoRouterService
 from .access_log import log_access as _log_access
 from .access_log import log_incoming_request as _log_incoming_request
+from .auto_router_service import AutoRouterService
+from .capabilities import execution_mode, is_delegate_route, route_capabilities
+from .catalog import CATALOG_PATH, write_catalog
 from .compact import as_compact_response as _as_compact_response
 from .compact_frontier import extract_compact_frontier, git_status_short
 from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
+from .cursor_cli import CursorCliError, run_cursor_cli
+from .cursor_parity import CursorThreadSessionStore, build_cursor_cli_turn_options
 from .cursor_passthrough import (
     cursor_passthrough_available,
     cursor_passthrough_display_names,
     is_cursor_passthrough_slug,
 )
 from .cursor_passthrough_handlers import cursor_passthrough_handler
-from .cursor_cli import CursorCliError, run_cursor_cli
-from .cursor_parity import CursorThreadSessionStore, build_cursor_cli_turn_options
-from .debug_dump import DEBUG_DIR
 from .debug_dump import dump_debug_request as _dump_debug_request
 from .errors import (
     cursor_acp_error_response as _cursor_acp_error_response,
+)
+from .errors import (
     cursor_acp_stream_error as _cursor_acp_stream_error,
+)
+from .errors import (
     cursor_agent_error_response as _cursor_agent_error_response,
+)
+from .errors import (
     cursor_agent_stream_error as _cursor_agent_stream_error,
+)
+from .errors import (
     error_response as _error_response,
+)
+from .errors import (
     invalid_request_error_response as _invalid_request_error_response,
-    unsupported_capability_response as _unsupported_capability_response,
+)
+from .errors import (
     unsupported_compact_response as _unsupported_compact_response,
 )
-from .hostguard import build_allowed_hosts, host_guard_middleware
-from .image_gate import needs_image_generation
-from .governance import GovernanceAuditSink
 from .gateway import GatewayHandlers
+from .governance import GovernanceAuditSink
+from .hostguard import build_allowed_hosts, host_guard_middleware
 from .observability import ObservabilitySink
 from .passthrough import (
     chatgpt_compact_passthrough,
     chatgpt_passthrough,
-    merge_codex_forward_headers as _merge_codex_forward_headers,
-    metadata_as_forward_headers as _metadata_as_forward_headers,
-    passthrough_forward_headers as _passthrough_forward_headers,
-    rewrite_response_model as _rewrite_response_model,
-    sanitize_chatgpt_passthrough_body as _sanitize_chatgpt_passthrough_body,
+    merge_codex_forward_headers,
+    metadata_as_forward_headers,
+    passthrough_forward_headers,
+    rewrite_response_model,
+    sanitize_chatgpt_passthrough_body,
 )
-from .picker import CODEX_CONFIG_PATH
+from .persistence import JsonOperationalStore
 from .picker import PICKER_TOKEN_HEADER
 from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
 from .picker import restart_codex_app as _restart_codex_app
 from .picker import set_active_model as _set_active_model
+from .providers import ProviderDispatcher
+from .providers.cursor_agent import CursorAgentTransport, CursorAgentTransportError
+from .response_store import ResponseStore, default_store_path
 from .responses_request import PreparedResponsesRequest
 from .responses_ws import WsStreamResponse
 from .routing import RouteResolution, resolve_model_route
 from .routing.helper_models import apply_helper_model_policy, is_helper_model_slug
 from .routing.workspace import resolve_workspace
-from .providers import ProviderDispatcher
-from .providers.cursor_agent import CursorAgentTransport, CursorAgentTransportError
-from .tools import ToolPolicy
-from .response_store import ResponseStore, default_store_path
 from .sessions import SessionService
-from .persistence import JsonOperationalStore
-from .catalog import CATALOG_PATH, write_catalog
 from .settings import (
     CHATGPT_MODEL_SLUG,
     COMPACT_UNSUPPORTED,
-    DEFAULT_CODEX_AUTH,
-    DEFAULT_SETTINGS,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_SETTINGS,
     ModelSettings,
     ShimModel,
-    available_model_slugs,
     chatgpt_passthrough_available,
     chatgpt_passthrough_slugs,
 )
-from .subscription_catalog import refresh_subscription_catalog
-from .capabilities import execution_mode, is_delegate_route, route_capabilities
 from .streaming import ClientDisconnected, ResponsesStreamState
 from .streaming import anthropic_stream_to_chat_chunk as _anthropic_stream_to_chat_chunk
 from .streaming import open_stream_sink as _open_stream_sink
 from .streaming import safe_write as _safe_write
 from .streaming import sse_lines as _sse_lines
 from .streaming import write_sse as _write_sse
+from .subscription_catalog import refresh_subscription_catalog
+from .tools import ToolPolicy
 from .translate import (
     ResponsesInputError,
     anthropic_to_chat_response,
     anthropic_to_response,
     chat_completion_to_response,
-    chat_to_responses_request,
     chat_to_anthropic,
+    chat_to_responses_request,
     responses_to_anthropic,
     responses_to_chat,
     validate_responses_input,
 )
 from .translate.common import merge_extra_body_params
 from .translate.tool_validate import ToolValidationError, validate_anthropic_tools, validate_chat_tools
+
+# Compatibility aliases: tests/test_server.py imports the underscore names from
+# codex_shim.server. Delete once test imports are repointed at codex_shim.passthrough
+# (migration phase 10).
+_merge_codex_forward_headers = merge_codex_forward_headers
+_metadata_as_forward_headers = metadata_as_forward_headers
+_passthrough_forward_headers = passthrough_forward_headers
+_rewrite_response_model = rewrite_response_model
+_sanitize_chatgpt_passthrough_body = sanitize_chatgpt_passthrough_body
 
 
 async def _await_cursor_inference(coro):

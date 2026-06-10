@@ -9,9 +9,9 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim import picker as picker_module
-from codex_shim.picker import PICKER_TOKEN_HEADER
 from codex_shim import server as server_module
 from codex_shim.image_gate import needs_image_generation
+from codex_shim.picker import PICKER_TOKEN_HEADER
 from codex_shim.server import (
     ResponsesStreamState,
     ShimServer,
@@ -32,7 +32,6 @@ def auth_present(monkeypatch, tmp_path):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", auth)
     monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
     monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
     return auth
@@ -42,7 +41,6 @@ def auth_present(monkeypatch, tmp_path):
 def auth_missing(monkeypatch, tmp_path):
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.server.DEFAULT_CODEX_AUTH", missing)
     monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
@@ -2060,7 +2058,6 @@ def _stub_codex_config(monkeypatch, tmp_path, *, model: str = "kimi-k26") -> "Pa
         'base_url = "http://127.0.0.1:8765/v1"\n'
         'wire_api = "responses"\n'
     )
-    monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", config)
     monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", config)
     return config
 
@@ -2083,7 +2080,6 @@ def test_current_managed_model_reads_top_level_model(monkeypatch, tmp_path):
 
 
 def test_current_managed_model_returns_none_when_config_missing(monkeypatch, tmp_path):
-    monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     assert _current_managed_model() is None
 
@@ -2097,7 +2093,6 @@ def test_set_active_model_rewrites_model_and_provider_name(monkeypatch, tmp_path
 
 
 def test_set_active_model_no_op_when_config_missing(monkeypatch, tmp_path):
-    monkeypatch.setattr(server_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     monkeypatch.setattr(picker_module, "CODEX_CONFIG_PATH", tmp_path / "nope.toml")
     # Should not raise.
     _set_active_model("anything", "Anything")

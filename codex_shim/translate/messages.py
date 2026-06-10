@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..settings import THINKING_KEEP_ALL, provider_thinking_behavior as settings_thinking_behavior
-from ..settings import provider_thinking_options
+from ..settings import THINKING_KEEP_ALL, provider_thinking_options
+from ..settings import provider_thinking_behavior as settings_thinking_behavior
 from .common import sanitize_string
 from .content import content_to_text
 

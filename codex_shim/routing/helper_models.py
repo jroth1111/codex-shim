@@ -7,7 +7,6 @@ from aiohttp import web
 
 from ..settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_available
 
-
 HELPER_SLUG_DEFAULTS = frozenset(
     {
         "codex-auto-review",

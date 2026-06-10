@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 
 def apply_postgres_migrations(migrations_dir: Path) -> int:

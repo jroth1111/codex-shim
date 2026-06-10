@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from aiohttp.test_utils import make_mocked_request
 

@@ -11,7 +11,6 @@ from ..passthrough_upstream import parse_turn_metadata
 from ..responses_request import SHIM_INTERNAL_KEY_PREFIX
 from ..settings import ShimModel
 
-
 _WORKSPACE_METADATA_KEYS = (
     # Confirmed via Desktop RE (startThread cwd) + S11 capture runbook scenario.
     "cwd",

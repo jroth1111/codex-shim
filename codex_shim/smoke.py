@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import asyncio
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from aiohttp import ClientConnectorError, ClientResponseError, ClientSession, ClientTimeout
 
+from . import settings as settings_module
 from .cursor_acp import CursorAcpError, run_cursor_acp
 from .cursor_cli import CursorCliError, run_cursor_cli
-from . import settings as settings_module
 from .settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_model
 from .translate import responses_to_anthropic, responses_to_chat
 
@@ -134,7 +134,7 @@ async def _smoke_anthropic(route: ShimModel, body: dict[str, Any]) -> SmokeResul
 
 
 async def _smoke_chatgpt(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .server import _metadata_as_forward_headers
+    from .passthrough import metadata_as_forward_headers as _metadata_as_forward_headers
 
     auth = json.loads(settings_module.DEFAULT_CODEX_AUTH.expanduser().read_text())
     tokens = auth.get("tokens") or {}

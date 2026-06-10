@@ -12,7 +12,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from codex_shim.desktop_decompiled import desktop_decompiled_root  # noqa: E402
-
 from scripts.desktop_re_common import source_version  # noqa: E402
 
 DEFAULT_CODEX_APP = Path("/Applications/Codex.app")

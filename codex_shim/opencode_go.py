@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .settings import slugify
-
 
 OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1"
 OPENCODE_GO_API_KEY_ENV = "OPENCODE_GO_API_KEY"

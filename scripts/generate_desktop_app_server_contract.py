@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from codex_shim.desktop_decompiled import codex_strings_path, require_available  # noqa: E402
 from scripts.desktop_re_common import (  # noqa: E402
     parse_desktop_http_endpoints,
     parse_model_provider_wire_fields,
@@ -22,7 +23,6 @@ from scripts.desktop_re_common import (  # noqa: E402
     strings_sha256,
     strings_text,
 )
-from codex_shim.desktop_decompiled import codex_strings_path, require_available  # noqa: E402
 
 OUTPUT_PATH = ROOT / "codex_shim" / "desktop_app_server_contract.py"
 

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
 import json
 import os
-from pathlib import Path
 import re
 import shutil
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from urllib.request import urlopen
-
 
 DEFAULT_SETTINGS = Path.home() / ".codex-shim" / "models.json"
 DEFAULT_CODEX_AUTH = Path.home() / ".codex" / "auth.json"

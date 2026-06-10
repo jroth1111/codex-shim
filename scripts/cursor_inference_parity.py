@@ -30,9 +30,9 @@ def _load_source_doc(cursor_root: Path, prompt: str, mode: str) -> dict:
 
 
 def _load_shim_doc(prompt: str, mode: str, *, workspace: Path | None = None) -> dict:
-    from codex_shim.routing import parse_inference_context
     from codex_shim.providers.cursor_agent import build_run_request_skeleton
     from codex_shim.providers.cursor_agent.headers import build_cursor_agent_headers
+    from codex_shim.routing import parse_inference_context
 
     body = {"input": prompt, "metadata": {"mode": mode} if mode != "default" else {}}
     inference = parse_inference_context(body, resolved_model_id="default")
@@ -98,8 +98,8 @@ def _diff(source: dict, shim: dict) -> list[dict]:
 
 
 def _self_check_rows(shim_doc: dict, mode: str, *, workspace: Path | None = None) -> list[dict]:
-    from codex_shim.routing import parse_inference_context
     from codex_shim.providers.cursor_agent.envelope import structural_self_check
+    from codex_shim.routing import parse_inference_context
 
     body = {"metadata": {"mode": mode} if mode != "default" else {}}
     inference = parse_inference_context(body, resolved_model_id="default")

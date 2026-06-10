@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
-from dataclasses import dataclass
-import importlib.util
-import os
-from pathlib import Path
+import asyncio
 import ctypes
+import hashlib
+import importlib.util
+import json
+import os
+import plistlib
 import re
 import shlex
 import shutil
 import signal
+import struct
 import subprocess
 import sys
 import time
-import hashlib
-import json
-import plistlib
-import struct
-import asyncio
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
 from urllib.request import urlopen
 
 from . import router as router_module
@@ -32,40 +32,37 @@ from .catalog import (
     write_config,
     write_direct_responses_config,
 )
+from .codex_config import remove_toml_section, write_codex_config
+from .config_redaction import export_config_file
 from .cursor_passthrough import (
     cursor_passthrough_available,
     cursor_passthrough_display_names,
     is_cursor_passthrough_slug,
 )
+from .migrate import apply_postgres_migrations
 from .opencode_go import (
     OPENCODE_GO_API_KEY_ENV,
     OPENCODE_GO_BASE_URL,
     refresh_opencode_go_settings,
 )
-from .codex_config import remove_toml_section, write_codex_config
-from .config_redaction import REDACTED_VALUE, export_config_file
 from .settings import (
     CHATGPT_MODEL_SLUG,
     DEFAULT_CODEX_AUTH,
-    DEFAULT_SETTINGS,
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_SETTINGS,
     PROVIDER_NAME,
     ModelSettings,
     ShimModel,
     available_model_slugs,
-    byok_model_has_credentials,
     chatgpt_passthrough_available,
-    chatgpt_passthrough_model,
     chatgpt_passthrough_slugs,
     default_model_slug,
     fetch_vibeproxy_model_rows,
     usable_byok_models,
 )
-from .migrate import apply_postgres_migrations
 from .upstream_capture import clear_capture_config, read_capture_config, write_capture_config
 from .workers import main as worker_main
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = PROJECT_ROOT / ".codex-shim"
@@ -84,9 +81,11 @@ MANAGED_TOP_LEVEL_KEYS = {"model", "model_provider", "model_catalog_json"}
 CODEX_APP_ASAR_PATH = Path("/Applications/Codex.app/Contents/Resources/app.asar")
 APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
-from .patch_specs import (
+# Compatibility re-exports: tests read these via codex_shim.cli attributes.
+# Delete once test imports are repointed at the source modules (migration phase 9).
+from .config_redaction import REDACTED_VALUE  # noqa: F401, E402
+from .patch_specs import (  # noqa: F401, E402
     MODEL_PICKER_NEEDLE,
-    MODEL_PICKER_OPTIONAL,
     MODEL_PICKER_REPLACEMENT,
     SIDEBAR_RECENT_THREADS_NEEDLE,
     SIDEBAR_RECENT_THREADS_REPLACEMENT,
@@ -1316,9 +1315,9 @@ def _bool_text(value) -> str:
 
 
 def doctor_models(settings_path: Path) -> int:
+    from .capabilities import execution_mode, route_capabilities
     from .catalog import websockets_enabled
     from .response_store import default_store_path, store_scope
-    from .capabilities import execution_mode, route_capabilities
 
     models = _load_models(settings_path)
     desktop_models = _desktop_models(settings_path)

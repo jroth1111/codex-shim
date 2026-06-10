@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 IMAGE_TOOL_TYPES = {"image_generation", "image_gen"}
 IMAGE_TOOL_NAMES = {"image_generation", "image_gen"}
 

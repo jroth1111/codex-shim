@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-from aiohttp import web
-
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
 import json
 import os
-from pathlib import Path
 import shlex
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+from aiohttp import web
+
 from .cursor_acp import (
-    CursorAcpResult,
     DEFAULT_CURSOR_TIMEOUT,
+    CursorAcpResult,
     _normalize_usage,
     cursor_prompt_for_body,
 )

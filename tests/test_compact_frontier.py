@@ -6,14 +6,12 @@ from pathlib import Path
 from codex_shim.compact import (
     CompactQuality,
     append_postcompact_capture,
-    augment_compact_summary,
     build_emulated_compact_instructions,
     compact_audit_record,
     evaluate_compact_summary,
     finalize_compact_summary,
 )
 from codex_shim.compact_frontier import CompactFrontier, extract_compact_frontier, git_status_short
-
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "desktop" / "compaction_turn.json"
 

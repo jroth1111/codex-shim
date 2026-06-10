@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
 from codex_shim.translate import (
-    anthropic_to_response,
     chat_completion_to_response,
 )
 

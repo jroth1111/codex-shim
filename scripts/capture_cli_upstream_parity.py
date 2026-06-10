@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -20,10 +21,8 @@ from capture_upstream_parity import (  # noqa: E402
     PYTHON,
     SANITIZE,
     SHIM_LOG,
-    STAGING_DIR,
     _assert_model_provider,
     _backup_config,
-    _build_capture_config,
     _dump_model,
     _force_stop_shim,
     _install_dump_provider,

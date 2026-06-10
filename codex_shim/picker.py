@@ -11,7 +11,6 @@ from pathlib import Path
 
 from .settings import PROVIDER_NAME
 
-
 PICKER_TOKEN_HEADER = "X-Codex-Shim-Picker-Token"
 CODEX_CONFIG_PATH = Path.home() / ".codex" / "config.toml"
 _MODEL_LINE_RE = re.compile(r'(?m)^(\s*model\s*=\s*")[^"]*(")')

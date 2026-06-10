@@ -14,7 +14,6 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_MAX_ITEMS = 256
 
 

@@ -5,10 +5,9 @@ from pathlib import Path
 
 from codex_shim.translate import (
     anthropic_to_response,
-    chat_completion_to_response,
+    responses_input_to_messages,
     responses_to_anthropic,
     responses_to_chat,
-    responses_input_to_messages,
     validate_responses_input,
 )
 

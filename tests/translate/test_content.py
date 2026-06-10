@@ -4,7 +4,6 @@ import pytest
 
 from codex_shim.translate import (
     ResponsesInputError,
-    responses_to_anthropic,
     responses_to_chat,
 )
 from codex_shim.translate.content import chat_parts_from_content

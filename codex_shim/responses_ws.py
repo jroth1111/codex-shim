@@ -5,7 +5,6 @@ from typing import Any, Awaitable, Callable
 
 from aiohttp import WSMsgType, web
 
-
 ResponsesBodyHandler = Callable[..., Awaitable[web.StreamResponse | web.Response]]
 
 

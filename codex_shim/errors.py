@@ -10,7 +10,6 @@ from .cursor_acp import CursorAcpError
 from .settings import ShimModel
 from .translate import ResponsesInputError
 
-
 _ERROR_PASSTHROUGH_KEYS = frozenset(("code", "param", "doc_url", "help_url"))
 
 

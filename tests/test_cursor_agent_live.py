@@ -7,10 +7,11 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
+from codex_shim.providers.cursor_agent.connect_framing import encode_connect_frame
+from codex_shim.providers.cursor_agent.decode import write_cursor_agent_event
 from codex_shim.providers.cursor_agent.envelope import build_run_request_skeleton, structural_self_check
 from codex_shim.providers.cursor_agent.headers import endpoint_urls
-from codex_shim.providers.cursor_agent.connect_framing import encode_connect_frame
-from codex_shim.providers.cursor_agent.live_http1 import stream_http1_live_events
+from codex_shim.providers.cursor_agent.live_http1 import collect_http1_live_turn, stream_http1_live_events
 from codex_shim.providers.cursor_agent.live_run import stream_run_live_events
 from codex_shim.providers.cursor_agent.proto_decode import (
     decode_interaction_update,
@@ -22,14 +23,12 @@ from codex_shim.providers.cursor_agent.proto_wire import (
     encode_bidi_request_id,
     encode_client_envelope_bytes,
 )
-from codex_shim.providers.cursor_agent.live_http1 import collect_http1_live_turn
 from codex_shim.providers.cursor_agent.transport import (
     CursorAgentTransport,
     resolve_cursor_agent_transport_mode,
 )
 from codex_shim.providers.cursor_agent.types import CursorAgentPreparedRequest
 from codex_shim.routing import parse_inference_context
-from codex_shim.providers.cursor_agent.decode import write_cursor_agent_event
 from codex_shim.streaming import ResponsesStreamState
 
 
@@ -49,7 +48,7 @@ def test_encode_bidi_request_id():
 
 
 def test_iter_proto_strings_finds_nested_text():
-    from codex_shim.providers.cursor_agent.proto_wire import field_string, field_message
+    from codex_shim.providers.cursor_agent.proto_wire import field_message, field_string
 
     inner = field_string(1, "Hello from agent")
     wrapped = field_message(1, inner)

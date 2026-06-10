@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from codex_shim.desktop_decompiled import require_available  # noqa: E402
 from scripts.desktop_re_common import (  # noqa: E402
     codex_binary_path,
     codex_strings_path,
@@ -23,7 +24,6 @@ from scripts.desktop_re_common import (  # noqa: E402
     try_extract_json_blob,
     write_json,
 )
-from codex_shim.desktop_decompiled import require_available  # noqa: E402
 
 SCHEMA_FILES = (
     "codex_app_server_protocol.schemas.json",

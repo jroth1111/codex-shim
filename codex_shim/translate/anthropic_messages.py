@@ -3,8 +3,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .common import chat_finish_to_anthropic_stop, copy_if_present, jsonish, responses_usage_to_anthropic_usage, strip_think
-from .content import chat_image_part, chat_parts_from_content, content_to_text
+from .common import (
+    chat_finish_to_anthropic_stop,
+    copy_if_present,
+    jsonish,
+    responses_usage_to_anthropic_usage,
+    strip_think,
+)
+from .content import chat_image_part, content_to_text
 from .messages import merge_consecutive_messages, normalize_chat_roles, sanitize_chat_messages
 from .usage import normalize_responses_usage
 

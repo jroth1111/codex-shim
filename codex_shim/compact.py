@@ -12,7 +12,6 @@ from aiohttp import web
 from .compact_frontier import (
     CompactFrontier,
     extract_compact_frontier,
-    git_status_short,
     mentions_modified_files,
     preserves_last_user_intent,
 )

@@ -4,7 +4,6 @@ import base64
 import json
 from typing import Any
 
-
 SHIM_ENCRYPTED_CONTENT_PREFIX = "anthropic-thinking-v1:"
 
 

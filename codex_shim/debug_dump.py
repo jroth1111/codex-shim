@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-
 DEBUG_DIR = Path(__file__).resolve().parents[1] / ".codex-shim"
 
 SENSITIVE_KEYS = {

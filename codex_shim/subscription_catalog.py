@@ -16,8 +16,8 @@ from urllib.request import Request, urlopen
 from . import settings as settings_module
 from .settings import (
     CHATGPT_MODEL_SLUG,
-    NormalizedModel,
     TRANSPORT_CHATGPT,
+    NormalizedModel,
     chatgpt_passthrough_available,
     provider_preset,
 )
