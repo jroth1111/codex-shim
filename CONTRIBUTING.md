@@ -5,7 +5,7 @@ Thanks for hacking on the shim. Issues and PRs welcome.
 ## Dev loop
 
 Requires **Python 3.11+** (`requires-python` in `pyproject.toml`; 3.9/3.10 fail on
-`int | None` union syntax in `responses_ws.py`).
+`int | None` union syntax in `codex_shim/gateway/ws.py`).
 
 ```bash
 git clone https://github.com/jroth1111/codex-shim
@@ -22,8 +22,8 @@ Or run the pieces individually:
 ```bash
 python3 -m pytest tests/ -m "not live" -q
 python3 -m compileall codex_shim/ -q
-python3 -m ruff check .
-python3 -m pyright
+ruff check .
+pyright
 python3 scripts/generate_desktop_contract.py --check           # skips if no local RE tree
 python3 scripts/generate_desktop_app_server_contract.py --check
 python3 scripts/check_desktop_patch_needles.py                 # exits 1 if RE tree exists but needles drift
@@ -38,7 +38,7 @@ patch-needle **script** fails when the tree exists but needles are missing; the
 incomplete. Set `CODEX_SHIM_REQUIRE_DESKTOP_DECOMPILED=1` to fail both when the tree
 is absent.
 
-CI runs the same commands on Python 3.11 and 3.12 via
+CI runs the same commands on Python 3.11 through 3.14 via
 `.github/workflows/ci.yml`. Match it locally before opening a PR.
 
 ## Translation package (`codex_shim/translate/`)
@@ -82,7 +82,7 @@ Audit-oriented contract notes: `AUDIT_CONTRACTS.md`, `AUDIT_MANIFEST.md`.
 ## Code style
 
 - Match the surrounding file. No new dependencies without a reason.
-- Keep `codex_shim/server.py` translation behavior covered by tests in
+- Keep gateway/provider translation behavior covered by tests in
   `tests/test_server.py` or `tests/translate/` — tool-call shape
   bugs are easy to miss by eyeballing streams.
 - Don't include API keys, ChatGPT access tokens, or `auth.json` contents

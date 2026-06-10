@@ -140,10 +140,25 @@ async def stream_openai_chat(
             final_response = await state.finish(response)
             if prepared is not None:
                 runtime.store_history(prepared, final_response, route=route)
-            log_access(request, route, 200, started_at, payload=final_response, stream=True)
+            log_access(
+                    request,
+                    route,
+                    200,
+                    started_at,
+                    payload=final_response,
+                    stream=True,
+                    request_body=prepared.body if prepared is not None else None,
+                )
         else:
             await safe_write(response, b"data: [DONE]\n\n")
-            log_access(request, route, 200, started_at, stream=True)
+            log_access(
+                    request,
+                    route,
+                    200,
+                    started_at,
+                    stream=True,
+                    request_body=prepared.body if prepared is not None else None,
+                )
     except ClientDisconnected:
         pass
     finally:

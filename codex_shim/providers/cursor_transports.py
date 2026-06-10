@@ -335,6 +335,7 @@ async def stream_cursor_agent_native(
                 started_at,
                 payload=final_response,
                 stream=True,
+                request_body=prepared.body if prepared is not None else None,
                 workspace=workspace_log_value(workspace),
             )
     except ClientDisconnected:
@@ -606,6 +607,7 @@ async def stream_cursor_acp(
                 started_at,
                 payload=final_response,
                 stream=True,
+                request_body=prepared.body if prepared is not None else None,
                 workspace=workspace_log_value(workspace),
             )
         else:
@@ -649,6 +651,7 @@ async def stream_cursor_acp(
                 200,
                 started_at,
                 stream=True,
+                request_body=prepared.body if prepared is not None else None,
                 workspace=workspace_log_value(workspace),
             )
     except ClientDisconnected:
@@ -746,6 +749,7 @@ async def stream_cursor_cli(
                 started_at,
                 payload=final_response,
                 stream=True,
+                request_body=prepared.body if prepared is not None else None,
                 workspace=workspace_log_value(workspace),
             )
         else:
@@ -793,6 +797,7 @@ async def stream_cursor_cli(
                 200,
                 started_at,
                 stream=True,
+                request_body=prepared.body if prepared is not None else None,
                 workspace=workspace_log_value(workspace),
             )
     except ClientDisconnected:

@@ -43,11 +43,11 @@ Committed shim evidence: `codex_shim/desktop_contract.py`, `tests/fixtures/deskt
 | `codex_shim/server.py` | HTTP/WS server, routing, passthrough, BYOK dispatch, compaction, header forward |
 | `codex_shim/translate/` | Responses ↔ chat/Anthropic package (`input`, `chat`, `anthropic`, `output`, `tools`, `tool_schema`, `content`, …) |
 | `codex_shim/settings.py` | Model catalog, provider presets, ChatGPT passthrough slug |
-| `codex_shim/catalog.py` | Generated Codex Desktop catalog (`wire_api = "responses"`) |
-| `codex_shim/response_store.py` | SQLite `previous_response_id` expansion (BYOK only) |
-| `codex_shim/responses_ws.py` | WebSocket transport |
-| `codex_shim/probe.py` | Offline/live fidelity probes |
-| `codex_shim/cursor_cli.py`, `cursor_acp.py` | Cursor subprocess adapters |
+| `codex_shim/clientconfig/catalog.py` | Generated Codex Desktop catalog (`wire_api = "responses"`) |
+| `codex_shim/sessions/response_store.py` | SQLite `previous_response_id` expansion (BYOK only) |
+| `codex_shim/gateway/ws.py` | WebSocket transport |
+| `codex_shim/verification/probe.py` | Offline/live fidelity probes |
+| `codex_shim/providers/cursor/cli.py`, `providers/cursor/acp.py` | Cursor subprocess adapters |
 | `tests/` | Tests + `fixtures/desktop/*.json` golden turns |
 | `README.md` | Documented behavior, fidelity tiers, env vars |
 
@@ -156,7 +156,7 @@ Answer each with evidence. Mark **PASS**, **GAP**, **BUG**, or **UNKNOWN**.
 
 11. Compare Desktop SSE event types consumed vs shim `ResponsesStreamState` emissions.
 12. Passthrough: when is raw SSE relay used vs parsed/re-emitted? Does Desktop care (alias slug, WS path)?
-13. WebSocket JSON framing in `responses_ws.py` — match Desktop client?
+13. WebSocket JSON framing in `gateway/ws.py` — match Desktop client?
 
 ### E. Tools & agent loop
 

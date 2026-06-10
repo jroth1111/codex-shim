@@ -73,7 +73,7 @@ Ported from Cursor Agent semantics (`reproduce-inference.mjs` + reconstructed `c
 | `routing/inference_context.py` | CLI/agent/metadata modes, surface, `force_run_everything`, prefetch status |
 | `routing/model_catalog.py` | Desktop model catalog snapshot + TTL cache (`persistence` key `model_catalog/desktop`) |
 | `routing/model_resolution.py` | `auto` / `default` slug resolution with unavailable-exact guard |
-| `tools/policy.py` | Tool policy evaluation before dispatch (image gate remains in `server.py`) |
+| `tools/policy.py` | Tool policy evaluation before dispatch (image gate lives in `routing/image_gate.py`) |
 | `providers/cursor_agent/` | Opt-in native envelope builder (`headers`, `envelope`, `transport`, `proto_wire`, `proto_decode`, `connect_framing`, `live_http1`, `live_run`, `catalog_rpc`, `decode`) |
 
 **Per-model flag:** `useNativeTransport: true` on a Cursor provider row sets transport to `cursor-agent-grpc`. Default execution still delegates to the Cursor CLI unless:

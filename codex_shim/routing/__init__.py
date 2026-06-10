@@ -1,13 +1,11 @@
 from . import auto_router
-from .auto_router import load_router_config, router_is_active
-from .auto_router_service import AutoRouterService, active_router
+from .auto_router_service import AutoRouterService
 from .discovery import (
     available_model_slugs,
     by_slug_or_model,
     chatgpt_passthrough_model,
     chatgpt_passthrough_slugs,
     desktop_models,
-    subscription_passthrough_slugs_models,
 )
 from .helper_models import apply_helper_model_policy, is_helper_model_slug
 from .image_gate import needs_image_generation
@@ -21,12 +19,11 @@ from .inference_context import (
     metadata_mode_for_cli_mode,
     parse_inference_context,
 )
-from .model_catalog import ModelCatalogSnapshot, prefetch_model_catalog
+from .model_catalog import prefetch_model_catalog
 from .service import RouteResolution, RoutingPolicy, resolve_model_route
 from .subscription_catalog import (
     SubscriptionCatalogSnapshot,
     known_subscription_slugs,
-    merge_desktop_models,
     refresh_subscription_catalog,
     subscription_passthrough_models,
 )
@@ -39,9 +36,7 @@ from .workspace import (
 
 __all__ = [
     "AutoRouterService",
-    "ModelCatalogSnapshot",
     "SubscriptionCatalogSnapshot",
-    "active_router",
     "auto_router",
     "known_subscription_slugs",
     "apply_helper_model_policy",
@@ -50,14 +45,10 @@ __all__ = [
     "chatgpt_passthrough_model",
     "chatgpt_passthrough_slugs",
     "desktop_models",
-    "subscription_passthrough_slugs_models",
     "is_helper_model_slug",
-    "load_router_config",
-    "merge_desktop_models",
     "needs_image_generation",
     "prefetch_model_catalog",
     "refresh_subscription_catalog",
-    "router_is_active",
     "subscription_passthrough_models",
     "AGENT_MODE_AGENT",
     "AGENT_MODE_ASK",

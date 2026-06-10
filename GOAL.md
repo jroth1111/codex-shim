@@ -41,6 +41,19 @@ Build `codex_shim` as a production-ready greenfield platform using a **modular m
 - Environments: local, staging, production with explicit config separation.
 - Baseline SLOs and dashboards for latency, error rate, and provider/tool failures.
 
+## Status (2026-06-11)
+
+The modular-monolith architecture above is implemented and CI-enforced:
+module boundaries live in `scripts/check_module_boundaries.py` (debt ratchet
+empty — any violation is a hard failure), lint/type gates run in CI (ruff +
+pyright, zero errors with no exclusions), and the public surfaces are pinned
+by tests (`tests/test_public_surface.py`). See
+[`docs/MODULAR_ARCHITECTURE.md`](docs/MODULAR_ARCHITECTURE.md) for the final
+module map. Remaining from the phases below: PostgreSQL-backed operational
+store wiring (the `persistence` abstraction and migrations exist; the JSON
+store is the default) and the Phase 3 queue-backed workers beyond the current
+JSONL job queue.
+
 ## Non-Goals (Initial Phase)
 - Premature microservice split.
 - Multi-database polyglot persistence without clear need.

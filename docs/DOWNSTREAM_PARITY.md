@@ -22,9 +22,9 @@ Raw cherry-picks of the four commits are **not** recommended: they target pre-re
 
 | Behavior | Fork location |
 |----------|----------------|
-| `POST /v1/responses/compact` | [`codex_shim/server.py`](../codex_shim/server.py), [`codex_shim/gateway/handlers.py`](../codex_shim/gateway/handlers.py) |
-| ChatGPT native compact passthrough | [`codex_shim/passthrough.py`](../codex_shim/passthrough.py), [`codex_shim/compact.py`](../codex_shim/compact.py) |
-| BYOK emulated compact | [`codex_shim/compact.py`](../codex_shim/compact.py) |
+| `POST /v1/responses/compact` | [`codex_shim/gateway/admin.py`](../codex_shim/gateway/admin.py), [`codex_shim/gateway/handlers.py`](../codex_shim/gateway/handlers.py) |
+| ChatGPT native compact passthrough | [`codex_shim/providers/chatgpt/handlers.py`](../codex_shim/providers/chatgpt/handlers.py), [`codex_shim/sessions/compact.py`](../codex_shim/sessions/compact.py) |
+| BYOK emulated compact | [`codex_shim/sessions/compact.py`](../codex_shim/sessions/compact.py) |
 | Native tool → function fallbacks | [`codex_shim/translate/tool_schema.py`](../codex_shim/translate/tool_schema.py) |
 
 Regression tests: `tests/test_server.py` (compact routes), `tests/translate/test_tool_schema.py` (`test_native_responses_tools_*`).
@@ -33,9 +33,9 @@ Regression tests: `tests/test_server.py` (compact routes), `tests/translate/test
 
 | Behavior | Fork location |
 |----------|----------------|
-| `GET /picker` | [`codex_shim/server.py`](../codex_shim/server.py) + [`codex_shim/picker.py`](../codex_shim/picker.py) |
-| `GET /api/models` | [`codex_shim/server.py`](../codex_shim/server.py) (`include_unavailable` query supported) |
-| `POST /api/switch` + optional restart | [`codex_shim/server.py`](../codex_shim/server.py), [`codex_shim/picker.py`](../codex_shim/picker.py) |
+| `GET /picker` | [`codex_shim/gateway/admin.py`](../codex_shim/gateway/admin.py) + [`codex_shim/clientconfig/picker.py`](../codex_shim/clientconfig/picker.py) |
+| `GET /api/models` | [`codex_shim/gateway/admin.py`](../codex_shim/gateway/admin.py) (`include_unavailable` query supported) |
+| `POST /api/switch` + optional restart | [`codex_shim/gateway/admin.py`](../codex_shim/gateway/admin.py), [`codex_shim/clientconfig/picker.py`](../codex_shim/clientconfig/picker.py) |
 
 Regression tests: `tests/test_server.py` (`test_picker_*`, `test_api_models_*`, `test_switch_model_*`).
 
@@ -43,9 +43,9 @@ Regression tests: `tests/test_server.py` (`test_picker_*`, `test_api_models_*`, 
 
 | Behavior | Fork location |
 |----------|----------------|
-| OpenAI chat stream usage | [`codex_shim/streaming.py`](../codex_shim/streaming.py) (`write_chat_delta`, `normalize_responses_usage`) |
-| Anthropic `message_delta` usage | [`codex_shim/streaming.py`](../codex_shim/streaming.py) |
-| Usage on final `response.completed` | [`codex_shim/streaming.py`](../codex_shim/streaming.py) `finish()` |
+| OpenAI chat stream usage | [`codex_shim/translate/streaming.py`](../codex_shim/translate/streaming.py) (`write_chat_delta`, `normalize_responses_usage`) |
+| Anthropic `message_delta` usage | [`codex_shim/translate/streaming.py`](../codex_shim/translate/streaming.py) |
+| Usage on final `response.completed` | [`codex_shim/translate/streaming.py`](../codex_shim/translate/streaming.py) `finish()` |
 
 Regression tests: `tests/test_server.py` (`test_streaming_openai_chat_response_completed_includes_usage`, `test_streaming_anthropic_response_completed_includes_usage`).
 
