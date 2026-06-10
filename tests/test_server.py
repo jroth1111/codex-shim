@@ -2752,8 +2752,7 @@ async def test_byok_upstream_error_preserves_code_and_param(tmp_path):
     await upstream_client.close()
 
 
-def test_responses_stream_state_open_tool_seeds_web_search_action_type():
-    state = ResponsesStreamState("slug", tools=[{"type": "web_search"}])
+def test_streaming_tool_open_item_seeds_web_search_action_type():
     item = streaming_tool_open_item("web_search_call", call_id="call_search", name="web_search")
     assert item["action"] == {"type": "search"}
 

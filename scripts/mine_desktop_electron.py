@@ -77,7 +77,7 @@ def _render_markdown(hits: list[dict[str, object]]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    args = parser.parse_args(argv)
+    parser.parse_args(argv)
 
     asar_root = app_asar_extracted_dir()
     if not asar_root.is_dir():

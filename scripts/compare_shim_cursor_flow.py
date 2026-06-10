@@ -150,7 +150,7 @@ async def _shim_ws_turn(
 
 def _delegate_prompt(prompt: str, cwd: str, settings_path: Path) -> str:
     from codex_shim.cursor_acp import cursor_prompt_for_body
-    from codex_shim.cursor_parity import build_cursor_cli_turn_options, legacy_delegate_prompt_enabled
+    from codex_shim.cursor_parity import legacy_delegate_prompt_enabled
     from codex_shim.settings import ModelSettings
 
     catalog = ModelSettings(settings_path)
@@ -159,7 +159,6 @@ def _delegate_prompt(prompt: str, cwd: str, settings_path: Path) -> str:
         raise SystemExit("cursor-auto not found in settings")
     body = {"input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}]}]}
     workspace = Path(cwd)
-    turn_options = build_cursor_cli_turn_options(route, body, workspace=workspace)
     if legacy_delegate_prompt_enabled(route):
         return cursor_prompt_for_body(
             body,

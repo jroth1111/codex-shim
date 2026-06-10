@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CURSOR_ROOT = Path("/private/tmp/cursor")
@@ -60,7 +61,6 @@ def _run_request_value(doc: dict) -> dict[str, Any]:
 
 def _diff(source: dict, shim: dict) -> list[dict]:
     rows: list[dict] = []
-    src_sk = _run_request_value(source)
     shim_sk = _run_request_value(shim)
     src_mode = source.get("mode", {}).get("userMessageModeProtoValue")
     shim_mode = shim.get("mode", {}).get("userMessageModeProtoValue")
@@ -72,7 +72,6 @@ def _diff(source: dict, shim: dict) -> list[dict]:
             "match": src_mode == shim_mode,
         }
     )
-    src_model = (src_sk.get("requestedModel") or {}).get("modelId")
     shim_model = (shim_sk.get("requestedModel") or {}).get("modelId")
     rows.append(
         {

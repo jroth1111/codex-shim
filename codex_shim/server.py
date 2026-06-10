@@ -649,7 +649,6 @@ class ShimServer:
         force_non_stream: bool = False,
         compact_body_for_wrap: dict[str, Any] | None = None,
     ) -> web.StreamResponse | web.Response:
-        started_at = time.monotonic()
         stream_target = ws_stream if ws_stream is not None else None
         dispatch_stats: dict[str, Any] = {}
         body = prepared.body

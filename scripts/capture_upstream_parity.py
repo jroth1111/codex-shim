@@ -434,7 +434,7 @@ def _wait_for_dump(dump_path: Path, *, timeout_s: float = 120.0, required_text: 
     if jsonl_path.exists():
         jsonl_lines = len(jsonl_path.read_text(encoding="utf-8").splitlines())
     diagnostics = _dump_timeout_diagnostics(dump_path)
-    raise RuntimeError(f"turn upstream dump missing: {dump_path} ({diagnostics})")
+    raise RuntimeError(f"turn upstream dump missing: {dump_path} (jsonl_lines={jsonl_lines}; {diagnostics})")
 
 
 def _prompt_marker(prompt: str) -> str:
@@ -557,7 +557,7 @@ def capture_shim_leg(
                 staging_path,
                 prompt,
                 timeout_s=180.0,
-                before_wait=lambda: _wait_for_shim_traffic(log_offset=log_offset),
+                before_wait=lambda offset=log_offset: _wait_for_shim_traffic(log_offset=offset),
             )
             shutil.copyfile(staging_path, dump_path)
             return

@@ -598,8 +598,8 @@ def sse_response() -> web.StreamResponse:
 async def safe_write(response: web.StreamResponse, data: bytes) -> None:
     try:
         await response.write(data)
-    except (ConnectionResetError, ConnectionError):
-        raise ClientDisconnected()
+    except (ConnectionResetError, ConnectionError) as exc:
+        raise ClientDisconnected() from exc
     except Exception as exc:
         if exc.__class__.__name__ in {
             "ClientConnectionResetError",

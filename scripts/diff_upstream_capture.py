@@ -254,7 +254,7 @@ def _first_diff_path(left: Any, right: Any, *, prefix: str = "") -> str | None:
     if isinstance(left, list) and isinstance(right, list):
         if len(left) != len(right):
             return f"{prefix} length differs left={len(left)} right={len(right)}"
-        for index, (left_item, right_item) in enumerate(zip(left, right)):
+        for index, (left_item, right_item) in enumerate(zip(left, right, strict=True)):
             nested = _first_diff_path(left_item, right_item, prefix=f"{prefix}[{index}]")
             if nested:
                 return nested
@@ -315,7 +315,7 @@ def _collect_field_diffs(left: Any, right: Any, *, prefix: str = "", limit: int 
     if isinstance(left, list) and isinstance(right, list):
         if len(left) != len(right):
             return [f"{prefix or 'value'} length differs left={len(left)} right={len(right)}"]
-        for index, (left_item, right_item) in enumerate(zip(left, right)):
+        for index, (left_item, right_item) in enumerate(zip(left, right, strict=True)):
             if len(diffs) >= limit:
                 break
             nested = _collect_field_diffs(left_item, right_item, prefix=f"{prefix}[{index}]", limit=limit - len(diffs))

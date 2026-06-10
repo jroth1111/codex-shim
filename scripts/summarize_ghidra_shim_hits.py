@@ -95,7 +95,7 @@ def _render_markdown(decomp_hits: list[dict[str, str]], string_hits: list[dict[s
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    args = parser.parse_args(argv)
+    parser.parse_args(argv)
 
     root = _ghidra_root()
     decomp_hits = _scan_decomp(root / "decomp-rust" / "functions")

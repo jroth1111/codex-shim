@@ -260,10 +260,10 @@ async def chatgpt_passthrough(
     """Forward a Responses request to chatgpt.com using the user's Codex auth."""
     try:
         forwarded, headers = _prepare_upstream_request(request, body, compact=False)
-    except FileNotFoundError:
-        raise web.HTTPUnauthorized(text="~/.codex/auth.json not found")
-    except (json.JSONDecodeError, ValueError):
-        raise web.HTTPUnauthorized(text="~/.codex/auth.json is malformed")
+    except FileNotFoundError as exc:
+        raise web.HTTPUnauthorized(text="~/.codex/auth.json not found") from exc
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise web.HTTPUnauthorized(text="~/.codex/auth.json is malformed") from exc
     url = "https://chatgpt.com/backend-api/codex/responses"
     started_at = time.monotonic()
     provider_started_at = time.monotonic()
@@ -349,10 +349,10 @@ async def chatgpt_compact_passthrough(
 ) -> web.StreamResponse:
     try:
         forwarded, headers = _prepare_upstream_request(request, body, compact=True)
-    except FileNotFoundError:
-        raise web.HTTPUnauthorized(text="~/.codex/auth.json not found")
-    except (json.JSONDecodeError, ValueError):
-        raise web.HTTPUnauthorized(text="~/.codex/auth.json is malformed")
+    except FileNotFoundError as exc:
+        raise web.HTTPUnauthorized(text="~/.codex/auth.json not found") from exc
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise web.HTTPUnauthorized(text="~/.codex/auth.json is malformed") from exc
     original_model = str(body.get("model") or forwarded.get("model") or "")
     url = "https://chatgpt.com/backend-api/codex/responses/compact"
     started_at = time.monotonic()

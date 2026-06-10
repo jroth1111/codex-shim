@@ -615,7 +615,7 @@ async def test_concurrent_requests_route_correctly(tmp_path):
     results = await asyncio.gather(*(fire(p) for p, _ in tasks))
 
     # Each response carries its own routed backend, independent of shared state.
-    for (_prompt, expected), (status, text) in zip(tasks, results):
+    for (_prompt, expected), (status, text) in zip(tasks, results, strict=True):
         assert status == 200
         assert text == f"handled by {expected}"
 
