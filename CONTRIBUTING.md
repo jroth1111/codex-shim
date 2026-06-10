@@ -8,7 +8,7 @@ Requires **Python 3.11+** (`requires-python` in `pyproject.toml`; 3.9/3.10 fail 
 `int | None` union syntax in `responses_ws.py`).
 
 ```bash
-git clone https://github.com/0xSero/codex-shim
+git clone https://github.com/jroth1111/codex-shim
 cd codex-shim
 python3 -m pip install -e ".[dev]"
 

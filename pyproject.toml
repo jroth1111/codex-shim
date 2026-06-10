@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [{ name = "0xSero" }]
+maintainers = [{ name = "jroth1111" }]
 keywords = ["codex", "byok", "openai", "anthropic", "responses-api", "model-routing"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -31,9 +32,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/0xSero/codex-shim"
-Repository = "https://github.com/0xSero/codex-shim"
-Issues = "https://github.com/0xSero/codex-shim/issues"
+Homepage = "https://github.com/jroth1111/codex-shim"
+Repository = "https://github.com/jroth1111/codex-shim"
+Issues = "https://github.com/jroth1111/codex-shim/issues"
+Upstream = "https://github.com/0xSero/codex-shim"
 
 [project.scripts]
 codex-shim = "codex_shim.cli:_entrypoint"
