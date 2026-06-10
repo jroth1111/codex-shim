@@ -95,7 +95,6 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/server.py', 'deep:providers.cursor_agent.live_run'),
         ('codex_shim/server.py', 'deep:routing.helper_models'),
         ('codex_shim/server.py', 'deep:routing.workspace'),
-        ('codex_shim/server.py', 'deep:translate.common'),
         ('codex_shim/server.py', 'deep:translate.tool_validate'),
         ('codex_shim/settings.py', 'providers'),
         ('codex_shim/settings.py', 'routing'),

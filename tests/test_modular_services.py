@@ -8,7 +8,7 @@ from aiohttp import web
 from codex_shim.governance import GovernanceAuditSink
 from codex_shim.observability import ObservabilitySink
 from codex_shim.persistence import JsonOperationalStore
-from codex_shim.providers import ProviderDispatcher
+from codex_shim.providers import ProviderDispatcher, executed_tool_count_from_response_payload
 from codex_shim.providers.cursor_agent import build_run_request_skeleton
 from codex_shim.providers.cursor_agent.envelope import structural_self_check
 from codex_shim.providers.cursor_agent.transport import CursorAgentTransport
@@ -24,7 +24,6 @@ from codex_shim.routing import (
 )
 from codex_shim.routing.model_catalog import prefetch_model_catalog
 from codex_shim.routing.model_resolution import resolve_auto_model, resolve_model_with_prefetch
-from codex_shim.server import _executed_tool_count_from_response_payload
 from codex_shim.settings import TRANSPORT_CURSOR_AGENT, ModelSettings
 from codex_shim.tools import ToolPolicy
 from codex_shim.workers import enqueue_job, run_worker_once
@@ -195,7 +194,7 @@ def test_executed_tool_count_from_response_payload_counts_tool_calls():
             {"type": "output_text"},
         ]
     }
-    assert _executed_tool_count_from_response_payload(payload) == 2
+    assert executed_tool_count_from_response_payload(payload) == 2
 
 
 @pytest.mark.parametrize(

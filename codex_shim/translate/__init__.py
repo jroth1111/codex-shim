@@ -8,6 +8,7 @@ from .common import (
     THINK_RE,
     ResponsesInputError,
     chat_finish_to_anthropic_stop,
+    merge_extra_body_params,
     responses_usage_to_anthropic_usage,
     strip_think,
 )
@@ -40,6 +41,7 @@ from .usage import normalize_responses_usage
 MAX_INLINE_MEDIA_BYTES = _content_module.MAX_INLINE_MEDIA_BYTES
 
 __all__ = [
+    "merge_extra_body_params",
     "AnthropicMessagesStreamState",
     "ResponsesStreamState",
     "anthropic_stream_to_chat_chunk",

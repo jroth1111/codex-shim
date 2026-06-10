@@ -6,9 +6,7 @@ import time
 import uuid
 from typing import Any
 
-from aiohttp import web
-
-from ..wire import write_anthropic_sse, write_sse
+from ..wire import StreamSink, write_anthropic_sse, write_sse
 from .common import chat_finish_to_anthropic_stop, responses_usage_to_anthropic_usage
 from .thinking import reasoning_encrypted_content
 from .tools import (
@@ -47,10 +45,10 @@ class ResponsesStreamState:
             "unknown_cursor_event_types": [],
         }
 
-    async def start(self, response: web.StreamResponse) -> None:
+    async def start(self, response: StreamSink) -> None:
         await write_sse(response, {"type": "response.created", "response": self._response("in_progress")})
 
-    async def finish(self, response: web.StreamResponse) -> dict[str, Any]:
+    async def finish(self, response: StreamSink) -> dict[str, Any]:
         for state in sorted(self.reasoning_blocks.values(), key=lambda s: s["output_index"]):
             if not state.get("closed"):
                 await self._close_reasoning(response, state)
@@ -66,7 +64,7 @@ class ResponsesStreamState:
         self.reasoning_blocks.clear()
         return final_response
 
-    async def write_chat_delta(self, response: web.StreamResponse, chunk: dict[str, Any]) -> None:
+    async def write_chat_delta(self, response: StreamSink, chunk: dict[str, Any]) -> None:
         usage = chunk.get("usage")
         if isinstance(usage, dict):
             self.usage = normalize_responses_usage(usage)
@@ -84,7 +82,7 @@ class ResponsesStreamState:
         for call in delta.get("tool_calls") or []:
             await self._chat_tool_delta(response, call)
 
-    async def _chat_reasoning_delta(self, response: web.StreamResponse, text: str) -> None:
+    async def _chat_reasoning_delta(self, response: StreamSink, text: str) -> None:
         state = self.reasoning_blocks.get(("chat",))
         if state is None:
             state = await self._open_reasoning(response, key=("chat",))
@@ -100,7 +98,7 @@ class ResponsesStreamState:
             },
         )
 
-    async def _chat_tool_delta(self, response: web.StreamResponse, call: dict[str, Any]) -> None:
+    async def _chat_tool_delta(self, response: StreamSink, call: dict[str, Any]) -> None:
         index = int(call.get("index", 0))
         fn = call.get("function") or {}
         state = self.tool_calls.get(index)
@@ -122,7 +120,7 @@ class ResponsesStreamState:
                 },
             )
 
-    async def write_anthropic_delta(self, response: web.StreamResponse, event: dict[str, Any]) -> None:
+    async def write_anthropic_delta(self, response: StreamSink, event: dict[str, Any]) -> None:
         event_type = event.get("type")
         if event_type == "message_start":
             message = event.get("message") or {}
@@ -222,7 +220,7 @@ class ResponsesStreamState:
             if r_state is not None and not r_state.get("closed"):
                 await self._close_reasoning(response, r_state)
 
-    async def write_cursor_cli_event(self, response: web.StreamResponse, event: dict[str, Any]) -> None:
+    async def write_cursor_cli_event(self, response: StreamSink, event: dict[str, Any]) -> None:
         event_type = str(event.get("type") or "")
         if event_type == "shim_diagnostic":
             subtype = str(event.get("subtype") or "")
@@ -288,7 +286,7 @@ class ResponsesStreamState:
             if isinstance(seen, list) and event_type not in seen and len(seen) < 16:
                 seen.append(event_type)
 
-    async def _open_message(self, response: web.StreamResponse) -> None:
+    async def _open_message(self, response: StreamSink) -> None:
         self.message_index = self.next_output_index
         self.next_output_index += 1
         self.message_opened = True
@@ -317,7 +315,7 @@ class ResponsesStreamState:
             },
         )
 
-    async def _close_message(self, response: web.StreamResponse) -> None:
+    async def _close_message(self, response: StreamSink) -> None:
         if not self.message_opened or self.message_closed:
             return
         self.message_closed = True
@@ -350,7 +348,7 @@ class ResponsesStreamState:
             },
         )
 
-    async def _text_delta(self, response: web.StreamResponse, text: str) -> None:
+    async def _text_delta(self, response: StreamSink, text: str) -> None:
         if not text:
             return
         if not self.message_opened:
@@ -367,7 +365,7 @@ class ResponsesStreamState:
             },
         )
 
-    async def _open_tool(self, response: web.StreamResponse, *, key: Any, call_id: str, name: str) -> dict[str, Any]:
+    async def _open_tool(self, response: StreamSink, *, key: Any, call_id: str, name: str) -> dict[str, Any]:
         if self.message_opened and not self.message_closed:
             await self._close_message(response)
         output_index = self.next_output_index
@@ -394,7 +392,7 @@ class ResponsesStreamState:
         )
         return state
 
-    async def _close_tool(self, response: web.StreamResponse, state: dict[str, Any]) -> None:
+    async def _close_tool(self, response: StreamSink, state: dict[str, Any]) -> None:
         state["closed"] = True
         await write_sse(
             response,
@@ -416,7 +414,7 @@ class ResponsesStreamState:
 
     async def _open_reasoning(
         self,
-        response: web.StreamResponse,
+        response: StreamSink,
         *,
         key: Any,
         initial_text: str = "",
@@ -464,7 +462,7 @@ class ResponsesStreamState:
             )
         return state
 
-    async def _close_reasoning(self, response: web.StreamResponse, state: dict[str, Any]) -> None:
+    async def _close_reasoning(self, response: StreamSink, state: dict[str, Any]) -> None:
         state["closed"] = True
         await write_sse(
             response,
@@ -631,7 +629,7 @@ class AnthropicMessagesStreamState:
         self.usage: dict[str, Any] | None = None
         self.stop_reason = "end_turn"
 
-    async def start(self, response: web.StreamResponse) -> None:
+    async def start(self, response: StreamSink) -> None:
         await write_anthropic_sse(
             response,
             "message_start",
@@ -650,7 +648,7 @@ class AnthropicMessagesStreamState:
             },
         )
 
-    async def write_chat_delta(self, response: web.StreamResponse, chunk: dict[str, Any]) -> None:
+    async def write_chat_delta(self, response: StreamSink, chunk: dict[str, Any]) -> None:
         usage = chunk.get("usage")
         if isinstance(usage, dict):
             self.usage = normalize_responses_usage(usage)
@@ -670,7 +668,7 @@ class AnthropicMessagesStreamState:
         for call in delta.get("tool_calls") or []:
             await self._tool_delta(response, call)
 
-    async def finish(self, response: web.StreamResponse) -> None:
+    async def finish(self, response: StreamSink) -> None:
         if self.reasoning_open:
             await self._close_reasoning(response)
         if self.text_open:
@@ -690,7 +688,7 @@ class AnthropicMessagesStreamState:
         )
         await write_anthropic_sse(response, "message_stop", {"type": "message_stop"})
 
-    async def _text_delta(self, response: web.StreamResponse, text: str) -> None:
+    async def _text_delta(self, response: StreamSink, text: str) -> None:
         if self.text_index is None:
             self.text_index = self.next_index
             self.next_index += 1
@@ -714,7 +712,7 @@ class AnthropicMessagesStreamState:
             },
         )
 
-    async def _close_text(self, response: web.StreamResponse) -> None:
+    async def _close_text(self, response: StreamSink) -> None:
         if self.text_index is None:
             return
         await write_anthropic_sse(
@@ -723,7 +721,7 @@ class AnthropicMessagesStreamState:
         self.text_index = None
         self.text_open = False
 
-    async def _reasoning_delta(self, response: web.StreamResponse, text: str) -> None:
+    async def _reasoning_delta(self, response: StreamSink, text: str) -> None:
         if self.reasoning_index is None:
             self.reasoning_index = self.next_index
             self.next_index += 1
@@ -747,7 +745,7 @@ class AnthropicMessagesStreamState:
             },
         )
 
-    async def _close_reasoning(self, response: web.StreamResponse) -> None:
+    async def _close_reasoning(self, response: StreamSink) -> None:
         if self.reasoning_index is None:
             return
         await write_anthropic_sse(
@@ -758,7 +756,7 @@ class AnthropicMessagesStreamState:
         self.reasoning_index = None
         self.reasoning_open = False
 
-    async def _tool_delta(self, response: web.StreamResponse, call: dict[str, Any]) -> None:
+    async def _tool_delta(self, response: StreamSink, call: dict[str, Any]) -> None:
         index = int(call.get("index", 0))
         fn = call.get("function") or {}
         state = self.tool_calls.setdefault(
@@ -798,7 +796,7 @@ class AnthropicMessagesStreamState:
                 },
             )
 
-    async def _open_tool(self, response: web.StreamResponse, index: int, state: dict[str, Any]) -> None:
+    async def _open_tool(self, response: StreamSink, index: int, state: dict[str, Any]) -> None:
         state["block_index"] = self.next_index
         self.next_index += 1
         state["open"] = True
@@ -819,7 +817,7 @@ class AnthropicMessagesStreamState:
             },
         )
 
-    async def _close_tool(self, response: web.StreamResponse, index: int, state: dict[str, Any]) -> None:
+    async def _close_tool(self, response: StreamSink, index: int, state: dict[str, Any]) -> None:
         if not state["open"]:
             await self._open_tool(response, index, state)
             if len(state["arguments"]) > state["emitted"]:

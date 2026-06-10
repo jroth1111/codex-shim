@@ -106,7 +106,7 @@ async def run_provider_smoke(route: ShimModel) -> SmokeResult:
 
 
 async def _smoke_openai_chat(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .server import _openai_headers
+    from .providers import openai_headers as _openai_headers
 
     forwarded = responses_to_chat(body, route.model, route.provider, thinking_behavior=route.thinking_behavior)
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:
@@ -120,7 +120,8 @@ async def _smoke_openai_chat(route: ShimModel, body: dict[str, Any]) -> SmokeRes
 
 
 async def _smoke_anthropic(route: ShimModel, body: dict[str, Any]) -> SmokeResult:
-    from .server import _anthropic_headers, _join_url
+    from .providers import anthropic_headers as _anthropic_headers
+    from .providers import join_url as _join_url
 
     forwarded = responses_to_anthropic(body, route.model, route.max_output_tokens)
     async with ClientSession(timeout=ClientTimeout(total=60)) as session:

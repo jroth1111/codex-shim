@@ -1,4 +1,5 @@
 from . import chatgpt, cursor
+from .anthropic import post_anthropic, stream_anthropic
 from .auth_tokens import auth_command_for_route, resolve_bearer_token
 from .chatgpt import (
     chatgpt_compact_passthrough,
@@ -9,6 +10,15 @@ from .chatgpt import (
     passthrough_forward_headers,
     rewrite_response_model,
     sanitize_chatgpt_passthrough_body,
+)
+from .common import (
+    ProviderRuntime,
+    attach_response_metadata,
+    await_cursor_inference,
+    executed_tool_count_from_response_payload,
+    responses_stream_state,
+    shim_response_metadata,
+    workspace_log_value,
 )
 from .cursor import (
     DEFAULT_CURSOR_TIMEOUT,
@@ -33,8 +43,26 @@ from .cursor import (
 )
 from .cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
 from .dispatcher import ProviderDispatcher
+from .http import anthropic_headers, anthropic_text, join_url, normalize_roles, openai_headers
+from .openai_chat import post_openai_chat, stream_openai_chat
 
 __all__ = [
+    "ProviderRuntime",
+    "anthropic_headers",
+    "anthropic_text",
+    "attach_response_metadata",
+    "await_cursor_inference",
+    "executed_tool_count_from_response_payload",
+    "join_url",
+    "normalize_roles",
+    "openai_headers",
+    "post_anthropic",
+    "post_openai_chat",
+    "responses_stream_state",
+    "shim_response_metadata",
+    "stream_anthropic",
+    "stream_openai_chat",
+    "workspace_log_value",
     "chatgpt",
     "chatgpt_compact_passthrough",
     "chatgpt_passthrough",

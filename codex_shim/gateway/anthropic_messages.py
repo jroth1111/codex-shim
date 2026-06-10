@@ -39,7 +39,8 @@ async def post_openai_chat_as_anthropic(
     route: ShimModel,
     body: dict[str, Any],
 ) -> web.StreamResponse:
-    from ..server import _join_url, _openai_headers
+    from ..providers import join_url as _join_url
+    from ..providers import openai_headers as _openai_headers
 
     url = route.endpoint_url or _join_url(route.base_url, "/chat/completions")
     headers = _openai_headers(route)
@@ -61,7 +62,8 @@ async def post_anthropic_messages(
     route: ShimModel,
     body: dict[str, Any],
 ) -> web.StreamResponse:
-    from ..server import _anthropic_headers, _join_url
+    from ..providers import anthropic_headers as _anthropic_headers
+    from ..providers import join_url as _join_url
 
     url = _join_url(route.base_url, "/messages")
     headers = _anthropic_headers(route)

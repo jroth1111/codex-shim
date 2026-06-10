@@ -13,7 +13,6 @@ from codex_shim import server as server_module
 from codex_shim.picker import PICKER_TOKEN_HEADER
 from codex_shim.routing import needs_image_generation
 from codex_shim.server import (
-    ResponsesStreamState,
     ShimServer,
     _current_managed_model,
     _merge_codex_forward_headers,
@@ -24,7 +23,11 @@ from codex_shim.server import (
     _sanitize_chatgpt_passthrough_body,
     _set_active_model,
 )
-from codex_shim.translate import SHIM_ENCRYPTED_CONTENT_PREFIX, streaming_tool_open_item
+from codex_shim.translate import (
+    SHIM_ENCRYPTED_CONTENT_PREFIX,
+    ResponsesStreamState,
+    streaming_tool_open_item,
+)
 
 
 @pytest.fixture

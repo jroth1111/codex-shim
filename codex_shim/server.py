@@ -1,23 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
-import re
 import secrets
 import time
-from contextlib import suppress
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
 
 from aiohttp import ClientSession, ClientTimeout, web
 
-from .capabilities import execution_mode, is_delegate_route, route_capabilities
+from .capabilities import is_delegate_route
 from .catalog import CATALOG_PATH, write_catalog
-from .errors import (
-    error_response as _error_response,
-)
 from .errors import (
     invalid_request_error_response as _invalid_request_error_response,
 )
@@ -27,7 +20,6 @@ from .errors import (
 from .gateway import GatewayHandlers, build_allowed_hosts, host_guard_middleware
 from .governance import GovernanceAuditSink
 from .observability import ObservabilitySink
-from .observability import dump_debug_request as _dump_debug_request
 from .observability import elapsed_ms as _elapsed_ms
 from .observability import log_access as _log_access
 from .observability import log_incoming_request as _log_incoming_request
@@ -42,6 +34,7 @@ from .providers import (
     CursorCliError,
     CursorThreadSessionStore,
     ProviderDispatcher,
+    ProviderRuntime,
     build_cursor_cli_turn_options,
     chatgpt_compact_passthrough,
     chatgpt_passthrough,
@@ -54,15 +47,28 @@ from .providers import (
     merge_codex_forward_headers,
     metadata_as_forward_headers,
     passthrough_forward_headers,
+    post_anthropic,
+    post_openai_chat,
     rewrite_response_model,
     run_cursor_acp,
     run_cursor_cli,
     sanitize_chatgpt_passthrough_body,
 )
+from .providers import anthropic_headers as _anthropic_headers
+from .providers import anthropic_text as _anthropic_text
+from .providers import attach_response_metadata as _attach_response_metadata
+from .providers import await_cursor_inference as _await_cursor_inference
 from .providers import cursor_acp_error_response as _cursor_acp_error_response
 from .providers import cursor_acp_stream_error as _cursor_acp_stream_error
 from .providers import cursor_agent_error_response as _cursor_agent_error_response
 from .providers import cursor_agent_stream_error as _cursor_agent_stream_error
+from .providers import executed_tool_count_from_response_payload as _executed_tool_count_from_response_payload
+from .providers import join_url as _join_url
+from .providers import normalize_roles as _normalize_roles
+from .providers import openai_headers as _openai_headers
+from .providers import responses_stream_state as _responses_stream_state
+from .providers import shim_response_metadata as _shim_response_metadata
+from .providers import workspace_log_value as _workspace_log_value
 from .providers.cursor_agent import CursorAgentTransport, CursorAgentTransportError
 from .routing import AutoRouterService, RouteResolution, refresh_subscription_catalog, resolve_model_route
 from .routing import auto_router as router_module
@@ -91,23 +97,16 @@ from .settings import (
 from .tools import ToolPolicy
 from .translate import (
     ResponsesInputError,
-    ResponsesStreamState,
-    anthropic_to_chat_response,
-    anthropic_to_response,
-    chat_completion_to_response,
     chat_to_anthropic,
     chat_to_responses_request,
     responses_to_anthropic,
     responses_to_chat,
     validate_responses_input,
 )
-from .translate import anthropic_stream_to_chat_chunk as _anthropic_stream_to_chat_chunk
-from .translate.common import merge_extra_body_params
 from .translate.tool_validate import ToolValidationError, validate_anthropic_tools, validate_chat_tools
 from .wire import ClientDisconnected, WsStreamResponse
 from .wire import open_stream_sink as _open_stream_sink
 from .wire import safe_write as _safe_write
-from .wire import sse_lines as _sse_lines
 from .wire import write_sse as _write_sse
 
 # Compatibility aliases: tests/test_server.py imports the underscore names from
@@ -118,91 +117,6 @@ _metadata_as_forward_headers = metadata_as_forward_headers
 _passthrough_forward_headers = passthrough_forward_headers
 _rewrite_response_model = rewrite_response_model
 _sanitize_chatgpt_passthrough_body = sanitize_chatgpt_passthrough_body
-
-
-async def _await_cursor_inference(coro):
-    """Run cursor CLI/ACP inference; cancel the child process if the request task is cancelled."""
-    task = asyncio.create_task(coro)
-    try:
-        return await task
-    except asyncio.CancelledError:
-        if not task.done():
-            task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
-        raise
-
-
-def _executed_tool_count_from_response_payload(response_payload: dict[str, Any] | None) -> int:
-    """
-    Best-effort extraction of how many tools were executed in this completed turn.
-
-    For non-stream `/v1/responses`, provider translators build `output` items that
-    include tool-call-like types (e.g. `web_search_call`, `local_shell_call`,
-    `function_call`). We count those here.
-    """
-    if not isinstance(response_payload, dict):
-        return 0
-    output = response_payload.get("output")
-    if not isinstance(output, list):
-        return 0
-    tool_types = {
-        "function_call",
-        "local_shell_call",
-        "web_search_call",
-        "image_generation_call",
-        "tool_search_call",
-        "mcp_tool_call",
-        "custom_tool_call",
-        "function_call_output",
-        "tool_result",
-    }
-    count = 0
-    for item in output:
-        if not isinstance(item, dict):
-            continue
-        t = str(item.get("type") or "")
-        if t in tool_types or t.endswith("_call") or t.endswith("_result"):
-            count += 1
-    return count
-
-
-def _responses_stream_state(route: ShimModel, tools: Any) -> ResponsesStreamState:
-    return ResponsesStreamState(route.slug, tools=tools, delegate_mode=is_delegate_route(route))
-
-
-def _shim_response_metadata(
-    route: ShimModel,
-    prepared: PreparedResponsesRequest | None,
-    *,
-    native_envelope: dict[str, Any] | None = None,
-    workspace: Path | None = None,
-) -> dict[str, Any]:
-    caps = route_capabilities(route)
-    mode = execution_mode(route)
-    metadata: dict[str, Any] = {
-        "shim_route": {
-            "provider": route.provider,
-            "transport": route.transport,
-            "execution_mode": mode,
-            "tool_authority": "cursor" if mode == "delegate" else "codex",
-            "capabilities": {
-                "local_shell": caps.local_shell,
-                "web_search": caps.web_search,
-                "tool_search": caps.tool_search,
-                "image_generation": caps.image_generation,
-                "mcp_tools": caps.mcp_tools,
-                "reasoning": caps.reasoning,
-            },
-        }
-    }
-    if workspace is not None:
-        metadata["shim_route"]["workspace"] = str(workspace)
-    if prepared is not None and prepared.chained_from_previous:
-        metadata["shim_history"] = {"expanded_previous_response_id": True}
-    if native_envelope is not None:
-        metadata["shim_native_envelope"] = native_envelope
-    return metadata
 
 
 def _governance_inference_kwargs(inference) -> dict[str, Any]:
@@ -218,24 +132,6 @@ def _governance_inference_kwargs(inference) -> dict[str, Any]:
     }
 
 
-def _workspace_log_value(workspace: Path | None) -> str | None:
-    return str(workspace) if workspace is not None else None
-
-
-def _attach_response_metadata(
-    response_payload: dict[str, Any],
-    route: ShimModel,
-    prepared: PreparedResponsesRequest | None,
-    *,
-    native_envelope: dict[str, Any] | None = None,
-    workspace: Path | None = None,
-) -> dict[str, Any]:
-    payload = dict(response_payload)
-    existing = payload.get("metadata")
-    merged = dict(existing) if isinstance(existing, dict) else {}
-    merged.update(_shim_response_metadata(route, prepared, native_envelope=native_envelope, workspace=workspace))
-    payload["metadata"] = merged
-    return payload
 
 
 class ShimServer:
@@ -264,6 +160,15 @@ class ShimServer:
         self.governance = GovernanceAuditSink(runtime_root / "governance_events.jsonl")
         self.observability = ObservabilitySink(runtime_root / "observability_events.jsonl")
         self.operational_store = JsonOperationalStore(runtime_root / "ops")
+        self._provider_runtime = ProviderRuntime(
+            timeout=self.timeout,
+            settings=self.settings,
+            operational_store=self.operational_store,
+            cursor_thread_sessions=self.cursor_thread_sessions,
+            cursor_agent_transport=self.cursor_agent_transport,
+            store_history=self._store_response_history,
+            emit_governance_error=self._emit_cursor_governance_error,
+        )
         self.gateway_handlers = GatewayHandlers(self)
         self.auto_router = AutoRouterService(self.settings, classify_factory=_make_router_classifier)
         self.picker_token = secrets.token_urlsafe(32)
@@ -1378,67 +1283,15 @@ class ShimServer:
         prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
-        started_at = time.monotonic()
-        provider_started_at = time.monotonic()
-        url = route.endpoint_url or _join_url(route.base_url, "/chat/completions")
-        headers = _openai_headers(route)
-        upstream_body = merge_extra_body_params(body, route.extra_body_params)
-        _dump_debug_request(route.slug, url, upstream_body)
-        async with ClientSession(timeout=self.timeout) as session:
-            upstream = await session.post(url, json=upstream_body, headers=headers)
-            try:
-                if upstream.status >= 400:
-                    _log_access(
-                        request,
-                        route,
-                        upstream.status,
-                        started_at,
-                        stream=bool(body.get("stream")),
-                        error="upstream_error",
-                        request_body=prepared.body if prepared is not None else body,
-                        provider_ms=_elapsed_ms(provider_started_at),
-                    )
-                    return await _error_response(upstream, slug=route.slug)
-                if body.get("stream"):
-                    # _stream_openai_chat owns the response and releases it in its finally block.
-                    return await self._stream_openai_chat(
-                        request,
-                        upstream,
-                        route,
-                        as_responses,
-                        prepared=prepared,
-                        started_at=started_at,
-                        stream_response=stream_response,
-                    )
-                payload = await upstream.json(content_type=None)
-                provider_ms = _elapsed_ms(provider_started_at)
-            finally:
-                upstream.release()
-        if as_responses:
-            response_payload = _attach_response_metadata(
-                chat_completion_to_response(payload, route.slug),
-                route,
-                prepared,
-            )
-            if prepared is not None:
-                self._store_response_history(prepared, response_payload, route=route)
-            resp = web.json_response(response_payload)
-            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
-            if executed_tool_count > 0:
-                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
-            _log_access(
-                request,
-                route,
-                200,
-                started_at,
-                payload=response_payload,
-                stream=False,
-                request_body=prepared.body if prepared is not None else body,
-                provider_ms=provider_ms,
-            )
-            return resp
-        _log_access(request, route, 200, started_at, payload=payload, stream=False, request_body=body, provider_ms=provider_ms)
-        return web.json_response(payload)
+        return await post_openai_chat(
+            self._provider_runtime,
+            request,
+            route,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
+        )
 
     async def _post_anthropic(
         self,
@@ -1449,76 +1302,15 @@ class ShimServer:
         prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
     ) -> web.StreamResponse:
-        started_at = time.monotonic()
-        provider_started_at = time.monotonic()
-        url = _join_url(route.base_url, "/messages")
-        headers = _anthropic_headers(route)
-        upstream_body = merge_extra_body_params(body, route.extra_body_params)
-        async with ClientSession(timeout=self.timeout) as session:
-            upstream = await session.post(url, json=upstream_body, headers=headers)
-            try:
-                if upstream.status >= 400:
-                    _log_access(
-                        request,
-                        route,
-                        upstream.status,
-                        started_at,
-                        stream=bool(body.get("stream")),
-                        error="upstream_error",
-                        request_body=prepared.body if prepared is not None else body,
-                        provider_ms=_elapsed_ms(provider_started_at),
-                    )
-                    return await _error_response(upstream)
-                if body.get("stream"):
-                    # _stream_anthropic owns the response and releases it in its finally block.
-                    return await self._stream_anthropic(
-                        request,
-                        upstream,
-                        route,
-                        as_responses,
-                        prepared=prepared,
-                        started_at=started_at,
-                        stream_response=stream_response,
-                    )
-                payload = await upstream.json(content_type=None)
-                provider_ms = _elapsed_ms(provider_started_at)
-            finally:
-                upstream.release()
-        if as_responses:
-            response_payload = _attach_response_metadata(
-                anthropic_to_response(payload, route.slug),
-                route,
-                prepared,
-            )
-            if prepared is not None:
-                self._store_response_history(prepared, response_payload, route=route)
-            resp = web.json_response(response_payload)
-            executed_tool_count = _executed_tool_count_from_response_payload(response_payload)
-            if executed_tool_count > 0:
-                setattr(resp, "_codex_shim_executed_tool_count", executed_tool_count)
-            _log_access(
-                request,
-                route,
-                200,
-                started_at,
-                payload=response_payload,
-                stream=False,
-                request_body=prepared.body if prepared is not None else body,
-                provider_ms=provider_ms,
-            )
-            return resp
-        chat_payload = anthropic_to_chat_response(payload, route.slug)
-        _log_access(
+        return await post_anthropic(
+            self._provider_runtime,
             request,
             route,
-            200,
-            started_at,
-            payload=chat_payload,
-            stream=False,
-            request_body=body,
-            provider_ms=provider_ms,
+            body,
+            as_responses=as_responses,
+            prepared=prepared,
+            stream_response=stream_response,
         )
-        return web.json_response(chat_payload)
 
     async def _post_cursor_acp(
         self,
@@ -1715,100 +1507,6 @@ class ShimServer:
             workspace=_workspace_log_value(workspace),
         )
         return web.json_response(chat_payload)
-
-    async def _stream_openai_chat(
-        self,
-        request: web.Request,
-        upstream,
-        route: ShimModel,
-        as_responses: bool,
-        prepared: PreparedResponsesRequest | None = None,
-        started_at: float | None = None,
-        stream_response: WsStreamResponse | None = None,
-    ) -> web.StreamResponse:
-        started_at = started_at or time.monotonic()
-        response = await _open_stream_sink(request, stream_response)
-        if as_responses:
-            state = _responses_stream_state(route, (prepared.body if prepared is not None else {}).get("tools"))
-            state.metadata = _shim_response_metadata(route, prepared)
-        try:
-            if as_responses:
-                await state.start(response)
-            async for line in _sse_lines(upstream):
-                if line == "[DONE]":
-                    break
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if as_responses:
-                    await state.write_chat_delta(response, event)
-                else:
-                    await _write_sse(response, event)
-            if as_responses:
-                final_response = await state.finish(response)
-                if prepared is not None:
-                    self._store_response_history(prepared, final_response, route=route)
-                _log_access(request, route, 200, started_at, payload=final_response, stream=True)
-            else:
-                await _safe_write(response, b"data: [DONE]\n\n")
-                _log_access(request, route, 200, started_at, stream=True)
-        except ClientDisconnected:
-            pass
-        finally:
-            upstream.release()
-        try:
-            await response.write_eof()
-        except Exception:
-            pass
-        return response
-
-    async def _stream_anthropic(
-        self,
-        request: web.Request,
-        upstream,
-        route: ShimModel,
-        as_responses: bool,
-        prepared: PreparedResponsesRequest | None = None,
-        started_at: float | None = None,
-        stream_response: WsStreamResponse | None = None,
-    ) -> web.StreamResponse:
-        started_at = started_at or time.monotonic()
-        response = await _open_stream_sink(request, stream_response)
-        if as_responses:
-            state = _responses_stream_state(route, (prepared.body if prepared is not None else {}).get("tools"))
-            state.metadata = _shim_response_metadata(route, prepared)
-        try:
-            if as_responses:
-                await state.start(response)
-            async for line in _sse_lines(upstream):
-                if line == "[DONE]":
-                    break
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if as_responses:
-                    await state.write_anthropic_delta(response, event)
-                else:
-                    await _write_sse(response, _anthropic_stream_to_chat_chunk(event, route.slug))
-            if as_responses:
-                final_response = await state.finish(response)
-                if prepared is not None:
-                    self._store_response_history(prepared, final_response, route=route)
-                _log_access(request, route, 200, started_at, payload=final_response, stream=True)
-            else:
-                await _safe_write(response, b"data: [DONE]\n\n")
-                _log_access(request, route, 200, started_at, stream=True)
-        except ClientDisconnected:
-            pass
-        finally:
-            upstream.release()
-        try:
-            await response.write_eof()
-        except Exception:
-            pass
-        return response
 
     async def _stream_cursor_acp(
         self,
@@ -2072,74 +1770,6 @@ class ShimServer:
         except Exception:
             pass
         return response
-
-
-_VERSIONED_BASE_RE = re.compile(r"(?:^|/)v\d+$")
-
-
-def _join_url(base_url: str, endpoint: str) -> str:
-    base = base_url.rstrip("/")
-    if _VERSIONED_BASE_RE.search(base):
-        return base + endpoint
-    if endpoint == "/messages":
-        return base + "/v1/messages"
-    return urljoin(base + "/", "v1" + endpoint)
-
-
-def _openai_headers(route: ShimModel) -> dict[str, str]:
-    from .providers import resolve_bearer_token
-
-    headers = {"Content-Type": "application/json", **route.extra_headers}
-    token = route.api_key
-    if not token:
-        try:
-            token = resolve_bearer_token(route.slug, route.raw if isinstance(route.raw, dict) else {})
-        except RuntimeError:
-            token = ""
-    if token:
-        headers.setdefault("Authorization", f"Bearer {token}")
-    return headers
-
-
-def _anthropic_text(payload: Any) -> str:
-    if not isinstance(payload, dict):
-        return ""
-    parts = [
-        str(block.get("text") or "")
-        for block in (payload.get("content") or [])
-        if isinstance(block, dict) and block.get("type") == "text"
-    ]
-    return "".join(parts)
-
-
-def _anthropic_headers(route: ShimModel) -> dict[str, str]:
-    from .providers import resolve_bearer_token
-
-    headers = {
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01",
-        **route.extra_headers,
-    }
-    token = route.api_key
-    if not token:
-        try:
-            token = resolve_bearer_token(route.slug, route.raw if isinstance(route.raw, dict) else {})
-        except RuntimeError:
-            token = ""
-    if token:
-        headers.setdefault("x-api-key", token)
-    return headers
-
-
-def _normalize_roles(messages: list[dict]) -> list[dict]:
-    result = []
-    for message in messages:
-        if isinstance(message, dict):
-            message = dict(message)
-            if message.get("role") == "developer":
-                message["role"] = "system"
-        result.append(message)
-    return result
 
 
 def _make_router_classifier(model: ShimModel, config: router_module.RouterConfig):
