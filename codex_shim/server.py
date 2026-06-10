@@ -13,11 +13,9 @@ from urllib.parse import urljoin
 
 from aiohttp import ClientSession, ClientTimeout, web
 
-from . import router as router_module
 from .access_log import elapsed_ms as _elapsed_ms
 from .access_log import log_access as _log_access
 from .access_log import log_incoming_request as _log_incoming_request
-from .auto_router_service import AutoRouterService
 from .capabilities import execution_mode, is_delegate_route, route_capabilities
 from .catalog import CATALOG_PATH, write_catalog
 from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
@@ -73,7 +71,8 @@ from .picker import set_active_model as _set_active_model
 from .providers import ProviderDispatcher
 from .providers.cursor_agent import CursorAgentTransport, CursorAgentTransportError
 from .responses_ws import WsStreamResponse
-from .routing import RouteResolution, resolve_model_route
+from .routing import AutoRouterService, RouteResolution, refresh_subscription_catalog, resolve_model_route
+from .routing import auto_router as router_module
 from .routing.helper_models import apply_helper_model_policy, is_helper_model_slug
 from .routing.workspace import resolve_workspace
 from .sessions import (
@@ -102,7 +101,6 @@ from .streaming import open_stream_sink as _open_stream_sink
 from .streaming import safe_write as _safe_write
 from .streaming import sse_lines as _sse_lines
 from .streaming import write_sse as _write_sse
-from .subscription_catalog import refresh_subscription_catalog
 from .tools import ToolPolicy
 from .translate import (
     ResponsesInputError,
@@ -273,7 +271,7 @@ class ShimServer:
         self.observability = ObservabilitySink(runtime_root / "observability_events.jsonl")
         self.operational_store = JsonOperationalStore(runtime_root / "ops")
         self.gateway_handlers = GatewayHandlers(self)
-        self.auto_router = AutoRouterService(self)
+        self.auto_router = AutoRouterService(self.settings, classify_factory=_make_router_classifier)
         self.picker_token = secrets.token_urlsafe(32)
         self.subscription_catalog = refresh_subscription_catalog()
         try:
@@ -2148,6 +2146,48 @@ def _normalize_roles(messages: list[dict]) -> list[dict]:
                 message["role"] = "system"
         result.append(message)
     return result
+
+
+def _make_router_classifier(model: ShimModel, config: router_module.RouterConfig):
+    """Auto-router classifier transport, injected into routing.AutoRouterService.
+
+    Lives in the composition root because it needs provider HTTP plumbing
+    (headers/urls), which the routing module must not depend on.
+    """
+    timeout = ClientTimeout(total=config.timeout + 5, sock_connect=config.timeout, sock_read=config.timeout)
+
+    async def classify(system_prompt: str, user_content: str) -> str:
+        async with ClientSession(timeout=timeout) as session:
+            if model.is_anthropic:
+                url = _join_url(model.base_url, "/messages")
+                payload = {
+                    "model": model.model,
+                    "max_tokens": config.max_tokens,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": user_content}],
+                }
+                upstream = await session.post(url, json=payload, headers=_anthropic_headers(model))
+                upstream.raise_for_status()
+                data = await upstream.json(content_type=None)
+                return _anthropic_text(data)
+            url = _join_url(model.base_url, "/chat/completions")
+            payload = {
+                "model": model.model,
+                "stream": False,
+                "temperature": 0,
+                "max_tokens": config.max_tokens,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+            }
+            upstream = await session.post(url, json=payload, headers=_openai_headers(model))
+            upstream.raise_for_status()
+            data = await upstream.json(content_type=None)
+            message = (data.get("choices") or [{}])[0].get("message") or {}
+            return str(message.get("content") or "")
+
+    return classify
 
 
 

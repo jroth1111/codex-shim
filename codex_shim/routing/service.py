@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import web
 
-from ..image_gate import needs_image_generation
 from ..settings import ModelSettings, ShimModel
+from .image_gate import needs_image_generation
 from .inference_context import InferenceContext, parse_inference_context
 from .model_catalog import ModelCatalogSnapshot
 from .model_resolution import resolve_model_with_prefetch

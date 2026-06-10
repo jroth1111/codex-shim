@@ -4,9 +4,10 @@ import json
 import os
 from pathlib import Path
 
-from . import router as router_module
 from .capabilities import route_capabilities
 from .cursor_passthrough import cursor_catalog_entry, cursor_passthrough_available
+from .routing import SubscriptionCatalogSnapshot, refresh_subscription_catalog
+from .routing import auto_router as router_module
 from .settings import (
     CHATGPT_MODEL_SLUG,
     PROVIDER_NAME,
@@ -14,7 +15,6 @@ from .settings import (
     available_model_slugs,
     default_model_slug,
 )
-from .subscription_catalog import SubscriptionCatalogSnapshot, refresh_subscription_catalog
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = PROJECT_ROOT / ".codex-shim" / "custom_model_catalog.json"

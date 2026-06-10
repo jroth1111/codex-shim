@@ -79,7 +79,7 @@ def rewrite_response_model(
     if not model:
         return
     if subscription_slugs is None:
-        from .subscription_catalog import known_subscription_slugs
+        from .routing import known_subscription_slugs
 
         subscription_slugs = known_subscription_slugs()
     if isinstance(payload, dict):

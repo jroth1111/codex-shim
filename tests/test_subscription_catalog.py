@@ -9,13 +9,13 @@ import pytest
 
 from codex_shim.catalog import build_merged_catalog, write_catalog
 from codex_shim.passthrough import rewrite_response_model
-from codex_shim.settings import TRANSPORT_OPENAI_CHAT, ModelSettings
-from codex_shim.subscription_catalog import (
+from codex_shim.routing.subscription_catalog import (
     SubscriptionCatalogSnapshot,
     fetch_subscription_models,
     refresh_subscription_catalog,
     subscription_passthrough_models,
 )
+from codex_shim.settings import TRANSPORT_OPENAI_CHAT, ModelSettings
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "subscription_models.json"
 
@@ -39,7 +39,7 @@ def auth_present(monkeypatch, tmp_path):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
     return auth
 
 
@@ -47,11 +47,11 @@ def auth_present(monkeypatch, tmp_path):
 def auth_missing(monkeypatch, tmp_path):
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
 def test_fetch_filters_hidden_models(auth_present):
-    with patch("codex_shim.subscription_catalog.urlopen") as urlopen:
+    with patch("codex_shim.routing.subscription_catalog.urlopen") as urlopen:
         class _Response:
             headers = {"ETag": "etag-1"}
 
@@ -71,7 +71,7 @@ def test_fetch_filters_hidden_models(auth_present):
 
 
 def test_refresh_unavailable_without_auth(auth_missing, tmp_path, monkeypatch):
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "cache.json")
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", tmp_path / "cache.json")
     snapshot = refresh_subscription_catalog(auth_missing, force=True)
     assert snapshot.status == "unavailable"
     assert snapshot.models == ()
@@ -79,7 +79,7 @@ def test_refresh_unavailable_without_auth(auth_missing, tmp_path, monkeypatch):
 
 def test_refresh_uses_cache_within_ttl(auth_present, tmp_path, monkeypatch):
     cache_path = tmp_path / "cache.json"
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", cache_path)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", cache_path)
     cache_path.write_text(
         json.dumps(
             {
@@ -90,7 +90,7 @@ def test_refresh_uses_cache_within_ttl(auth_present, tmp_path, monkeypatch):
             }
         )
     )
-    with patch("codex_shim.subscription_catalog.fetch_subscription_models") as fetch:
+    with patch("codex_shim.routing.subscription_catalog.fetch_subscription_models") as fetch:
         snapshot = refresh_subscription_catalog(auth_present)
     fetch.assert_not_called()
     assert snapshot.status == "cached"
@@ -99,7 +99,7 @@ def test_refresh_uses_cache_within_ttl(auth_present, tmp_path, monkeypatch):
 
 def test_refresh_fetches_when_cache_stale(auth_present, tmp_path, monkeypatch):
     cache_path = tmp_path / "cache.json"
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", cache_path)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", cache_path)
     cache_path.write_text(
         json.dumps(
             {
@@ -110,7 +110,7 @@ def test_refresh_fetches_when_cache_stale(auth_present, tmp_path, monkeypatch):
             }
         )
     )
-    with patch("codex_shim.subscription_catalog.fetch_subscription_models", side_effect=_mock_fetch):
+    with patch("codex_shim.routing.subscription_catalog.fetch_subscription_models", side_effect=_mock_fetch):
         snapshot = refresh_subscription_catalog(auth_present, force=False)
     assert snapshot.status == "loaded"
     assert snapshot.slugs == ("gpt-5.5", "gpt-5.4", "gpt-5.3-codex")
@@ -118,7 +118,7 @@ def test_refresh_fetches_when_cache_stale(auth_present, tmp_path, monkeypatch):
 
 def test_refresh_uses_stale_cache_on_fetch_error(auth_present, tmp_path, monkeypatch):
     cache_path = tmp_path / "cache.json"
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", cache_path)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", cache_path)
     cache_path.write_text(
         json.dumps(
             {
@@ -129,7 +129,7 @@ def test_refresh_uses_stale_cache_on_fetch_error(auth_present, tmp_path, monkeyp
             }
         )
     )
-    with patch("codex_shim.subscription_catalog.fetch_subscription_models", side_effect=_mock_fetch_403):
+    with patch("codex_shim.routing.subscription_catalog.fetch_subscription_models", side_effect=_mock_fetch_403):
         snapshot = refresh_subscription_catalog(auth_present, force=False)
     assert snapshot.status == "error"
     assert snapshot.slugs == ("gpt-5.4",)
@@ -166,7 +166,7 @@ def test_desktop_models_merge_subscription_and_byok(auth_present, tmp_path):
         tuple(dict(model) for model in _fixture_models()[:3]),
         "loaded",
     )
-    with patch("codex_shim.subscription_catalog.refresh_subscription_catalog", return_value=snapshot):
+    with patch("codex_shim.routing.subscription_catalog.refresh_subscription_catalog", return_value=snapshot):
         desktop = ModelSettings(settings).desktop_models()
     assert [model.slug for model in desktop] == ["gpt-5.5", "gpt-5.4", "gpt-5.3-codex", "gpt-4o"]
     assert desktop[-1].transport == TRANSPORT_OPENAI_CHAT

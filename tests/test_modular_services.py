@@ -6,7 +6,6 @@ import pytest
 from aiohttp import web
 
 from codex_shim.governance import GovernanceAuditSink
-from codex_shim.image_gate import needs_image_generation
 from codex_shim.observability import ObservabilitySink
 from codex_shim.persistence import JsonOperationalStore
 from codex_shim.providers import ProviderDispatcher
@@ -19,6 +18,7 @@ from codex_shim.routing import (
     AGENT_MODE_PLAN,
     agent_mode_for_cli_mode,
     metadata_mode_for_cli_mode,
+    needs_image_generation,
     parse_inference_context,
     resolve_model_route,
 )

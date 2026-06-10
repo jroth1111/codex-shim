@@ -232,7 +232,7 @@ def chatgpt_passthrough_available(auth_path: Path | None = None) -> bool:
 
 
 def chatgpt_passthrough_model(auth_path: Path | None = None) -> NormalizedModel | None:
-    from .subscription_catalog import subscription_passthrough_models
+    from .routing import subscription_passthrough_models
 
     models = subscription_passthrough_models(auth_path)
     if not models:
@@ -404,7 +404,7 @@ class ModelSettings:
         return [model for model in self.load() if not model.visible]
 
     def desktop_models(self) -> list[NormalizedModel]:
-        from .subscription_catalog import merge_desktop_models
+        from .routing import merge_desktop_models
 
         return merge_desktop_models(self.visible_models())
 
@@ -421,7 +421,7 @@ class ModelSettings:
 
     def load_router(self):
         """Parse the optional top-level ``router`` block from the settings file."""
-        from .router import load_router_config
+        from .routing import load_router_config
 
         return load_router_config(self.path)
 
@@ -439,7 +439,7 @@ def chatgpt_passthrough_slugs() -> set[str]:
 
 
 def subscription_passthrough_slugs_models() -> list[NormalizedModel]:
-    from .subscription_catalog import subscription_passthrough_models
+    from .routing import subscription_passthrough_models
 
     return subscription_passthrough_models()
 

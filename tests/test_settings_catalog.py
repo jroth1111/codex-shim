@@ -28,8 +28,8 @@ def auth_present(monkeypatch, tmp_path):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
     return auth
 
 
@@ -38,7 +38,7 @@ def auth_missing(monkeypatch, tmp_path):
     """Point chatgpt_passthrough_available() at a path that does not exist."""
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
 def test_duplicate_models_get_unique_display_slugs(tmp_path):
@@ -602,12 +602,12 @@ def test_cli_rejects_chatgpt_passthrough_slug_when_auth_missing(auth_missing):
 
 
 def test_list_models_includes_chatgpt_passthrough_when_auth_present(monkeypatch, capsys, auth_present):
-    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+    from codex_shim.routing import SubscriptionCatalogSnapshot
 
     settings = auth_present.parent / "models.json"
     settings.write_text(json.dumps({"models": []}))
     monkeypatch.setattr(
-        "codex_shim.subscription_catalog.refresh_subscription_catalog",
+        "codex_shim.routing.subscription_catalog.refresh_subscription_catalog",
         lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "error"),
     )
     assert cli.list_models(settings) == 0
@@ -778,7 +778,7 @@ def test_by_slug_or_model_normalizes_gpt_5p5_alias(tmp_path, auth_present):
 
 
 def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing, monkeypatch):
-    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+    from codex_shim.routing import SubscriptionCatalogSnapshot
 
     catalog_path = tmp_path / "catalog.json"
     monkeypatch.setattr(
@@ -791,7 +791,7 @@ def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing, mon
 
 
 def test_write_catalog_includes_gpt55_when_auth_present(tmp_path, auth_present, monkeypatch):
-    from codex_shim.subscription_catalog import SubscriptionCatalogSnapshot
+    from codex_shim.routing import SubscriptionCatalogSnapshot
 
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))

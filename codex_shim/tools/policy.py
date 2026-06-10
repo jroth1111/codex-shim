@@ -5,8 +5,7 @@ from typing import Any
 from aiohttp import web
 
 from ..capabilities import RouteCapabilities, execution_mode, route_capabilities
-from ..image_gate import needs_image_generation
-from ..routing import InferenceContext
+from ..routing import InferenceContext, needs_image_generation
 from ..settings import ShimModel
 
 

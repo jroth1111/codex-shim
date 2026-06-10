@@ -15,9 +15,9 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim import router
 from codex_shim import server as server_module
 from codex_shim.picker import PICKER_TOKEN_HEADER
+from codex_shim.routing import auto_router as router
 from codex_shim.server import ShimServer
 
 

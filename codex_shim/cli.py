@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.request import urlopen
 
-from . import router as router_module
 from .catalog import (
     CATALOG_PATH,
     _toml_escape,
@@ -45,6 +44,7 @@ from .opencode_go import (
     OPENCODE_GO_BASE_URL,
     refresh_opencode_go_settings,
 )
+from .routing import auto_router as router_module
 from .settings import (
     CHATGPT_MODEL_SLUG,
     DEFAULT_CODEX_AUTH,
@@ -445,7 +445,7 @@ def _active_router(models, settings_path: Path):
 
 
 def generate(settings_path: Path, port: int) -> None:
-    from .subscription_catalog import refresh_subscription_catalog
+    from .routing import refresh_subscription_catalog
 
     models = _load_models(settings_path)
     snapshot = refresh_subscription_catalog()
@@ -582,7 +582,7 @@ def import_vibeproxy_models(
         models = _vibeproxy_direct_models(rows, direct_base_url)
         catalog_path = Path(direct_catalog_path or CATALOG_PATH).expanduser()
         config_path = Path(direct_config_path or CONFIG_PATH).expanduser()
-        from .subscription_catalog import SubscriptionCatalogSnapshot
+        from .routing import SubscriptionCatalogSnapshot
 
         write_catalog(
             models,
@@ -778,7 +778,8 @@ DESKTOP_CATALOG_KEYS = {
 
 
 def doctor_subscription() -> int:
-    from .subscription_catalog import CACHE_PATH, refresh_subscription_catalog
+    from .routing import refresh_subscription_catalog
+    from .routing import subscription_catalog as _subscription_module
 
     snapshot = refresh_subscription_catalog()
     print(f"status: {snapshot.status}")
@@ -786,7 +787,7 @@ def doctor_subscription() -> int:
         print(f"error: {snapshot.error}")
     if snapshot.fetched_at is not None:
         print(f"cache_age_s: {snapshot.age_s}")
-    print(f"cache_path: {CACHE_PATH}")
+    print(f"cache_path: {_subscription_module.CACHE_PATH}")
     print(f"model_count: {len(snapshot.models)}")
     for slug in snapshot.slugs:
         print(f"  - {slug}")

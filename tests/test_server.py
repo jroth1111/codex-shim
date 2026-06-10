@@ -10,8 +10,8 @@ from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim import picker as picker_module
 from codex_shim import server as server_module
-from codex_shim.image_gate import needs_image_generation
 from codex_shim.picker import PICKER_TOKEN_HEADER
+from codex_shim.routing import needs_image_generation
 from codex_shim.server import (
     ResponsesStreamState,
     ShimServer,
@@ -32,8 +32,8 @@ def auth_present(monkeypatch, tmp_path):
     auth = tmp_path / "auth.json"
     auth.write_text(json.dumps({"tokens": {"access_token": "stub", "account_id": "acct"}}))
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
-    monkeypatch.setattr("codex_shim.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", auth)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.CACHE_PATH", tmp_path / "subscription_models_cache.json")
     return auth
 
 
@@ -41,7 +41,7 @@ def auth_present(monkeypatch, tmp_path):
 def auth_missing(monkeypatch, tmp_path):
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
+    monkeypatch.setattr("codex_shim.routing.subscription_catalog.settings_module.DEFAULT_CODEX_AUTH", missing)
 
 
 def test_sanitize_chatgpt_passthrough_body_preserves_hosted_tool_input_items():

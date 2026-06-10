@@ -13,8 +13,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from . import settings as settings_module
-from .settings import (
+from .. import settings as settings_module
+from ..settings import (
     CHATGPT_MODEL_SLUG,
     TRANSPORT_CHATGPT,
     NormalizedModel,
@@ -274,7 +274,7 @@ def subscription_catalog_entries(
     if snapshot.models:
         return [dict(model) for model in snapshot.models]
     if chatgpt_passthrough_available(auth_path):
-        from .catalog import chatgpt_passthrough_entry
+        from ..catalog import chatgpt_passthrough_entry
 
         return [chatgpt_passthrough_entry()]
     return []
