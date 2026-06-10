@@ -18,6 +18,47 @@ the shape Codex expects.
 
 ---
 
+## This fork vs upstream
+
+This repo is **[jroth1111/codex-shim](https://github.com/jroth1111/codex-shim)** — a
+maintained fork of **[0xSero/codex-shim](https://github.com/0xSero/codex-shim)**.
+Upstream features (Auto Router, Composer passthrough, Anthropic `/v1/messages`
+bridge, OpenCode Go onboarding, Windows launcher, picker UI, compaction, visual
+feedback passthrough, and related fixes) are **ported and adapted** here; they are
+not merged as a wholesale git history because upstream still targets a monolithic
+`server.py` / `translate.py` layout.
+
+**Use this fork when you want the extras below.** Use upstream when you want the
+smaller monolith and do not need delegate routing, subscription catalog caching,
+or the modular service boundaries.
+
+| Area | Upstream (`0xSero`) | This fork (`jroth1111`) |
+|------|---------------------|-------------------------|
+| Code layout | Monolithic `server.py` + `translate.py` | Modular monolith: `gateway/`, `routing/`, `providers/`, `sessions/`, `translate/` package |
+| Cursor routes | Composer CLI passthrough (`composer-2-5`) | **Plus** Cursor CLI/ACP **delegate mode** (`execution_mode=delegate`) and optional **Cursor Agent gRPC** native transport (`useNativeTransport`) |
+| ChatGPT subscription | Static passthrough slugs when `~/.codex/auth.json` is valid | **Plus** dynamic **subscription catalog** cache, refresh at startup, `codex-shim doctor subscription` |
+| Compaction | Native ChatGPT compact + basic BYOK emulated compact | **Plus** emulated compaction **hardening**: frontier extraction, quality checks, summary augmentation, `postcompact-captures.jsonl` audit |
+| Inference / routing | Auto Router (`codex-auto`) | **Plus** workspace resolution, helper-model policy, inference context (mode/surface/prefetch), route capability metadata |
+| Diagnostics | — | `codex-shim doctor` setup report (OK/WARN/FAIL) plus `doctor models`, `patch`, `catalog`, `subscription`, `contract`, `routing` |
+| Verification | Core pytest suite | **Plus** upstream parity capture harness, expanded probe matrix (`probe delegate`, passthrough compact, live-matrix), 600+ non-live tests |
+| Security / translate | Host allowlist | **Plus** picker CSRF token on `/api/switch`, Gemini `thought_signature` preservation on tool round-trips, image `detail: "original"` → `"high"` |
+| Docs / hygiene | README | **Plus** [`docs/subscription-integration.md`](docs/subscription-integration.md), [`docs/MODULAR_ARCHITECTURE.md`](docs/MODULAR_ARCHITECTURE.md), [`docs/DOWNSTREAM_PARITY.md`](docs/DOWNSTREAM_PARITY.md), tightened `.gitignore` for capture artifacts |
+
+Clone this fork:
+
+```bash
+git clone https://github.com/jroth1111/codex-shim ~/codex-shim
+```
+
+To compare or cherry-pick from upstream:
+
+```bash
+git remote add upstream https://github.com/0xSero/codex-shim.git
+git fetch upstream
+```
+
+---
+
 ## What this gives you
 
 Codex Desktop only shows models allowed by its server-side config. If you have
@@ -70,7 +111,7 @@ Recommended on macOS/Linux/WSL/Git Bash (installs the `codex-shim` entry
 point from `pyproject.toml`):
 
 ```bash
-git clone https://github.com/0xSero/codex-shim ~/codex-shim
+git clone https://github.com/jroth1111/codex-shim ~/codex-shim
 cd ~/codex-shim
 python3 -m pip install --user -e .
 ```
@@ -78,7 +119,7 @@ python3 -m pip install --user -e .
 Recommended on native Windows PowerShell/cmd:
 
 ```powershell
-git clone https://github.com/0xSero/codex-shim $HOME\codex-shim
+git clone https://github.com/jroth1111/codex-shim $HOME\codex-shim
 cd $HOME\codex-shim
 py -3.11 -m pip install --user -e .
 ```
@@ -100,7 +141,7 @@ Alternative on macOS/Linux/WSL/Git Bash (no install, run straight from the
 checkout):
 
 ```bash
-git clone https://github.com/0xSero/codex-shim ~/codex-shim
+git clone https://github.com/jroth1111/codex-shim ~/codex-shim
 cd ~/codex-shim
 python3 -m pip install --user aiohttp
 mkdir -p ~/.local/bin
