@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import json
 import secrets
-import time
 from pathlib import Path
 from typing import Any
 
@@ -17,24 +15,17 @@ from .errors import (
 from .errors import (
     unsupported_compact_response as _unsupported_compact_response,
 )
-from .gateway import GatewayHandlers, build_allowed_hosts, host_guard_middleware
+from .gateway import GatewayHandlers, build_app
 from .governance import GovernanceAuditSink
 from .observability import ObservabilitySink
 from .observability import log_incoming_request as _log_incoming_request
 from .persistence import JsonOperationalStore
-from .picker import PICKER_TOKEN_HEADER
-from .picker import current_managed_model as _current_managed_model
-from .picker import picker_html as _picker_html
-from .picker import restart_codex_app as _restart_codex_app
-from .picker import set_active_model as _set_active_model
 from .providers import (
     CursorThreadSessionStore,
     ProviderDispatcher,
     ProviderRuntime,
     chatgpt_compact_passthrough,
     chatgpt_passthrough,
-    cursor_passthrough_available,
-    cursor_passthrough_display_names,
     cursor_passthrough_handler,
     is_cursor_passthrough_slug,
     merge_codex_forward_headers,
@@ -75,8 +66,6 @@ from .settings import (
     DEFAULT_SETTINGS,
     ModelSettings,
     ShimModel,
-    chatgpt_passthrough_available,
-    chatgpt_passthrough_slugs,
 )
 from .tools import ToolPolicy
 from .translate import (
@@ -232,150 +221,7 @@ class ShimServer:
         return route, tool_eval
 
     def app(self) -> web.Application:
-        allowed_hosts = build_allowed_hosts(self.host)
-        app = web.Application(
-            client_max_size=64 * 1024 * 1024,
-            middlewares=[host_guard_middleware(allowed_hosts)],
-        )
-        app.router.add_get("/health", self.health)
-        app.router.add_get("/v1/models", self.models)
-        app.router.add_post("/v1/chat/completions", self.gateway_handlers.chat_completions)
-        app.router.add_post("/v1/messages", self.gateway_handlers.anthropic_messages)
-        app.router.add_post("/v1/responses", self.gateway_handlers.responses)
-        app.router.add_get("/v1/responses", self.gateway_handlers.responses_websocket)
-        app.router.add_post("/v1/responses/compact", self.gateway_handlers.responses_compact)
-        app.router.add_get("/picker", self.picker_page)
-        app.router.add_get("/api/models", self.api_models)
-        app.router.add_post("/api/switch", self.switch_model)
-        return app
-
-    async def picker_page(self, _request: web.Request) -> web.Response:
-        return web.Response(text=_picker_html(self.picker_token), content_type="text/html")
-
-    async def api_models(self, request: web.Request) -> web.Response:
-        current = _current_managed_model()
-        data: list[dict[str, Any]] = []
-        include_unavailable = str(request.query.get("include_unavailable") or "").lower() in {"1", "true", "yes", "on"}
-        models = (
-            [*self.settings.desktop_models(), *self.settings.unavailable_models()]
-            if include_unavailable
-            else self.settings.desktop_models()
-        )
-        router_config = self.auto_router.active_router()
-        if router_config is not None:
-            data.append(
-                {
-                    "slug": router_config.slug,
-                    "display_name": router_config.display_name,
-                    "provider": "auto",
-                    "active": current == router_config.slug,
-                }
-            )
-        if cursor_passthrough_available():
-            for slug, display_name in cursor_passthrough_display_names().items():
-                data.append(
-                    {
-                        "slug": slug,
-                        "display_name": display_name,
-                        "provider": "cursor",
-                        "active": current == slug,
-                    }
-                )
-        for m in models:
-            row = {
-                "slug": m.slug,
-                "display_name": m.display_name,
-                "provider": m.provider,
-                "active": current == m.slug,
-            }
-            if include_unavailable:
-                row["visible"] = m.visible
-                row["unavailable_reason"] = m.unavailable_reason
-            data.append(row)
-        return web.json_response(data)
-
-    def _valid_picker_token(self, request: web.Request) -> bool:
-        token = request.headers.get(PICKER_TOKEN_HEADER, "")
-        return secrets.compare_digest(token, self.picker_token)
-
-    async def switch_model(self, request: web.Request) -> web.Response:
-        if not self._valid_picker_token(request):
-            return web.json_response({"error": "forbidden"}, status=403)
-        try:
-            body = await request.json()
-        except json.JSONDecodeError:
-            return web.json_response({"error": "invalid JSON body"}, status=400)
-        slug = str(body.get("slug") or "").strip()
-        if not slug:
-            return web.json_response({"error": "slug is required"}, status=400)
-        models = self.settings.desktop_models()
-        router_config = self.auto_router.active_router()
-        valid = {m.slug for m in models}
-        display_for: dict[str, str] = {m.slug: m.display_name for m in models}
-        if router_config is not None:
-            valid.add(router_config.slug)
-            display_for[router_config.slug] = router_config.display_name
-        if cursor_passthrough_available():
-            valid.update(cursor_passthrough_display_names())
-            display_for.update(cursor_passthrough_display_names())
-        if slug not in valid:
-            return web.json_response({"error": f"unknown model: {slug}"}, status=404)
-        _set_active_model(slug, display_for.get(slug, slug))
-        restart = bool(body.get("restart_codex"))
-        if restart:
-            _restart_codex_app()
-        return web.json_response({"ok": True, "model": slug, "restarted": restart})
-
-    async def health(self, _request: web.Request) -> web.Response:
-        from .settings import usable_byok_models
-
-        models = usable_byok_models(self.settings.load())
-        chatgpt_ok = chatgpt_passthrough_available()
-        cursor_ok = cursor_passthrough_available()
-        passthrough_count = len(chatgpt_passthrough_slugs()) if chatgpt_ok else 0
-        if cursor_ok:
-            passthrough_count += len(cursor_passthrough_display_names())
-        count = len(models) + passthrough_count
-        snapshot = getattr(self, "subscription_catalog", None) or refresh_subscription_catalog()
-        return web.json_response(
-            {
-                "ok": True,
-                "models": count,
-                "chatgpt_passthrough": chatgpt_ok,
-                "cursor_passthrough": cursor_ok,
-                "auto_router": self.auto_router.active_router() is not None,
-                "subscription_catalog_status": snapshot.status,
-                "subscription_model_count": len(snapshot.models),
-                "subscription_cache_age_s": snapshot.age_s,
-            }
-        )
-
-    async def models(self, _request: web.Request) -> web.Response:
-        now = int(time.time())
-        data: list[dict[str, Any]] = []
-        router_config = self.auto_router.active_router()
-        if router_config is not None:
-            data.append(router_module.router_models_entry(router_config, now))
-        if cursor_passthrough_available():
-            for slug in sorted(cursor_passthrough_display_names()):
-                data.append(
-                    {
-                        "id": slug,
-                        "object": "model",
-                        "created": now,
-                        "owned_by": "cursor",
-                    }
-                )
-        data.extend(
-            {
-                "id": model.slug,
-                "object": "model",
-                "created": now,
-                "owned_by": "chatgpt" if model.is_chatgpt else "codex-shim",
-            }
-            for model in self.settings.desktop_models()
-        )
-        return web.json_response({"object": "list", "data": data})
+        return build_app(self)
 
     async def chat_completions(self, request: web.Request) -> web.StreamResponse:
         body = await request.json()

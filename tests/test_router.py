@@ -25,7 +25,6 @@ def auth_missing(monkeypatch, tmp_path):
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
     monkeypatch.setattr("codex_shim.providers.cursor.passthrough.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.providers.cursor_passthrough_available", lambda **_: False)
-    monkeypatch.setattr("codex_shim.server.cursor_passthrough_available", lambda **_: False)
 
 
 CANDIDATES = [

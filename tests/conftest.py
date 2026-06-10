@@ -37,6 +37,5 @@ def disable_cursor_passthrough_by_default(monkeypatch):
     """Keep cursor subscription discovery deterministic unless a test opts in."""
     monkeypatch.setattr("codex_shim.providers.cursor.passthrough.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.providers.cursor_passthrough_available", lambda **_: False)
-    monkeypatch.setattr("codex_shim.server.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.catalog.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.cli.cursor_passthrough_available", lambda **_: False)

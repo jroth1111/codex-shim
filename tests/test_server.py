@@ -9,19 +9,18 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from codex_shim import picker as picker_module
-from codex_shim import server as server_module
 from codex_shim.picker import PICKER_TOKEN_HEADER
+from codex_shim.picker import current_managed_model as _current_managed_model
+from codex_shim.picker import picker_html as _picker_html
+from codex_shim.picker import set_active_model as _set_active_model
 from codex_shim.routing import needs_image_generation
 from codex_shim.server import (
     ShimServer,
-    _current_managed_model,
     _merge_codex_forward_headers,
     _metadata_as_forward_headers,
     _passthrough_forward_headers,
-    _picker_html,
     _rewrite_response_model,
     _sanitize_chatgpt_passthrough_body,
-    _set_active_model,
 )
 from codex_shim.translate import (
     SHIM_ENCRYPTED_CONTENT_PREFIX,
@@ -2156,7 +2155,7 @@ async def test_switch_model_rewrites_config_without_restart(
     settings = _picker_settings_file(tmp_path)
     config = _stub_codex_config(monkeypatch, tmp_path, model="kimi-k2.6")
     restart_calls = []
-    monkeypatch.setattr(server_module, "_restart_codex_app", lambda: restart_calls.append(True))
+    monkeypatch.setattr("codex_shim.picker.restart_codex_app", lambda: restart_calls.append(True))
 
     shim = ShimServer(settings)
     shim_client = TestClient(TestServer(shim.app()))
@@ -2184,7 +2183,7 @@ async def test_switch_model_triggers_restart_when_requested(
     settings = _picker_settings_file(tmp_path)
     _stub_codex_config(monkeypatch, tmp_path, model="kimi-k2.6")
     restart_calls = []
-    monkeypatch.setattr(server_module, "_restart_codex_app", lambda: restart_calls.append(True))
+    monkeypatch.setattr("codex_shim.picker.restart_codex_app", lambda: restart_calls.append(True))
 
     shim = ShimServer(settings)
     shim_client = TestClient(TestServer(shim.app()))
@@ -2207,7 +2206,7 @@ async def test_switch_model_rejects_missing_picker_token(monkeypatch, tmp_path, 
     settings = _picker_settings_file(tmp_path)
     config = _stub_codex_config(monkeypatch, tmp_path, model="kimi-k2.6")
     restart_calls = []
-    monkeypatch.setattr(server_module, "_restart_codex_app", lambda: restart_calls.append(True))
+    monkeypatch.setattr("codex_shim.picker.restart_codex_app", lambda: restart_calls.append(True))
 
     shim_client = TestClient(TestServer(ShimServer(settings).app()))
     await shim_client.start_server()
@@ -2228,7 +2227,7 @@ async def test_switch_model_rejects_bad_picker_token(monkeypatch, tmp_path, auth
     settings = _picker_settings_file(tmp_path)
     config = _stub_codex_config(monkeypatch, tmp_path, model="kimi-k2.6")
     restart_calls = []
-    monkeypatch.setattr(server_module, "_restart_codex_app", lambda: restart_calls.append(True))
+    monkeypatch.setattr("codex_shim.picker.restart_codex_app", lambda: restart_calls.append(True))
 
     shim_client = TestClient(TestServer(ShimServer(settings).app()))
     await shim_client.start_server()
