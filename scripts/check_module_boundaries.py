@@ -56,6 +56,7 @@ MODULES = frozenset(
 PLATFORM = frozenset(
     {
         "settings",
+        "wire",
         "errors",
         "capabilities",
         "desktop_contract",
@@ -88,8 +89,6 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/errors.py', 'translate'),
         ('codex_shim/gateway/handlers.py', 'anthropic_messages_gateway'),
         ('codex_shim/gateway/handlers.py', 'server'),
-        ('codex_shim/gateway/handlers.py', 'wire'),
-        ('codex_shim/gateway/ws.py', 'wire'),
         ('codex_shim/hostguard.py', 'UNASSIGNED'),
         ('codex_shim/integration_harness.py', 'UNASSIGNED'),
         ('codex_shim/migrate.py', 'UNASSIGNED'),
@@ -101,9 +100,7 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/picker.py', 'UNASSIGNED'),
         ('codex_shim/probe.py', 'UNASSIGNED'),
         ('codex_shim/probe.py', 'deep:routing.helper_models'),
-        ('codex_shim/providers/cursor_agent/decode.py', 'wire'),
         ('codex_shim/providers/cursor_agent/transport.py', 'cursor_acp'),
-        ('codex_shim/providers/dispatcher.py', 'wire'),
         ('codex_shim/routing/subscription_catalog.py', 'catalog'),
         ('codex_shim/server.py', 'deep:providers.cursor_agent'),
         ('codex_shim/server.py', 'deep:providers.cursor_agent.decode'),
@@ -116,9 +113,7 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/settings.py', 'cursor_passthrough'),
         ('codex_shim/settings.py', 'routing'),
         ('codex_shim/smoke.py', 'UNASSIGNED'),
-        ('codex_shim/translate/streaming.py', 'wire'),
         ('codex_shim/upstream_capture.py', 'UNASSIGNED'),
-        ('codex_shim/wire.py', 'UNASSIGNED'),
         ('codex_shim/workers.py', 'deep:persistence.job_queue'),
     }
 )
