@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .discovery import by_slug_or_model, desktop_models
 from .inference_context import PrefetchStatus
 from .model_catalog import ModelCatalogSnapshot, prefetch_model_catalog
 
@@ -36,7 +37,7 @@ def resolve_auto_model(
     if not _is_auto_request(requested):
         return None
 
-    models = settings.desktop_models()
+    models = desktop_models(settings)
     if not models:
         return None
 
@@ -45,7 +46,7 @@ def resolve_auto_model(
     route: ShimModel | None = None
 
     if catalog and catalog.selected_route_slug:
-        route = settings.by_slug_or_model(catalog.selected_route_slug)
+        route = by_slug_or_model(settings, catalog.selected_route_slug)
 
     if route is None:
         cursor_routes = [m for m in models if getattr(m, "is_cursor_cli", False) or getattr(m, "is_cursor_acp", False)]
@@ -94,7 +95,7 @@ def resolve_model_with_prefetch(
     if auto is not None:
         return auto.route, auto.selected_by, auto.prefetch_status, auto.resolved_model_id, catalog
 
-    route = settings.by_slug_or_model(requested)
+    route = by_slug_or_model(settings, requested)
     if route is None:
         return None, "unknown", "error", requested, catalog
 

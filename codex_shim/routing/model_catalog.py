@@ -27,7 +27,9 @@ class ModelCatalogSnapshot:
 
 
 def _snapshot_from_settings(settings: ModelSettings) -> ModelCatalogSnapshot:
-    models = settings.desktop_models()
+    from .discovery import desktop_models
+
+    models = desktop_models(settings)
     usable: list[str] = []
     parameterized: list[str] = []
     default_id: str | None = None

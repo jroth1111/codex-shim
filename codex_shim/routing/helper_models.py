@@ -6,6 +6,7 @@ from typing import Any
 from aiohttp import web
 
 from ..settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_available
+from .discovery import by_slug_or_model, desktop_models
 
 HELPER_SLUG_DEFAULTS = frozenset(
     {
@@ -30,12 +31,12 @@ def helper_slug_prefixes() -> tuple[str, ...]:
 def helper_fallback_slug(settings: ModelSettings) -> str | None:
     configured = os.environ.get("CODEX_SHIM_HELPER_FALLBACK_SLUG", "").strip()
     if configured:
-        route = settings.by_slug_or_model(configured)
+        route = by_slug_or_model(settings, configured)
         if route is not None and route.visible:
             return route.slug
     if chatgpt_passthrough_available():
         return CHATGPT_MODEL_SLUG
-    for model in settings.desktop_models():
+    for model in desktop_models(settings):
         if not model.is_chatgpt:
             return model.slug
     return None
@@ -73,7 +74,7 @@ def apply_helper_model_policy(
     fallback_slug = helper_fallback_slug(settings)
     if fallback_slug is None:
         raise web.HTTPNotImplemented(text=f"No fallback route available for helper model {requested!r}.")
-    route = settings.by_slug_or_model(fallback_slug)
+    route = by_slug_or_model(settings, fallback_slug)
     if route is None:
         raise web.HTTPNotImplemented(text=f"Configured helper fallback slug not found: {fallback_slug!r}.")
     rewritten = dict(body)

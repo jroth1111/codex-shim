@@ -5,13 +5,12 @@ from pathlib import Path
 
 from ..capabilities import route_capabilities
 from ..providers import chatgpt_passthrough_entry, cursor_catalog_entry, cursor_passthrough_available
-from ..routing import SubscriptionCatalogSnapshot, refresh_subscription_catalog
+from ..routing import SubscriptionCatalogSnapshot, available_model_slugs, refresh_subscription_catalog
 from ..routing import auto_router as router_module
 from ..settings import (
     PLAN_TIERS,
     PROVIDER_NAME,
     ShimModel,
-    available_model_slugs,
     default_model_slug,
     websockets_enabled,
 )

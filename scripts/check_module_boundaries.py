@@ -70,20 +70,9 @@ PLATFORM = frozenset(
 
 ENTRYPOINTS = frozenset({"cli", "server", "workers", "__init__"})
 
-# (relative file path, imported codex_shim target or "UNASSIGNED").
-# Ratchet: entries may only be removed, never added.
-#
-# The two remaining entries are the settings.py platform inversion: settings
-# conflates the config schema (platform) with model *discovery*
-# (chatgpt/cursor passthrough availability, subscription merge, router
-# config), which lazily reaches into routing/providers. Resolving it means
-# moving discovery out of settings — tracked as a follow-up bead.
-LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
-    {
-        ('codex_shim/settings.py', 'providers'),
-        ('codex_shim/settings.py', 'routing'),
-    }
-)
+# The migration debt ratchet is fully paid down: this set must stay empty.
+# Any new violation is a hard CI failure — fix the import, don't list it.
+LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset()
 
 
 def _classify(path: Path) -> tuple[str, str]:

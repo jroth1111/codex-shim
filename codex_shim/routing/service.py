@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from aiohttp import web
 
 from ..settings import ModelSettings, ShimModel
+from .discovery import desktop_models
 from .image_gate import needs_image_generation
 from .inference_context import InferenceContext, parse_inference_context
 from .model_catalog import ModelCatalogSnapshot
@@ -75,7 +76,7 @@ def _fallback_route(
     route: ShimModel,
     body: dict[str, Any] | None = None,
 ) -> ShimModel | None:
-    all_models = settings.desktop_models()
+    all_models = desktop_models(settings)
     image_needed = needs_image_generation(body) if body else False
     fallback_route: ShimModel | None = None
     for candidate in all_models:

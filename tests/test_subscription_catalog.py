@@ -9,6 +9,7 @@ import pytest
 
 from codex_shim.clientconfig.catalog import build_merged_catalog, write_catalog
 from codex_shim.providers.chatgpt.handlers import rewrite_response_model
+from codex_shim.routing import desktop_models
 from codex_shim.routing.subscription_catalog import (
     SubscriptionCatalogSnapshot,
     fetch_subscription_models,
@@ -167,7 +168,7 @@ def test_desktop_models_merge_subscription_and_byok(auth_present, tmp_path):
         "loaded",
     )
     with patch("codex_shim.routing.subscription_catalog.refresh_subscription_catalog", return_value=snapshot):
-        desktop = ModelSettings(settings).desktop_models()
+        desktop = desktop_models(ModelSettings(settings))
     assert [model.slug for model in desktop] == ["gpt-5.5", "gpt-5.4", "gpt-5.3-codex", "gpt-4o"]
     assert desktop[-1].transport == TRANSPORT_OPENAI_CHAT
 

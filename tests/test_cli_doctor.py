@@ -137,7 +137,7 @@ def test_doctor_models_subcommand_still_reports_visibility(monkeypatch, tmp_path
     monkeypatch.delenv("ZAI_API_KEY", raising=False)
     monkeypatch.setattr(cli, "chatgpt_passthrough_available", lambda: False)
     monkeypatch.setattr(
-        "codex_shim.routing.merge_desktop_models",
+        "codex_shim.routing.subscription_catalog.merge_desktop_models",
         lambda models: list(models),
     )
 

@@ -29,11 +29,11 @@ from ..providers import (
     cursor_passthrough_display_names,
 )
 from ..routing import auto_router as router_module
+from ..routing import chatgpt_passthrough_slugs
 from ..settings import (
     PROVIDER_NAME,
     ModelSettings,
     ShimModel,
-    chatgpt_passthrough_slugs,
     default_model_slug,
     usable_byok_models,
     websockets_enabled,
@@ -54,7 +54,9 @@ def _load_models(settings_path: Path):
 
 
 def _desktop_models(settings_path: Path):
-    return ModelSettings(settings_path).desktop_models()
+    from ..routing import desktop_models
+
+    return desktop_models(ModelSettings(settings_path))
 
 
 def _active_router(models, settings_path: Path):

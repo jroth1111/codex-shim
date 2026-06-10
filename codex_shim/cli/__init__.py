@@ -36,6 +36,10 @@ from ..providers import (  # noqa: F401
     is_cursor_passthrough_slug,
 )
 from ..routing import auto_router as router_module  # noqa: F401
+from ..routing import (  # noqa: F401
+    available_model_slugs,
+    chatgpt_passthrough_slugs,
+)
 from ..settings import (  # noqa: F401
     CHATGPT_MODEL_SLUG,
     DEFAULT_CODEX_AUTH,
@@ -45,9 +49,7 @@ from ..settings import (  # noqa: F401
     PROVIDER_NAME,
     ModelSettings,
     ShimModel,
-    available_model_slugs,
     chatgpt_passthrough_available,
-    chatgpt_passthrough_slugs,
     default_model_slug,
     fetch_vibeproxy_model_rows,
     usable_byok_models,

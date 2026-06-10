@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from ..settings import ModelSettings, ShimModel, available_model_slugs, byok_model_has_credentials
+from ..settings import ModelSettings, ShimModel, byok_model_has_credentials
 from . import auto_router as router_module
+from .discovery import available_model_slugs, by_slug_or_model
 
 # (system_prompt, user_content) -> classifier completion text
 Classifier = Callable[[str, str], Awaitable[str]]
@@ -15,7 +16,7 @@ ClassifierFactory = Callable[[ShimModel, router_module.RouterConfig], Classifier
 
 def active_router(settings: ModelSettings) -> router_module.RouterConfig | None:
     """Return RouterConfig only when enabled and at least one candidate is usable."""
-    config = settings.load_router()
+    config = router_module.load_router_config(settings.path)
     if config and router_module.router_is_active(config, available_model_slugs(settings.load())):
         return config
     return None
@@ -30,7 +31,7 @@ class AutoRouterService:
         return active_router(self._settings)
 
     async def maybe_apply_auto_router(self, body: dict[str, Any]) -> dict[str, Any]:
-        config = self._settings.load_router()
+        config = router_module.load_router_config(self._settings.path)
         if not config or not config.effective_enabled:
             return body
         if str(body.get("model") or "") != config.slug:
@@ -51,7 +52,7 @@ class AutoRouterService:
             return None
         classify = None
         if config.classifier and self._classify_factory is not None:
-            classifier_model = self._settings.by_slug_or_model(config.classifier)
+            classifier_model = by_slug_or_model(self._settings, config.classifier)
             if (
                 classifier_model is not None
                 and byok_model_has_credentials(classifier_model)

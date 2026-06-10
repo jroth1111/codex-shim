@@ -17,6 +17,7 @@ from codex_shim.routing import (
     AGENT_MODE_DEBUG,
     AGENT_MODE_PLAN,
     agent_mode_for_cli_mode,
+    by_slug_or_model,
     metadata_mode_for_cli_mode,
     needs_image_generation,
     parse_inference_context,
@@ -240,7 +241,7 @@ def test_tool_policy_run_everything(tmp_path):
             }
         )
     )
-    route = ModelSettings(settings_path).by_slug_or_model("cursor-local")
+    route = by_slug_or_model(ModelSettings(settings_path), "cursor-local")
     assert route is not None
     inference = parse_inference_context({"metadata": {"yolo": True}}, route_transport=route.transport)
     policy = ToolPolicy()
@@ -321,7 +322,7 @@ def test_native_transport_mode_per_model_row(tmp_path):
             }
         )
     )
-    route = ModelSettings(settings_path).by_slug_or_model("native-run")
+    route = by_slug_or_model(ModelSettings(settings_path), "native-run")
     assert route is not None
     assert route.native_transport_mode == "http2"
 
@@ -352,7 +353,7 @@ def test_use_native_transport_sets_cursor_agent_transport(tmp_path):
             }
         )
     )
-    route = ModelSettings(settings_path).by_slug_or_model("native")
+    route = by_slug_or_model(ModelSettings(settings_path), "native")
     assert route is not None
     assert route.transport == TRANSPORT_CURSOR_AGENT
     assert route.use_native_transport is True
@@ -501,7 +502,7 @@ def test_tool_policy_blocks_image_generation_when_unsupported(tmp_path):
             }
         )
     )
-    route = ModelSettings(settings_path).by_slug_or_model("no-img")
+    route = by_slug_or_model(ModelSettings(settings_path), "no-img")
     assert route is not None
     body = {"tools": [{"type": "image_generation", "name": "image_generation"}]}
     assert needs_image_generation(body)

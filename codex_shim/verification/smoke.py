@@ -10,7 +10,8 @@ from aiohttp import ClientConnectorError, ClientResponseError, ClientSession, Cl
 
 from .. import settings as settings_module
 from ..providers import CursorAcpError, CursorCliError, run_cursor_acp, run_cursor_cli
-from ..settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_model
+from ..routing import chatgpt_passthrough_model
+from ..settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel
 from ..translate import responses_to_anthropic, responses_to_chat
 
 

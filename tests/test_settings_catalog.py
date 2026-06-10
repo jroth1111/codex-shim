@@ -17,6 +17,7 @@ from codex_shim.clientconfig import (
     SIDEBAR_RECENT_THREADS_REPLACEMENT,
 )
 from codex_shim.clientconfig.catalog import catalog_entry, codex_config_overrides, write_catalog, write_config
+from codex_shim.routing import by_slug_or_model, desktop_models
 from codex_shim.settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,
@@ -673,7 +674,7 @@ def test_default_model_slug_skips_chatgpt_when_include_chatgpt_false(tmp_path, a
             }
         )
     )
-    models = ModelSettings(settings).desktop_models()
+    models = desktop_models(ModelSettings(settings))
     assert default_model_slug(models, include_chatgpt=False) == "byok-1"
 
 
@@ -682,7 +683,7 @@ def test_default_model_slug_falls_back_to_chatgpt_when_only_passthrough(tmp_path
 
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
-    models = ModelSettings(settings).desktop_models()
+    models = desktop_models(ModelSettings(settings))
     assert default_model_slug(models, include_chatgpt=False) == CHATGPT_MODEL_SLUG
 
 
@@ -712,7 +713,7 @@ def test_default_model_slug_prefers_cursor_cli_when_visible(tmp_path, auth_prese
             }
         )
     )
-    models = ModelSettings(settings).desktop_models()
+    models = desktop_models(ModelSettings(settings))
     assert default_model_slug(models, include_chatgpt=False) == "cursor-auto"
 
 
@@ -735,7 +736,7 @@ def test_default_model_slug_include_chatgpt_true_prefers_passthrough(tmp_path, a
             }
         )
     )
-    models = ModelSettings(settings).desktop_models()
+    models = desktop_models(ModelSettings(settings))
     assert default_model_slug(models, include_chatgpt=True) == CHATGPT_MODEL_SLUG
 
 
@@ -758,7 +759,7 @@ def test_by_slug_or_model_prefers_chatgpt_passthrough_over_catalog_slug(tmp_path
             }
         )
     )
-    resolved = ModelSettings(settings).by_slug_or_model("gpt-5.5")
+    resolved = by_slug_or_model(ModelSettings(settings), "gpt-5.5")
     assert resolved is not None
     assert resolved.is_chatgpt is True
     assert resolved.provider == "chatgpt"
@@ -768,7 +769,7 @@ def test_desktop_models_include_chatgpt_synthetic_model_when_auth_present(tmp_pa
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
 
-    [model] = ModelSettings(settings).desktop_models()
+    [model] = desktop_models(ModelSettings(settings))
 
     assert model.slug == "gpt-5.5"
     assert model.provider == "chatgpt"
@@ -779,7 +780,7 @@ def test_desktop_models_include_chatgpt_synthetic_model_when_auth_present(tmp_pa
 def test_by_slug_or_model_normalizes_gpt_5p5_alias(tmp_path, auth_present):
     settings = tmp_path / "models.json"
     settings.write_text(json.dumps({"models": []}))
-    resolved = ModelSettings(settings).by_slug_or_model("gpt-5p5")
+    resolved = by_slug_or_model(ModelSettings(settings), "gpt-5p5")
     assert resolved is not None
     assert resolved.slug == "gpt-5.5"
 

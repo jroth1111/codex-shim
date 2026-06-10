@@ -12,9 +12,9 @@ from ..providers import (
     cursor_passthrough_display_names,
     is_cursor_passthrough_slug,
 )
+from ..routing import chatgpt_passthrough_slugs
 from ..settings import (
     CHATGPT_MODEL_SLUG,
-    chatgpt_passthrough_slugs,
     default_model_slug,
     usable_byok_models,
 )

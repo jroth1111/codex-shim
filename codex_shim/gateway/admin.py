@@ -10,8 +10,8 @@ from aiohttp import web
 
 from ..clientconfig import picker
 from ..routing import auto_router as router_module
-from ..routing import refresh_subscription_catalog
-from ..settings import chatgpt_passthrough_available, chatgpt_passthrough_slugs
+from ..routing import chatgpt_passthrough_slugs, desktop_models, refresh_subscription_catalog
+from ..settings import chatgpt_passthrough_available
 
 if TYPE_CHECKING:
     from ..server import ShimServer
@@ -46,9 +46,9 @@ class AdminHandlers:
         data: list[dict[str, Any]] = []
         include_unavailable = str(request.query.get("include_unavailable") or "").lower() in {"1", "true", "yes", "on"}
         models = (
-            [*self._server.settings.desktop_models(), *self._server.settings.unavailable_models()]
+            [*desktop_models(self._server.settings), *self._server.settings.unavailable_models()]
             if include_unavailable
-            else self._server.settings.desktop_models()
+            else desktop_models(self._server.settings)
         )
         router_config = self._server.auto_router.active_router()
         if router_config is not None:
@@ -97,7 +97,7 @@ class AdminHandlers:
         slug = str(body.get("slug") or "").strip()
         if not slug:
             return web.json_response({"error": "slug is required"}, status=400)
-        models = self._server.settings.desktop_models()
+        models = desktop_models(self._server.settings)
         router_config = self._server.auto_router.active_router()
         valid = {m.slug for m in models}
         display_for: dict[str, str] = {m.slug: m.display_name for m in models}
@@ -162,7 +162,7 @@ class AdminHandlers:
                 "created": now,
                 "owned_by": "chatgpt" if model.is_chatgpt else "codex-shim",
             }
-            for model in self._server.settings.desktop_models()
+            for model in desktop_models(self._server.settings)
         )
         return web.json_response({"object": "list", "data": data})
 

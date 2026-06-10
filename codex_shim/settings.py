@@ -258,18 +258,6 @@ def chatgpt_passthrough_available(auth_path: Path | None = None) -> bool:
     return bool(tokens.get("access_token"))
 
 
-def chatgpt_passthrough_model(auth_path: Path | None = None) -> NormalizedModel | None:
-    from .routing import subscription_passthrough_models
-
-    models = subscription_passthrough_models(auth_path)
-    if not models:
-        return None
-    for model in models:
-        if model.slug == CHATGPT_MODEL_SLUG:
-            return model
-    return models[0]
-
-
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return slug or "model"
@@ -430,57 +418,12 @@ class ModelSettings:
     def unavailable_models(self) -> list[NormalizedModel]:
         return [model for model in self.load() if not model.visible]
 
-    def desktop_models(self) -> list[NormalizedModel]:
-        from .routing import merge_desktop_models
-
-        return merge_desktop_models(self.visible_models())
-
-    def by_slug_or_model(self, requested: str, *, include_unavailable: bool = False) -> NormalizedModel | None:
-        models = self.load() if include_unavailable else self.desktop_models()
-        requested = normalize_chatgpt_model_request(requested, models)
-        by_slug = {m.slug: m for m in models}
-        if requested in by_slug:
-            return by_slug[requested]
-        matches = [m for m in models if m.model == requested]
-        if len(matches) == 1:
-            return matches[0]
-        return None
-
-    def load_router(self):
-        """Parse the optional top-level ``router`` block from the settings file."""
-        from .routing import load_router_config
-
-        return load_router_config(self.path)
-
-
 def byok_model_has_credentials(model: NormalizedModel) -> bool:
     return bool((model.api_key or "").strip())
 
 
 def usable_byok_models(models: list[NormalizedModel]) -> list[NormalizedModel]:
     return [model for model in models if byok_model_has_credentials(model) and not model.is_chatgpt]
-
-
-def chatgpt_passthrough_slugs() -> set[str]:
-    return {model.slug for model in subscription_passthrough_slugs_models()}
-
-
-def subscription_passthrough_slugs_models() -> list[NormalizedModel]:
-    from .routing import subscription_passthrough_models
-
-    return subscription_passthrough_models()
-
-
-def available_model_slugs(models: list[NormalizedModel]) -> set[str]:
-    """Every routable slug: usable BYOK models plus available passthrough slugs."""
-    from .providers import cursor_passthrough_available, cursor_passthrough_display_names
-
-    slugs = {model.slug for model in usable_byok_models(models)}
-    if chatgpt_passthrough_available():
-        slugs |= chatgpt_passthrough_slugs()
-    if cursor_passthrough_available():
-        slugs |= set(cursor_passthrough_display_names())
-    return slugs
 
 
 def normalize_chatgpt_model_request(

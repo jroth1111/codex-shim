@@ -879,7 +879,7 @@ def run_live_matrix(settings_path: Path, port: int) -> list[LiveMatrixResult]:
 
 
 def tier_a_route() -> ShimModel:
-    from ..settings import chatgpt_passthrough_model
+    from ..routing import chatgpt_passthrough_model
 
     route = chatgpt_passthrough_model()
     if route is None:

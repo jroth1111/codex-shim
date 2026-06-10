@@ -1,6 +1,14 @@
 from . import auto_router
 from .auto_router import load_router_config, router_is_active
 from .auto_router_service import AutoRouterService, active_router
+from .discovery import (
+    available_model_slugs,
+    by_slug_or_model,
+    chatgpt_passthrough_model,
+    chatgpt_passthrough_slugs,
+    desktop_models,
+    subscription_passthrough_slugs_models,
+)
 from .helper_models import apply_helper_model_policy, is_helper_model_slug
 from .image_gate import needs_image_generation
 from .inference_context import (
@@ -37,6 +45,12 @@ __all__ = [
     "auto_router",
     "known_subscription_slugs",
     "apply_helper_model_policy",
+    "available_model_slugs",
+    "by_slug_or_model",
+    "chatgpt_passthrough_model",
+    "chatgpt_passthrough_slugs",
+    "desktop_models",
+    "subscription_passthrough_slugs_models",
     "is_helper_model_slug",
     "load_router_config",
     "merge_desktop_models",

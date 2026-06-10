@@ -154,7 +154,9 @@ def _delegate_prompt(prompt: str, cwd: str, settings_path: Path) -> str:
     from codex_shim.settings import ModelSettings
 
     catalog = ModelSettings(settings_path)
-    route = catalog.by_slug_or_model("cursor-auto")
+    from codex_shim.routing import by_slug_or_model
+
+    route = by_slug_or_model(catalog, "cursor-auto")
     if route is None:
         raise SystemExit("cursor-auto not found in settings")
     body = {"input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}]}]}

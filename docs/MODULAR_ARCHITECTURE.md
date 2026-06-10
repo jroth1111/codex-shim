@@ -43,9 +43,9 @@ Shared platform layer (importable by every module; imports only platform):
 `StreamSink` union), and the generated desktop contract files
 (`desktop_contract`, `desktop_app_server_contract`, `desktop_validate`,
 `desktop_decompiled`). `settings.PROJECT_ROOT` / `settings.RUNTIME_DIR` are the
-single home for repo-root-anchored paths. Known residual inversion: settings'
-lazy model-discovery imports of routing/providers, tracked in the checker's
-`LEGACY_DEBT` ratchet.
+single home for repo-root-anchored paths. Model *discovery* (composing BYOK
+rows with subscription and cursor passthrough availability) lives in
+`routing/discovery.py`, not in settings — the platform layer imports nothing.
 
 Entrypoints / composition roots (may import any module surface): `cli/`
 (command submodules re-exported through the package namespace), `server.py`
