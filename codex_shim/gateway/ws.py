@@ -5,9 +5,9 @@ from typing import Any, Awaitable, Callable
 
 from aiohttp import WSMsgType, web
 
-from ..wire import WsStreamResponse
+from ..wire import StreamSink, WsStreamResponse
 
-ResponsesBodyHandler = Callable[..., Awaitable[web.StreamResponse | web.Response]]
+ResponsesBodyHandler = Callable[..., Awaitable[StreamSink]]
 
 
 async def handle_responses_websocket(

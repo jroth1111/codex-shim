@@ -136,3 +136,16 @@ def attach_response_metadata(
     merged.update(shim_response_metadata(route, prepared, native_envelope=native_envelope, workspace=workspace))
     payload["metadata"] = merged
     return payload
+
+
+def governance_inference_kwargs(inference) -> dict[str, Any]:
+    if inference is None:
+        return {}
+    return {
+        "inference_mode": inference.cli_mode,
+        "metadata_mode": inference.metadata_mode,
+        "surface": inference.surface,
+        "model_prefetch_status": inference.prefetch_status,
+        "force_run_everything": inference.force_run_everything,
+        "transport_selected": inference.transport_selected,
+    }

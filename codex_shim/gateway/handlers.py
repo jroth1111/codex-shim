@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from aiohttp import web
 
-from ..wire import WsStreamResponse
+from ..wire import StreamSink, WsStreamResponse
 from .ws import handle_responses_websocket
 
 if TYPE_CHECKING:
@@ -17,11 +17,11 @@ class GatewayDispatch(Protocol):
         request: web.Request,
         body: dict[str, Any],
         ws_stream: WsStreamResponse | None = None,
-    ) -> web.StreamResponse | web.Response: ...
+    ) -> StreamSink: ...
 
-    async def chat_completions(self, request: web.Request) -> web.StreamResponse: ...
+    async def chat_completions(self, request: web.Request) -> StreamSink: ...
 
-    async def responses_compact_from_body(self, request: web.Request, body: dict[str, Any]) -> web.StreamResponse: ...
+    async def responses_compact_from_body(self, request: web.Request, body: dict[str, Any]) -> StreamSink: ...
 
 
 class GatewayHandlers:
@@ -39,15 +39,17 @@ class GatewayHandlers:
             return web.json_response({"error": {"type": "invalid_request", "message": "JSON body must be an object"}}, status=400)
         return body
 
+    # Route handlers narrow StreamSink back to web.StreamResponse: the WS sink
+    # only flows when a ws_stream is injected, which these HTTP paths never do.
     async def chat_completions(self, request: web.Request) -> web.StreamResponse:
-        return await self._dispatcher.chat_completions(request)
+        return cast(web.StreamResponse, await self._dispatcher.chat_completions(request))
 
     async def responses(self, request: web.Request) -> web.StreamResponse:
         body_or_error = await self._read_json(request)
         if isinstance(body_or_error, web.Response):
             return body_or_error
         body = body_or_error
-        return await self._dispatcher._dispatch_responses(request, body)
+        return cast(web.StreamResponse, await self._dispatcher._dispatch_responses(request, body))
 
     async def responses_websocket(self, request: web.Request) -> web.WebSocketResponse:
         return await handle_responses_websocket(request, dispatch=self._dispatcher._dispatch_responses)
@@ -56,7 +58,7 @@ class GatewayHandlers:
         body_or_error = await self._read_json(request)
         if isinstance(body_or_error, web.Response):
             return body_or_error
-        return await self._dispatcher.responses_compact_from_body(request, body_or_error)
+        return cast(web.StreamResponse, await self._dispatcher.responses_compact_from_body(request, body_or_error))
 
     async def anthropic_messages(self, request: web.Request) -> web.StreamResponse:
         from .anthropic_messages import anthropic_messages_handler

@@ -9,6 +9,7 @@ from typing import Any
 
 from aiohttp import web
 
+from ..wire import StreamSink
 from .compact_frontier import (
     CompactFrontier,
     extract_compact_frontier,
@@ -197,7 +198,7 @@ def append_postcompact_capture(record: dict[str, Any]) -> None:
 
 
 async def as_compact_response(
-    response: web.StreamResponse,
+    response: StreamSink,
     model: str,
     request_body: dict[str, Any] | None = None,
     *,
@@ -205,7 +206,7 @@ async def as_compact_response(
     git_status: str | None = None,
     workspace: str | None = None,
     audit_callback: Any | None = None,
-) -> web.StreamResponse:
+) -> StreamSink:
     if not isinstance(response, web.Response) or response.status >= 400:
         return response
     try:

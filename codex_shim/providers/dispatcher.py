@@ -7,11 +7,11 @@ from aiohttp import web
 from ..routing import RoutingPolicy
 from ..sessions import PreparedResponsesRequest
 from ..settings import ShimModel
-from ..wire import WsStreamResponse
+from ..wire import StreamSink, WsStreamResponse
 
 ProviderHandler = Callable[
     [web.Request, ShimModel, dict[str, Any], bool, PreparedResponsesRequest | None, WsStreamResponse | None],
-    Awaitable[web.StreamResponse],
+    Awaitable[StreamSink],
 ]
 
 
@@ -44,10 +44,10 @@ class ProviderDispatcher:
         stats: dict[str, Any] | None = None,
         prepared: PreparedResponsesRequest | None = None,
         stream_response: WsStreamResponse | None = None,
-    ) -> web.StreamResponse:
+    ) -> StreamSink:
         active_policy = policy or RoutingPolicy()
 
-        async def _one_call() -> web.StreamResponse:
+        async def _one_call() -> StreamSink:
             if route.is_openai_chat:
                 return await self._openai_handler(request, route, body, as_responses, prepared, stream_response)
             if route.is_anthropic:
@@ -66,7 +66,7 @@ class ProviderDispatcher:
         else:
             attempts = max(1, active_policy.max_retries + 1)
 
-        last_result: web.StreamResponse | None = None
+        last_result: StreamSink | None = None
         last_status: int | None = None
         for attempt in range(attempts):
             result = await _one_call()
