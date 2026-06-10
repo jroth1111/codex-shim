@@ -101,7 +101,11 @@ def _classify(path: Path) -> tuple[str, str]:
     rel = path.relative_to(PKG_ROOT)
     top = rel.parts[0]
     if len(rel.parts) > 1:
-        return ("module", top) if top in MODULES else ("legacy", top)
+        if top in MODULES:
+            return ("module", top)
+        if top in ENTRYPOINTS:
+            return ("entrypoint", top)
+        return ("legacy", top)
     stem = path.stem
     if stem in MODULES:
         return ("module", stem)

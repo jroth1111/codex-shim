@@ -50,7 +50,6 @@ include = ["codex_shim"]
 exclude = [
   # Migration ratchet: each extraction phase's definition-of-done includes
   # removing its file(s) from this list. The list must only ever shrink.
-  "codex_shim/cli.py",                               # split in phase 9
   "codex_shim/providers/cursor_agent/proto_wire.py", # typed during phase 10
 ]
 

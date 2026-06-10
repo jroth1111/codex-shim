@@ -17,11 +17,12 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.request import urlopen
 
-from .clientconfig import (
+from ..clientconfig import (
     CATALOG_PATH,
     OPENCODE_GO_API_KEY_ENV,
     OPENCODE_GO_BASE_URL,
@@ -36,15 +37,15 @@ from .clientconfig import (
     write_config,
     write_direct_responses_config,
 )
-from .migrate import apply_postgres_migrations
-from .observability import clear_capture_config, read_capture_config, write_capture_config
-from .providers import (
+from ..migrate import apply_postgres_migrations
+from ..observability import clear_capture_config, read_capture_config, write_capture_config
+from ..providers import (
     cursor_passthrough_available,
     cursor_passthrough_display_names,
     is_cursor_passthrough_slug,
 )
-from .routing import auto_router as router_module
-from .settings import (
+from ..routing import auto_router as router_module
+from ..settings import (
     CHATGPT_MODEL_SLUG,
     DEFAULT_CODEX_AUTH,
     DEFAULT_HOST,
@@ -61,9 +62,10 @@ from .settings import (
     usable_byok_models,
     websockets_enabled,
 )
-from .workers import main as worker_main
+from ..settings import PROJECT_ROOT as _PROJECT_ROOT
+from ..workers import main as worker_main
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = _PROJECT_ROOT
 RUNTIME_DIR = PROJECT_ROOT / ".codex-shim"
 CONFIG_PATH = RUNTIME_DIR / "config.toml"
 PID_PATH = RUNTIME_DIR / "shim.pid"
@@ -82,7 +84,7 @@ APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
 # Compatibility re-exports: tests read these via codex_shim.cli attributes.
 # Delete once test imports are repointed at the source modules (migration phase 9).
-from .clientconfig import (  # noqa: F401, E402
+from ..clientconfig import (  # noqa: F401, E402
     MODEL_PICKER_NEEDLE,
     MODEL_PICKER_REPLACEMENT,
     REDACTED_VALUE,  # noqa: F401, E402
@@ -444,7 +446,7 @@ def _active_router(models, settings_path: Path):
 
 
 def generate(settings_path: Path, port: int) -> None:
-    from .routing import refresh_subscription_catalog
+    from ..routing import refresh_subscription_catalog
 
     models = _load_models(settings_path)
     snapshot = refresh_subscription_catalog()
@@ -460,8 +462,9 @@ def generate(settings_path: Path, port: int) -> None:
     subscription_count = len([model for model in desktop_models if model.is_chatgpt])
     byok_count = len([model for model in desktop_models if not model.is_chatgpt])
     print(f"Generated {len(desktop_models)} Desktop model entries ({subscription_count} subscription + {byok_count} BYOK):")
-    if _active_router(models, settings_path) is not None:
-        print(f"  auto router: {router_config.slug} ({router_config.display_name})")
+    active_config = _active_router(models, settings_path)
+    if active_config is not None:
+        print(f"  auto router: {active_config.slug} ({active_config.display_name})")
     print(f"  catalog: {CATALOG_PATH}")
     print(f"  config:  {CONFIG_PATH}")
     if snapshot.status == "error" and snapshot.error:
@@ -581,7 +584,7 @@ def import_vibeproxy_models(
         models = _vibeproxy_direct_models(rows, direct_base_url)
         catalog_path = Path(direct_catalog_path or CATALOG_PATH).expanduser()
         config_path = Path(direct_config_path or CONFIG_PATH).expanduser()
-        from .routing import SubscriptionCatalogSnapshot
+        from ..routing import SubscriptionCatalogSnapshot
 
         write_catalog(
             models,
@@ -777,8 +780,8 @@ DESKTOP_CATALOG_KEYS = {
 
 
 def doctor_subscription() -> int:
-    from .routing import refresh_subscription_catalog
-    from .routing import subscription_catalog as _subscription_module
+    from ..routing import refresh_subscription_catalog
+    from ..routing import subscription_catalog as _subscription_module
 
     snapshot = refresh_subscription_catalog()
     print(f"status: {snapshot.status}")
@@ -816,7 +819,7 @@ def doctor_catalog(settings_path: Path) -> int:
 
 
 def probe_fidelity_route() -> int:
-    from .verification import CompactProbeError, probe_fidelity
+    from ..verification import CompactProbeError, probe_fidelity
 
     try:
         return probe_fidelity()
@@ -826,7 +829,7 @@ def probe_fidelity_route() -> int:
 
 
 def probe_history_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_history
+    from ..verification import CompactProbeError, probe_history
 
     try:
         return probe_history(Path(settings_path).expanduser(), port, slug)
@@ -842,7 +845,7 @@ def probe_history_route(settings_path: Path, port: int, slug: str | None) -> int
 
 
 def probe_streaming_history_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_streaming_history
+    from ..verification import CompactProbeError, probe_streaming_history
 
     try:
         return probe_streaming_history(Path(settings_path).expanduser(), port, slug)
@@ -858,7 +861,7 @@ def probe_streaming_history_route(settings_path: Path, port: int, slug: str | No
 
 
 def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_ws_streaming
+    from ..verification import CompactProbeError, probe_ws_streaming
 
     try:
         return probe_ws_streaming(Path(settings_path).expanduser(), port, slug)
@@ -874,7 +877,7 @@ def probe_ws_streaming_route(settings_path: Path, port: int, slug: str | None) -
 
 
 def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_tools
+    from ..verification import CompactProbeError, probe_tools
 
     try:
         return probe_tools(Path(settings_path).expanduser(), port, slug)
@@ -884,7 +887,7 @@ def probe_tools_route(settings_path: Path, port: int, slug: str | None) -> int:
 
 
 def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_delegate
+    from ..verification import CompactProbeError, probe_delegate
 
     try:
         return probe_delegate(Path(settings_path).expanduser(), port, slug)
@@ -900,7 +903,7 @@ def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> in
 
 
 def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: bool) -> int:
-    from .verification import CompactProbeError, probe_all
+    from ..verification import CompactProbeError, probe_all
 
     try:
         return probe_all(Path(settings_path).expanduser(), port, slug, live=live)
@@ -916,7 +919,7 @@ def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: b
 
 
 def probe_passthrough_route(port: int, *, live: bool) -> int:
-    from .verification import CompactProbeError, probe_passthrough
+    from ..verification import CompactProbeError, probe_passthrough
 
     try:
         return probe_passthrough(port, live=live)
@@ -926,7 +929,7 @@ def probe_passthrough_route(port: int, *, live: bool) -> int:
 
 
 def probe_passthrough_compact_route(port: int, *, live: bool) -> int:
-    from .verification import CompactProbeError, probe_passthrough_compact
+    from ..verification import CompactProbeError, probe_passthrough_compact
 
     try:
         return probe_passthrough_compact(port, live=live)
@@ -936,7 +939,7 @@ def probe_passthrough_compact_route(port: int, *, live: bool) -> int:
 
 
 def probe_live_matrix_route(settings_path: Path, port: int) -> int:
-    from .verification import CompactProbeError, probe_live_matrix
+    from ..verification import CompactProbeError, probe_live_matrix
 
     try:
         return probe_live_matrix(Path(settings_path).expanduser(), port)
@@ -953,7 +956,7 @@ def probe_matrix_route(
     live: bool,
     as_json: bool,
 ) -> int:
-    from .verification import CompactProbeError, probe_matrix
+    from ..verification import CompactProbeError, probe_matrix
 
     try:
         return probe_matrix(Path(settings_path).expanduser(), port, slug, live=live, as_json=as_json)
@@ -1315,8 +1318,8 @@ def _bool_text(value) -> str:
 
 
 def doctor_models(settings_path: Path) -> int:
-    from .capabilities import execution_mode, route_capabilities
-    from .sessions import default_store_path, store_scope
+    from ..capabilities import execution_mode, route_capabilities
+    from ..sessions import default_store_path, store_scope
 
     models = _load_models(settings_path)
     desktop_models = _desktop_models(settings_path)
@@ -1366,7 +1369,7 @@ def doctor_models(settings_path: Path) -> int:
 
 
 def test_provider_route(settings_path: Path, target: str) -> int:
-    from .verification import CompactProbeError, probe_fidelity, resolve_smoke_target, run_provider_smoke
+    from ..verification import CompactProbeError, probe_fidelity, resolve_smoke_target, run_provider_smoke
 
     try:
         probe_fidelity()
@@ -1405,7 +1408,7 @@ def test_provider_route(settings_path: Path, target: str) -> int:
 
 
 def probe_compact_route(settings_path: Path, port: int, slug: str | None) -> int:
-    from .verification import CompactProbeError, probe_compact
+    from ..verification import CompactProbeError, probe_compact
 
     try:
         return probe_compact(Path(settings_path).expanduser(), port, slug)
@@ -1534,7 +1537,7 @@ def start(settings_path: Path, port: int) -> int:
 
 def stop() -> int:
     pid = _read_pid()
-    if not _pid_running(pid):
+    if pid is None or not _pid_running(pid):
         print("Shim is not running.")
         PID_PATH.unlink(missing_ok=True)
         return 0
@@ -1550,7 +1553,7 @@ def stop() -> int:
 
 
 def repair_codex_config(path: Path = CODEX_CONFIG_PATH) -> int:
-    from .clientconfig import repair_codex_config as _repair_codex_config
+    from ..clientconfig import repair_codex_config as _repair_codex_config
 
     if not path.exists():
         print(f"No config to repair at {path}.", file=sys.stderr)
@@ -1695,7 +1698,7 @@ def _set_loopback_no_proxy_env() -> None:
     _with_loopback_no_proxy(os.environ)
 
 
-def _with_loopback_no_proxy(env: dict[str, str]) -> dict[str, str]:
+def _with_loopback_no_proxy(env: MutableMapping[str, str]) -> MutableMapping[str, str]:
     loopback = ["127.0.0.1", "localhost", "::1"]
     for key in ("NO_PROXY", "no_proxy"):
         values = [part.strip() for part in env.get(key, "").split(",") if part.strip()]

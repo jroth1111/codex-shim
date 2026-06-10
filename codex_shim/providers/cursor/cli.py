@@ -47,7 +47,8 @@ def _capture_proxy_env() -> dict[str, str]:
         merged["NODE_EXTRA_CA_CERTS"] = str(cert)
     from ...cli import _with_loopback_no_proxy
 
-    return _with_loopback_no_proxy(merged)
+    _with_loopback_no_proxy(merged)  # mutates in place
+    return merged
 
 
 def _base_subprocess_env(overrides: dict[str, str]) -> dict[str, str]:
