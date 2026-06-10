@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .capabilities import is_delegate_route
-from .settings import ShimModel
-from .translate import responses_to_chat
+from ...capabilities import is_delegate_route
+from ...settings import ShimModel
+from ...translate import responses_to_chat
 
 TextCallback = Callable[[str], Awaitable[None]]
 
@@ -217,7 +217,7 @@ def responses_to_upstream_parity_prompt(
     Plain cursor-agent CLI prompt: latest user line when resuming, otherwise recent text turns only.
     Workspace is passed via ``--workspace``; no WORKSPACE: prefix.
     """
-    from .cursor_parity import latest_user_text
+    from .parity import latest_user_text
 
     plain = latest_user_text(body)
     if resume_chat_id or chained_from_previous:
@@ -233,7 +233,7 @@ def responses_to_upstream_parity_prompt(
     messages = [message for message in (chat.get("messages") or []) if isinstance(message, dict)]
     text_messages: list[str] = []
     suppressed_tool_outputs = 0
-    from .cursor_parity import _is_shim_catalog_instructions
+    from .parity import _is_shim_catalog_instructions
 
     for message in messages:
         role = str(message.get("role") or "user").lower()

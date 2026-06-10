@@ -9,8 +9,7 @@ from typing import Any
 from aiohttp import ClientConnectorError, ClientResponseError, ClientSession, ClientTimeout
 
 from . import settings as settings_module
-from .cursor_acp import CursorAcpError, run_cursor_acp
-from .cursor_cli import CursorCliError, run_cursor_cli
+from .providers import CursorAcpError, CursorCliError, run_cursor_acp, run_cursor_cli
 from .settings import CHATGPT_MODEL_SLUG, ModelSettings, ShimModel, chatgpt_passthrough_model
 from .translate import responses_to_anthropic, responses_to_chat
 

@@ -4,9 +4,9 @@ import json
 
 from aiohttp.test_utils import make_mocked_request
 
-from codex_shim.cursor_acp import responses_to_delegate_prompt, responses_to_upstream_parity_prompt
-from codex_shim.cursor_cli import _base_subprocess_env, cursor_cli_config
-from codex_shim.cursor_parity import (
+from codex_shim.providers.cursor.acp import responses_to_delegate_prompt, responses_to_upstream_parity_prompt
+from codex_shim.providers.cursor.cli import _base_subprocess_env, cursor_cli_config
+from codex_shim.providers.cursor.parity import (
     CursorThreadSessionStore,
     build_cursor_cli_turn_options,
     latest_user_text,

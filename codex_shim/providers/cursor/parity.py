@@ -10,8 +10,8 @@ from typing import Any
 
 from aiohttp import web
 
-from .sessions import parse_turn_metadata, resolve_thread_and_session_ids, responses_items_from_input
-from .settings import ShimModel
+from ...sessions import parse_turn_metadata, resolve_thread_and_session_ids, responses_items_from_input
+from ...settings import ShimModel
 
 
 def _truthy(value: Any) -> bool:

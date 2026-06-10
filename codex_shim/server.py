@@ -15,27 +15,6 @@ from aiohttp import ClientSession, ClientTimeout, web
 
 from .capabilities import execution_mode, is_delegate_route, route_capabilities
 from .catalog import CATALOG_PATH, write_catalog
-from .cursor_acp import CursorAcpError, cursor_acp_chat_payload, cursor_acp_response_payload, run_cursor_acp
-from .cursor_cli import CursorCliError, run_cursor_cli
-from .cursor_parity import CursorThreadSessionStore, build_cursor_cli_turn_options
-from .cursor_passthrough import (
-    cursor_passthrough_available,
-    cursor_passthrough_display_names,
-    is_cursor_passthrough_slug,
-)
-from .cursor_passthrough_handlers import cursor_passthrough_handler
-from .errors import (
-    cursor_acp_error_response as _cursor_acp_error_response,
-)
-from .errors import (
-    cursor_acp_stream_error as _cursor_acp_stream_error,
-)
-from .errors import (
-    cursor_agent_error_response as _cursor_agent_error_response,
-)
-from .errors import (
-    cursor_agent_stream_error as _cursor_agent_stream_error,
-)
 from .errors import (
     error_response as _error_response,
 )
@@ -67,7 +46,25 @@ from .picker import current_managed_model as _current_managed_model
 from .picker import picker_html as _picker_html
 from .picker import restart_codex_app as _restart_codex_app
 from .picker import set_active_model as _set_active_model
-from .providers import ProviderDispatcher
+from .providers import (
+    CursorAcpError,
+    CursorCliError,
+    CursorThreadSessionStore,
+    ProviderDispatcher,
+    build_cursor_cli_turn_options,
+    cursor_acp_chat_payload,
+    cursor_acp_response_payload,
+    cursor_passthrough_available,
+    cursor_passthrough_display_names,
+    cursor_passthrough_handler,
+    is_cursor_passthrough_slug,
+    run_cursor_acp,
+    run_cursor_cli,
+)
+from .providers import cursor_acp_error_response as _cursor_acp_error_response
+from .providers import cursor_acp_stream_error as _cursor_acp_stream_error
+from .providers import cursor_agent_error_response as _cursor_agent_error_response
+from .providers import cursor_agent_stream_error as _cursor_agent_stream_error
 from .providers.cursor_agent import CursorAgentTransport, CursorAgentTransportError
 from .routing import AutoRouterService, RouteResolution, refresh_subscription_catalog, resolve_model_route
 from .routing import auto_router as router_module
@@ -1083,7 +1080,7 @@ class ShimServer:
         chained_from_previous: bool,
         workspace: Path | None = None,
     ):
-        from .cursor_acp import cursor_prompt_for_body
+        from .providers import cursor_prompt_for_body
 
         turn_options = build_cursor_cli_turn_options(
             route,
@@ -2092,7 +2089,7 @@ def _join_url(base_url: str, endpoint: str) -> str:
 
 
 def _openai_headers(route: ShimModel) -> dict[str, str]:
-    from .auth_tokens import resolve_bearer_token
+    from .providers import resolve_bearer_token
 
     headers = {"Content-Type": "application/json", **route.extra_headers}
     token = route.api_key
@@ -2118,7 +2115,7 @@ def _anthropic_text(payload: Any) -> str:
 
 
 def _anthropic_headers(route: ShimModel) -> dict[str, str]:
-    from .auth_tokens import resolve_bearer_token
+    from .providers import resolve_bearer_token
 
     headers = {
         "Content-Type": "application/json",

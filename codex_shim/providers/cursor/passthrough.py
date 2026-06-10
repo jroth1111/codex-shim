@@ -9,7 +9,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
-from .translate import responses_to_chat, strip_think
+from ...translate import responses_to_chat, strip_think
 
 CURSOR_MODEL_SLUG = "composer-2-5"
 CURSOR_UPSTREAM_MODEL = "composer-2.5"

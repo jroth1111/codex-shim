@@ -11,14 +11,14 @@ from typing import Any
 
 from aiohttp import web
 
-from .cursor_acp import (
+from ...settings import ShimModel
+from .acp import (
     DEFAULT_CURSOR_TIMEOUT,
     CursorAcpResult,
     _normalize_usage,
     cursor_prompt_for_body,
 )
-from .cursor_parity import CursorCliTurnOptions, build_cursor_cli_turn_options, sanitize_cursor_upstream_body
-from .settings import ShimModel
+from .parity import CursorCliTurnOptions, build_cursor_cli_turn_options, sanitize_cursor_upstream_body
 
 _CAPTURE_PROXY_ENV = "CODEX_SHIM_CURSOR_UPSTREAM_CAPTURE_PROXY"
 
@@ -45,7 +45,7 @@ def _capture_proxy_env() -> dict[str, str]:
     if cert.is_file():
         merged["SSL_CERT_FILE"] = str(cert)
         merged["NODE_EXTRA_CA_CERTS"] = str(cert)
-    from .cli import _with_loopback_no_proxy
+    from ...cli import _with_loopback_no_proxy
 
     return _with_loopback_no_proxy(merged)
 

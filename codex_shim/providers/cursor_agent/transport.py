@@ -6,8 +6,8 @@ from typing import Any, AsyncIterator
 
 from aiohttp import ClientSession
 
-from ...cursor_acp import DEFAULT_CURSOR_TIMEOUT
 from ...routing import InferenceContext
+from ..cursor.acp import DEFAULT_CURSOR_TIMEOUT
 from .auth import load_cursor_access_token
 from .envelope import build_run_request_skeleton
 from .headers import build_cursor_agent_headers, endpoint_urls

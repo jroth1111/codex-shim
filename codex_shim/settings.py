@@ -446,7 +446,7 @@ def subscription_passthrough_slugs_models() -> list[NormalizedModel]:
 
 def available_model_slugs(models: list[NormalizedModel]) -> set[str]:
     """Every routable slug: usable BYOK models plus available passthrough slugs."""
-    from .cursor_passthrough import cursor_passthrough_available, cursor_passthrough_display_names
+    from .providers import cursor_passthrough_available, cursor_passthrough_display_names
 
     slugs = {model.slug for model in usable_byok_models(models)}
     if chatgpt_passthrough_available():

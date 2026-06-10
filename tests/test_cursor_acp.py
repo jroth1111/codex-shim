@@ -186,7 +186,7 @@ def test_cursor_acp_defaults_to_auto_model_and_agent_mode(tmp_path):
     settings, _capture = _cursor_settings(tmp_path)
     [model] = ModelSettings(settings).load()
 
-    from codex_shim.cursor_acp import cursor_acp_config
+    from codex_shim.providers.cursor.acp import cursor_acp_config
 
     config = cursor_acp_config(model)
     assert config.model == "default[]"

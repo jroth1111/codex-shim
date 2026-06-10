@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from codex_shim.auth_tokens import auth_command_for_route, resolve_bearer_token
+from codex_shim.providers.auth_tokens import auth_command_for_route, resolve_bearer_token
 
 
 def test_auth_command_for_route_parses_camel_case():

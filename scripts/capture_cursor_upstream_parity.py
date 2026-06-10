@@ -474,7 +474,7 @@ def _wait_shim_access_model(
 
 
 def _inject_shim_session(thread_id: str, cursor_session_id: str) -> None:
-    from codex_shim.cursor_parity import CursorThreadSessionStore
+    from codex_shim.providers.cursor.parity import CursorThreadSessionStore
 
     store = CursorThreadSessionStore()
     store.put(thread_id, cursor_session_id)
@@ -645,7 +645,7 @@ def seed_shim_session(
     store = ROOT / ".codex-shim" / "cursor_thread_sessions.sqlite"
     if not store.is_file():
         raise RuntimeError(f"session store missing after turn 1: {store}")
-    from codex_shim.cursor_parity import CursorThreadSessionStore
+    from codex_shim.providers.cursor.parity import CursorThreadSessionStore
 
     mapped = CursorThreadSessionStore(store).get(thread_id)
     CursorThreadSessionStore(store).close()
@@ -779,7 +779,7 @@ def capture_two_turn_resume_parity(
 
 
 def _mapped_shim_session(thread_id: str) -> str | None:
-    from codex_shim.cursor_parity import CursorThreadSessionStore
+    from codex_shim.providers.cursor.parity import CursorThreadSessionStore
 
     store = CursorThreadSessionStore()
     mapped = store.get(thread_id)

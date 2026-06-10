@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from .capabilities import route_capabilities
-from .cursor_passthrough import cursor_catalog_entry, cursor_passthrough_available
+from .providers import cursor_catalog_entry, cursor_passthrough_available
 from .routing import SubscriptionCatalogSnapshot, refresh_subscription_catalog
 from .routing import auto_router as router_module
 from .settings import (

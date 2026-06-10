@@ -33,17 +33,17 @@ from .catalog import (
 )
 from .codex_config import remove_toml_section, write_codex_config
 from .config_redaction import export_config_file
-from .cursor_passthrough import (
-    cursor_passthrough_available,
-    cursor_passthrough_display_names,
-    is_cursor_passthrough_slug,
-)
 from .migrate import apply_postgres_migrations
 from .observability import clear_capture_config, read_capture_config, write_capture_config
 from .opencode_go import (
     OPENCODE_GO_API_KEY_ENV,
     OPENCODE_GO_BASE_URL,
     refresh_opencode_go_settings,
+)
+from .providers import (
+    cursor_passthrough_available,
+    cursor_passthrough_display_names,
+    is_cursor_passthrough_slug,
 )
 from .routing import auto_router as router_module
 from .settings import (

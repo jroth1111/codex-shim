@@ -149,8 +149,8 @@ async def _shim_ws_turn(
 
 
 def _delegate_prompt(prompt: str, cwd: str, settings_path: Path) -> str:
-    from codex_shim.cursor_acp import cursor_prompt_for_body
-    from codex_shim.cursor_parity import legacy_delegate_prompt_enabled
+    from codex_shim.providers.cursor.acp import cursor_prompt_for_body
+    from codex_shim.providers.cursor.parity import legacy_delegate_prompt_enabled
     from codex_shim.settings import ModelSettings
 
     catalog = ModelSettings(settings_path)

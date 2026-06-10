@@ -23,7 +23,8 @@ def auth_missing(monkeypatch, tmp_path):
     """Keep ChatGPT passthrough out of discovery so model lists are deterministic."""
     missing = tmp_path / "missing-auth.json"
     monkeypatch.setattr("codex_shim.settings.DEFAULT_CODEX_AUTH", missing)
-    monkeypatch.setattr("codex_shim.cursor_passthrough.cursor_passthrough_available", lambda **_: False)
+    monkeypatch.setattr("codex_shim.providers.cursor.passthrough.cursor_passthrough_available", lambda **_: False)
+    monkeypatch.setattr("codex_shim.providers.cursor_passthrough_available", lambda **_: False)
     monkeypatch.setattr("codex_shim.server.cursor_passthrough_available", lambda **_: False)
 
 

@@ -5,18 +5,18 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import web
 
-from .cursor_passthrough import (
+from ...translate import ResponsesStreamState, normalize_responses_usage
+from ...wire import ClientDisconnected, sse_response
+from .passthrough import (
     CURSOR_MODEL_SLUG,
     build_cursor_prompt,
     cursor_passthrough_available,
     cursor_upstream_model,
     iter_cursor_agent_events,
 )
-from .translate import ResponsesStreamState, normalize_responses_usage
-from .wire import ClientDisconnected, sse_response
 
 if TYPE_CHECKING:
-    from .server import ShimServer
+    from ...server import ShimServer
 
 
 async def cursor_passthrough_handler(

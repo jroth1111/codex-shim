@@ -9,7 +9,7 @@ from contextlib import suppress
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim.cursor_cli import cursor_cli_config, run_cursor_cli
+from codex_shim.providers.cursor.cli import cursor_cli_config, run_cursor_cli
 from codex_shim.server import ShimServer
 from codex_shim.settings import ModelSettings, ShimModel
 
@@ -676,7 +676,7 @@ async def test_cursor_cli_timeout_kills_child(tmp_path):
     )
     route = _route_from_settings(settings)
 
-    from codex_shim.cursor_cli import CursorCliError
+    from codex_shim.providers.cursor.cli import CursorCliError
 
     with pytest.raises(CursorCliError, match="Timed out"):
         await run_cursor_cli(route, {"model": "auto", "input": "hi"})
@@ -691,7 +691,7 @@ async def test_cursor_cli_timeout_kills_child(tmp_path):
 
 
 def test_cursor_cli_output_format_args_are_not_duplicated():
-    from codex_shim.cursor_cli import _with_output_format
+    from codex_shim.providers.cursor.cli import _with_output_format
 
     args = ["agent", "--print", "--output-format", "json"]
 

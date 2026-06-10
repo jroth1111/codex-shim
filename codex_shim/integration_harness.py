@@ -9,7 +9,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .cursor_acp import DEFAULT_CURSOR_TIMEOUT
+from .providers import DEFAULT_CURSOR_TIMEOUT
 from .settings import CHATGPT_MODEL_SLUG, DEFAULT_SETTINGS, ModelSettings, ShimModel, chatgpt_passthrough_available
 
 
