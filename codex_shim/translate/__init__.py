@@ -14,6 +14,11 @@ from .common import (
 from .content import SUPPORTED_AUDIO_FORMATS, SUPPORTED_AUDIO_MIME_FORMATS
 from .input import KNOWN_RESPONSE_INPUT_TYPES, responses_input_to_messages, validate_responses_input
 from .output import anthropic_to_response, chat_completion_to_response
+from .streaming import (
+    AnthropicMessagesStreamState,
+    ResponsesStreamState,
+    anthropic_stream_to_chat_chunk,
+)
 from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
 from .tools import (
     HOSTED_CALL_FALLBACK_NAMES,
@@ -35,6 +40,9 @@ from .usage import normalize_responses_usage
 MAX_INLINE_MEDIA_BYTES = _content_module.MAX_INLINE_MEDIA_BYTES
 
 __all__ = [
+    "AnthropicMessagesStreamState",
+    "ResponsesStreamState",
+    "anthropic_stream_to_chat_chunk",
     "MAX_INLINE_MEDIA_BYTES",
     "KNOWN_RESPONSE_INPUT_TYPES",
     "NATIVE_OUTPUT_TYPE_BY_FALLBACK_NAME",

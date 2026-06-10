@@ -12,8 +12,8 @@ from .cursor_passthrough import (
     cursor_upstream_model,
     iter_cursor_agent_events,
 )
-from .streaming import ClientDisconnected, ResponsesStreamState, sse_response
-from .translate import normalize_responses_usage
+from .translate import ResponsesStreamState, normalize_responses_usage
+from .wire import ClientDisconnected, sse_response
 
 if TYPE_CHECKING:
     from .server import ShimServer

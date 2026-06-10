@@ -7,18 +7,12 @@ from aiohttp import ClientSession, web
 
 from .debug_dump import dump_debug_request
 from .errors import error_response
-from .streaming import (
-    AnthropicMessagesStreamState,
-    ClientDisconnected,
-    safe_write,
-    sse_lines,
-    sse_response,
-    write_anthropic_sse,
-)
 from .translate import (
+    AnthropicMessagesStreamState,
     anthropic_messages_to_chat,
     chat_completion_to_anthropic_message,
 )
+from .wire import ClientDisconnected, safe_write, sse_lines, sse_response, write_anthropic_sse
 
 if TYPE_CHECKING:
     from .server import ShimServer

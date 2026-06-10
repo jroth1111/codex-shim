@@ -5,41 +5,9 @@ from typing import Any, Awaitable, Callable
 
 from aiohttp import WSMsgType, web
 
+from ..wire import WsStreamResponse
+
 ResponsesBodyHandler = Callable[..., Awaitable[web.StreamResponse | web.Response]]
-
-
-class WsStreamResponse:
-    """Minimal StreamResponse stand-in that forwards SSE payloads over WebSocket."""
-
-    def __init__(self, ws: web.WebSocketResponse):
-        self.ws = ws
-        self._buffer = b""
-
-    async def prepare(self, _request: web.Request) -> None:
-        return None
-
-    async def write(self, data: bytes) -> None:
-        self._buffer += data
-        await self._flush_events()
-
-    async def write_eof(self) -> None:
-        await self._flush_events()
-
-    async def _flush_events(self) -> None:
-        while b"\n\n" in self._buffer:
-            block, self._buffer = self._buffer.split(b"\n\n", 1)
-            for line in block.split(b"\n"):
-                text = line.decode("utf-8", errors="replace").strip()
-                if not text.startswith("data:"):
-                    continue
-                payload_text = text[5:].strip()
-                if payload_text == "[DONE]":
-                    return
-                try:
-                    payload = json.loads(payload_text)
-                except json.JSONDecodeError:
-                    continue
-                await self.ws.send_json(payload)
 
 
 async def handle_responses_websocket(

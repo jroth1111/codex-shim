@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ...streaming import write_sse
+from ...wire import write_sse
 
 if TYPE_CHECKING:
-    from ...streaming import ResponsesStreamState
+    from ...translate import ResponsesStreamState
 
 
 def cursor_agent_event_to_responses_delta(event: dict[str, Any]) -> dict[str, Any] | None:

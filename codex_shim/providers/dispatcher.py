@@ -4,10 +4,10 @@ from typing import Any, Awaitable, Callable
 
 from aiohttp import web
 
-from ..responses_ws import WsStreamResponse
 from ..routing import RoutingPolicy
 from ..sessions import PreparedResponsesRequest
 from ..settings import ShimModel
+from ..wire import WsStreamResponse
 
 ProviderHandler = Callable[
     [web.Request, ShimModel, dict[str, Any], bool, PreparedResponsesRequest | None, WsStreamResponse | None],

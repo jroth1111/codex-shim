@@ -393,7 +393,7 @@ def _matrix_offline_mcp_namespace() -> MatrixStepResult:
 
 
 def _matrix_offline_ws_after_tool() -> MatrixStepResult:
-    from .streaming import ResponsesStreamState
+    from .translate import ResponsesStreamState
 
     class _Sink:
         def __init__(self):

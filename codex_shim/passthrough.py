@@ -25,11 +25,10 @@ from .passthrough_upstream import (
     snapshot_upstream_response,
     uses_websockets_upstream_beta,
 )
-from .responses_ws import WsStreamResponse
 from .settings import CHATGPT_MODEL_SLUG, ShimModel
-from .streaming import ClientDisconnected, open_stream_sink, safe_write, sse_lines, write_sse
 from .translate import SHIM_ENCRYPTED_CONTENT_PREFIX
 from .upstream_capture import capture_value
+from .wire import ClientDisconnected, WsStreamResponse, open_stream_sink, safe_write, sse_lines, write_sse
 
 if TYPE_CHECKING:
     from .server import ShimServer

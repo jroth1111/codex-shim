@@ -1,28 +1,23 @@
+"""Streaming protocol state machines: upstream deltas -> client stream shapes."""
 from __future__ import annotations
 
 import json
 import time
 import uuid
-from collections.abc import AsyncIterator
 from typing import Any
 
 from aiohttp import web
 
-from .responses_ws import WsStreamResponse
-from .translate import (
+from ..wire import write_anthropic_sse, write_sse
+from .common import chat_finish_to_anthropic_stop, responses_usage_to_anthropic_usage
+from .thinking import reasoning_encrypted_content
+from .tools import (
     build_streaming_tool_output_types,
-    chat_finish_to_anthropic_stop,
-    normalize_responses_usage,
-    responses_usage_to_anthropic_usage,
     streaming_tool_completed_item,
     streaming_tool_open_item,
     streaming_tool_output_type,
 )
-from .translate.thinking import reasoning_encrypted_content
-
-
-class ClientDisconnected(Exception):
-    """Raised when the downstream Codex client closes the SSE connection."""
+from .usage import normalize_responses_usage
 
 
 class ResponsesStreamState:
@@ -573,79 +568,6 @@ class ResponsesStreamState:
         return payload
 
 
-async def open_stream_sink(
-    request: web.Request,
-    stream_response: WsStreamResponse | None,
-) -> web.StreamResponse | WsStreamResponse:
-    if stream_response is not None:
-        await stream_response.prepare(request)
-        return stream_response
-    response = sse_response()
-    await response.prepare(request)
-    return response
-
-
-def sse_response() -> web.StreamResponse:
-    return web.StreamResponse(
-        status=200,
-        headers={
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )
-
-
-async def safe_write(response: web.StreamResponse, data: bytes) -> None:
-    try:
-        await response.write(data)
-    except (ConnectionResetError, ConnectionError) as exc:
-        raise ClientDisconnected() from exc
-    except Exception as exc:
-        if exc.__class__.__name__ in {
-            "ClientConnectionResetError",
-            "ClientConnectionError",
-            "ClientPayloadError",
-        }:
-            raise ClientDisconnected() from exc
-        raise
-
-
-async def write_sse(response: web.StreamResponse, payload: dict[str, Any]) -> None:
-    try:
-        await response.write(f"data: {json.dumps(payload, separators=(',', ':'))}\n\n".encode())
-    except (ConnectionResetError, ConnectionError) as exc:
-        raise ClientDisconnected() from exc
-    except Exception as exc:
-        if exc.__class__.__name__ in {
-            "ClientConnectionResetError",
-            "ClientConnectionError",
-            "ClientPayloadError",
-        }:
-            raise ClientDisconnected() from exc
-        raise
-
-
-_MAX_SSE_BUFFER = 10 * 1024 * 1024  # 10 MB
-
-
-async def sse_lines(upstream) -> AsyncIterator[str]:
-    buffer = b""
-    async for chunk in upstream.content.iter_chunked(4096):
-        buffer += chunk
-        if len(buffer) > _MAX_SSE_BUFFER:
-            buffer = b""
-            break
-        while b"\n" in buffer:
-            raw, buffer = buffer.split(b"\n", 1)
-            line = raw.decode("utf-8", errors="replace").strip()
-            if line.startswith("data:"):
-                yield line[5:].strip()
-    tail = buffer.decode("utf-8", errors="replace").strip()
-    if tail.startswith("data:"):
-        yield tail[5:].strip()
-
-
 def anthropic_stream_to_chat_chunk(event: dict[str, Any], model: str) -> dict[str, Any]:
     content = ""
     if event.get("type") == "content_block_delta":
@@ -692,22 +614,6 @@ def _json_or_empty(value: Any) -> str:
         return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
     except TypeError:
         return str(value)
-
-
-async def write_anthropic_sse(response: web.StreamResponse, event: str, payload: dict[str, Any]) -> None:
-    data = json.dumps(payload, separators=(",", ":"))
-    try:
-        await response.write(f"event: {event}\ndata: {data}\n\n".encode())
-    except (ConnectionResetError, ConnectionError) as exc:
-        raise ClientDisconnected() from exc
-    except Exception as exc:
-        if exc.__class__.__name__ in {
-            "ClientConnectionResetError",
-            "ClientConnectionError",
-            "ClientPayloadError",
-        }:
-            raise ClientDisconnected() from exc
-        raise
 
 
 class AnthropicMessagesStreamState:

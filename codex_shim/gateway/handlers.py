@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from aiohttp import web
 
-from ..responses_ws import WsStreamResponse, handle_responses_websocket
+from ..wire import WsStreamResponse
+from .ws import handle_responses_websocket
 
 if TYPE_CHECKING:
     from ..server import ShimServer

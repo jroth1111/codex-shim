@@ -29,7 +29,7 @@ from codex_shim.providers.cursor_agent.transport import (
 )
 from codex_shim.providers.cursor_agent.types import CursorAgentPreparedRequest
 from codex_shim.routing import parse_inference_context
-from codex_shim.streaming import ResponsesStreamState
+from codex_shim.translate import ResponsesStreamState
 
 
 def test_encode_client_envelope_roundtrip_fields():
