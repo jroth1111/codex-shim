@@ -15,7 +15,7 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim.picker import PICKER_TOKEN_HEADER
+from codex_shim.clientconfig.picker import PICKER_TOKEN_HEADER
 from codex_shim.routing import auto_router as router
 from codex_shim.server import ShimServer
 
@@ -555,7 +555,7 @@ async def test_candidate_without_credentials_is_skipped(tmp_path):
 # ---------------------------------------------------------------------------
 async def test_switch_model_accepts_auto_slug(tmp_path, monkeypatch):
     captured = {}
-    monkeypatch.setattr("codex_shim.picker.set_active_model", lambda slug, display=None: captured.update({"slug": slug, "display": display}))
+    monkeypatch.setattr("codex_shim.clientconfig.picker.set_active_model", lambda slug, display=None: captured.update({"slug": slug, "display": display}))
     state = {}
     upstream = await make_upstream(state)
     settings = _settings(tmp_path, str(upstream.make_url("/v1")))

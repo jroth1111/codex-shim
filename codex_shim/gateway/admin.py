@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp import web
 
-from .. import picker
+from ..clientconfig import picker
 from ..routing import auto_router as router_module
 from ..routing import refresh_subscription_catalog
 from ..settings import chatgpt_passthrough_available, chatgpt_passthrough_slugs

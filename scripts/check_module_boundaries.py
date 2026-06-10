@@ -50,6 +50,7 @@ MODULES = frozenset(
         "observability",
         "persistence",
         "translate",
+        "clientconfig",
     }
 )
 
@@ -73,9 +74,6 @@ ENTRYPOINTS = frozenset({"cli", "server", "workers", "__init__"})
 # definition-of-done deletes the entries it resolves.
 LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
     {
-        ('codex_shim/catalog.py', 'UNASSIGNED'),
-        ('codex_shim/codex_config.py', 'UNASSIGNED'),
-        ('codex_shim/config_redaction.py', 'UNASSIGNED'),
         ('codex_shim/errors.py', 'translate'),
         ('codex_shim/gateway/admin.py', 'server'),
         ('codex_shim/gateway/anthropic_messages.py', 'server'),
@@ -86,9 +84,6 @@ LEGACY_DEBT: frozenset[tuple[str, str]] = frozenset(
         ('codex_shim/gateway/responses.py', 'server'),
         ('codex_shim/integration_harness.py', 'UNASSIGNED'),
         ('codex_shim/migrate.py', 'UNASSIGNED'),
-        ('codex_shim/opencode_go.py', 'UNASSIGNED'),
-        ('codex_shim/patch_specs.py', 'UNASSIGNED'),
-        ('codex_shim/picker.py', 'UNASSIGNED'),
         ('codex_shim/probe.py', 'UNASSIGNED'),
         ('codex_shim/probe.py', 'deep:routing.helper_models'),
         ('codex_shim/providers/chatgpt/handlers.py', 'server'),

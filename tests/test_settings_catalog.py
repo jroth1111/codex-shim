@@ -9,7 +9,7 @@ import sys
 import pytest
 
 from codex_shim import cli
-from codex_shim.catalog import catalog_entry, codex_config_overrides, write_catalog, write_config
+from codex_shim.clientconfig.catalog import catalog_entry, codex_config_overrides, write_catalog, write_config
 from codex_shim.settings import (
     THINKING_DROP,
     THINKING_FORCE_DISABLED,
@@ -782,7 +782,7 @@ def test_write_catalog_omits_gpt55_when_auth_missing(tmp_path, auth_missing, mon
 
     catalog_path = tmp_path / "catalog.json"
     monkeypatch.setattr(
-        "codex_shim.catalog.refresh_subscription_catalog",
+        "codex_shim.clientconfig.catalog.refresh_subscription_catalog",
         lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "unavailable"),
     )
     write_catalog([], catalog_path)
@@ -797,7 +797,7 @@ def test_write_catalog_includes_gpt55_when_auth_present(tmp_path, auth_present, 
     settings.write_text(json.dumps({"models": []}))
     catalog_path = tmp_path / "catalog.json"
     monkeypatch.setattr(
-        "codex_shim.catalog.refresh_subscription_catalog",
+        "codex_shim.clientconfig.catalog.refresh_subscription_catalog",
         lambda *args, **kwargs: SubscriptionCatalogSnapshot((), "error", error="fetch failed"),
     )
     write_catalog(ModelSettings(settings).load(), catalog_path)

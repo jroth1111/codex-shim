@@ -21,25 +21,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.request import urlopen
 
-from .catalog import (
+from .clientconfig import (
     CATALOG_PATH,
+    OPENCODE_GO_API_KEY_ENV,
+    OPENCODE_GO_BASE_URL,
     _toml_escape,
     catalog_entry,
     codex_config_overrides,
-    websockets_enabled,
+    export_config_file,
+    refresh_opencode_go_settings,
+    remove_toml_section,
     write_catalog,
+    write_codex_config,
     write_config,
     write_direct_responses_config,
 )
-from .codex_config import remove_toml_section, write_codex_config
-from .config_redaction import export_config_file
 from .migrate import apply_postgres_migrations
 from .observability import clear_capture_config, read_capture_config, write_capture_config
-from .opencode_go import (
-    OPENCODE_GO_API_KEY_ENV,
-    OPENCODE_GO_BASE_URL,
-    refresh_opencode_go_settings,
-)
 from .providers import (
     cursor_passthrough_available,
     cursor_passthrough_display_names,
@@ -61,6 +59,7 @@ from .settings import (
     default_model_slug,
     fetch_vibeproxy_model_rows,
     usable_byok_models,
+    websockets_enabled,
 )
 from .workers import main as worker_main
 
@@ -83,10 +82,10 @@ APP_ASAR_BACKUP_NAME = "app.asar.before-codex-shim-model-picker-patch"
 INFO_PLIST_BACKUP_NAME = "Info.plist.before-codex-shim-model-picker-patch"
 # Compatibility re-exports: tests read these via codex_shim.cli attributes.
 # Delete once test imports are repointed at the source modules (migration phase 9).
-from .config_redaction import REDACTED_VALUE  # noqa: F401, E402
-from .patch_specs import (  # noqa: F401, E402
+from .clientconfig import (  # noqa: F401, E402
     MODEL_PICKER_NEEDLE,
     MODEL_PICKER_REPLACEMENT,
+    REDACTED_VALUE,  # noqa: F401, E402
     SIDEBAR_RECENT_THREADS_NEEDLE,
     SIDEBAR_RECENT_THREADS_REPLACEMENT,
     inspection_specs_for_version,
@@ -1317,7 +1316,6 @@ def _bool_text(value) -> str:
 
 def doctor_models(settings_path: Path) -> int:
     from .capabilities import execution_mode, route_capabilities
-    from .catalog import websockets_enabled
     from .sessions import default_store_path, store_scope
 
     models = _load_models(settings_path)
@@ -1553,7 +1551,7 @@ def stop() -> int:
 
 
 def repair_codex_config(path: Path = CODEX_CONFIG_PATH) -> int:
-    from .codex_config import repair_codex_config as _repair_codex_config
+    from .clientconfig import repair_codex_config as _repair_codex_config
 
     if not path.exists():
         print(f"No config to repair at {path}.", file=sys.stderr)

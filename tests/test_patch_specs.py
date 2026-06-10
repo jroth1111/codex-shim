@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from codex_shim.patch_specs import _version_matches_known_major
+from codex_shim.clientconfig.patch_specs import _version_matches_known_major
 
 
 def test_version_major_match_requires_dot_boundary():

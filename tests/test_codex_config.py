@@ -3,7 +3,7 @@ from __future__ import annotations
 import tomllib
 
 from codex_shim import cli
-from codex_shim.codex_config import (
+from codex_shim.clientconfig.codex_config import (
     dedupe_toml_sections,
     remove_toml_section,
     repair_codex_config,

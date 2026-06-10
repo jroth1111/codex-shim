@@ -6,7 +6,7 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from codex_shim.catalog import write_catalog
+from codex_shim.clientconfig.catalog import write_catalog
 from codex_shim.routing import auto_router as router
 from codex_shim.server import ShimServer
 

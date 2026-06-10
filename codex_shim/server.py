@@ -7,7 +7,7 @@ from typing import Any
 
 from aiohttp import ClientSession, ClientTimeout, web
 
-from .catalog import CATALOG_PATH, write_catalog
+from .clientconfig import CATALOG_PATH, write_catalog
 from .gateway import GatewayHandlers, ResponsesOrchestrator, build_app
 from .governance import GovernanceAuditSink
 from .observability import ObservabilitySink

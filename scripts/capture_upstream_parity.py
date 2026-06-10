@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from codex_desktop_control import activate_desktop, relaunch_desktop, run_desktop_turn  # noqa: E402
 
-from codex_shim.codex_config import (  # noqa: E402
+from codex_shim.clientconfig.codex_config import (  # noqa: E402
     remove_toml_section,
     repair_codex_config,
     repair_codex_config_text,

@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .capabilities import route_capabilities
-from .providers import chatgpt_passthrough_entry, cursor_catalog_entry, cursor_passthrough_available
-from .routing import SubscriptionCatalogSnapshot, refresh_subscription_catalog
-from .routing import auto_router as router_module
-from .settings import (
+from ..capabilities import route_capabilities
+from ..providers import chatgpt_passthrough_entry, cursor_catalog_entry, cursor_passthrough_available
+from ..routing import SubscriptionCatalogSnapshot, refresh_subscription_catalog
+from ..routing import auto_router as router_module
+from ..settings import (
     PLAN_TIERS,
     PROVIDER_NAME,
     ShimModel,
@@ -138,7 +138,7 @@ def write_catalog(
     byok_models = [model for model in models if not model.is_chatgpt]
     subscription_entries = [dict(model) for model in snapshot.models] if snapshot.models else None
     if not subscription_entries and snapshot.status != "unavailable":
-        from .settings import chatgpt_passthrough_available
+        from ..settings import chatgpt_passthrough_available
 
         if chatgpt_passthrough_available():
             subscription_entries = [chatgpt_passthrough_entry()]
