@@ -142,6 +142,7 @@ from .config_cmds import (  # noqa: E402, F401 - command surface re-exports
     import_config,
     import_vibeproxy_models,
     install_codex_config,
+    install_profile,
     list_models,
     refresh_opencode_go,
 )
@@ -193,6 +194,7 @@ from .doctor import (  # noqa: E402, F401 - command surface re-exports
     doctor_contract,
     doctor_models,
     doctor_patch,
+    doctor_provider,
     doctor_routing,
     doctor_setup,
     doctor_subscription,
@@ -230,6 +232,7 @@ from .model_cmds import (  # noqa: E402, F401 - command surface re-exports
 from .probe_cmds import (  # noqa: E402, F401 - command surface re-exports
     probe_all_route,
     probe_compact_route,
+    probe_cursor_native_route,
     probe_delegate_route,
     probe_fidelity_route,
     probe_history_route,

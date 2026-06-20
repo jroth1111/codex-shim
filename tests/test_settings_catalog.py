@@ -149,7 +149,7 @@ def test_normalized_visibility_hides_unconfigured_provider_rows(monkeypatch, tmp
         json.dumps(
             {
                 "models": [
-                    {"id": "zai", "model": "glm-5.1", "display_name": "Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
+                    {"id": "zai", "model": "glm-5.2", "display_name": "Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
                     {"id": "nim", "model": "qwen", "display_name": "NIM", "provider": "nvidia-nim", "api_key_env": "NVIDIA_API_KEY", "enabled": False},
                     {
                         "id": "cursor",
@@ -182,10 +182,10 @@ def test_normalized_provider_presets_make_configured_models_visible(monkeypatch,
         json.dumps(
             {
                 "models": [
-                    {"id": "zai", "model": "glm-5.1", "display_name": "Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
+                    {"id": "zai", "model": "glm-5.2", "display_name": "Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
                     {
                         "id": "zai-coding",
-                        "model": "glm-5.1",
+                        "model": "glm-5.2",
                         "display_name": "Z.AI Coding",
                         "provider": "zai-coding-plan",
                         "api_key_env": "ZAI_API_KEY",
@@ -229,7 +229,7 @@ def test_zai_base_url_does_not_inject_v1(monkeypatch, tmp_path):
                 "models": [
                     {
                         "id": "zai",
-                        "model": "glm-5.1",
+                        "model": "glm-5.2",
                         "display_name": "Z.AI",
                         "provider": "zai",
                         "base_url": "https://api.z.ai/api/paas/v4",
@@ -270,6 +270,74 @@ def test_catalog_uses_provider_capabilities_for_cursor_images(tmp_path):
     assert entry["supports_image_detail_original"] is False
 
 
+def test_cursor_passthrough_catalog_does_not_advertise_images():
+    # The Composer bridge drops images to "[image omitted ...]" text, so the
+    # catalog must not advertise image input — a picker entry that claims image
+    # support and then silently drops the image is a lying capability contract.
+    from codex_shim.providers.cursor import cursor_catalog_entry
+
+    entry = cursor_catalog_entry()
+    assert entry["input_modalities"] == ["text"]
+    assert entry["supports_image_detail_original"] is False
+
+
+def test_delegate_route_surfaces_unresolved_workspace(tmp_path):
+    # A delegate (cursor) route with no resolvable workspace used to silently
+    # omit the field while the cursor subprocess ran in the shim daemon's cwd.
+    # It must now surface workspace:null + workspace_unresolved loudly; a
+    # mapped route must stay silent (the upstream gets the body, not a cwd).
+    from codex_shim.providers.common import shim_response_metadata
+
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps(
+            {
+                "models": [
+                    {
+                        "id": "cursor",
+                        "model": "default[]",
+                        "display_name": "Cursor",
+                        "provider": "cursor-acp",
+                        "command": sys.executable,
+                    },
+                    {
+                        "id": "oai",
+                        "model": "gpt-x",
+                        "display_name": "OpenAI",
+                        "provider": "openai",
+                        "base_url": "http://x/v1",
+                        "api_key": "secret",
+                    },
+                ]
+            }
+        )
+    )
+    models = {m.slug: m for m in ModelSettings(settings).visible_models()}
+    cursor = models["cursor"]
+    mapped = models["oai"]
+
+    unresolved = shim_response_metadata(cursor, None, workspace=None)
+    assert unresolved["shim_route"]["workspace"] is None
+    assert unresolved["shim_route"]["workspace_unresolved"] is True
+
+    resolved = shim_response_metadata(cursor, None, workspace=tmp_path)
+    assert resolved["shim_route"]["workspace"] == str(tmp_path)
+    assert "workspace_unresolved" not in resolved["shim_route"]
+
+    mapped_meta = shim_response_metadata(mapped, None, workspace=None)
+    assert "workspace" not in mapped_meta["shim_route"]
+    assert "workspace_unresolved" not in mapped_meta["shim_route"]
+
+
+def test_generated_provider_config_destacks_retries(tmp_path):
+    # The shim owns retry/backoff internally (providers/dispatcher.py +
+    # routing/service.py). Codex Desktop must not double-retry: advertising 3/3
+    # while the shim also retried meant up to ~8 upstream hits per Desktop turn.
+    overrides = codex_config_overrides(tmp_path / "catalog.json", "some-slug", 8765)
+    assert "model_providers.codex_shim.request_max_retries=0" in overrides
+    assert "model_providers.codex_shim.stream_max_retries=1" in overrides
+
+
 def test_catalog_omits_hidden_models(monkeypatch, tmp_path, auth_missing):
     monkeypatch.delenv("ZAI_API_KEY", raising=False)
     settings = tmp_path / "settings.json"
@@ -277,7 +345,7 @@ def test_catalog_omits_hidden_models(monkeypatch, tmp_path, auth_missing):
         json.dumps(
             {
                 "models": [
-                    {"id": "hidden-zai", "model": "glm-5.1", "display_name": "Hidden Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
+                    {"id": "hidden-zai", "model": "glm-5.2", "display_name": "Hidden Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
                     {"id": "visible", "model": "visible-model", "display_name": "Visible", "provider": "openai", "base_url": "http://x/v1"},
                 ]
             }
@@ -340,7 +408,7 @@ def test_provider_policy_normalizes_thinking_behavior(tmp_path):
                         "base_url": "http://x/v1",
                         "thinking_behavior": "force_disabled",
                     },
-                    {"id": "zai", "model": "glm-5.1", "provider": "zai", "api_key": "key"},
+                    {"id": "zai", "model": "glm-5.2", "provider": "zai", "api_key": "key"},
                     {"id": "moonshot", "model": "moonshot-v1-32k", "provider": "moonshot", "base_url": "http://x/v1"},
                     {"id": "kimi", "model": "kimi-k2", "provider": "moonshot", "base_url": "http://x/v1"},
                 ]
@@ -446,9 +514,9 @@ def test_configure_zai_writes_normalized_friendly_row(tmp_path):
     data = json.loads(settings.read_text())
     assert data["models"] == [
         {
-            "id": "zai-glm-5-1-coding-plan",
-            "model": "glm-5.1",
-            "display_name": "Z.AI GLM-5.1 Coding Plan",
+            "id": "zai-glm-5-2-coding-plan",
+            "model": "glm-5.2",
+            "display_name": "Z.AI GLM-5.2 Coding Plan",
             "provider": "zai-coding-plan",
             "enabled": True,
             "api_key_env": "ZAI_API_KEY",
@@ -459,20 +527,76 @@ def test_configure_zai_writes_normalized_friendly_row(tmp_path):
 def test_configure_nim_writes_base_url_and_env(tmp_path):
     settings = tmp_path / "models.json"
 
-    assert cli.main(["--settings", str(settings), "configure", "nim", "--model", "z-ai/glm-5.1"]) == 0
+    assert cli.main(["--settings", str(settings), "configure", "nim", "--model", "z-ai/glm-5.2"]) == 0
 
     [row] = json.loads(settings.read_text())["models"]
-    assert row["id"] == "nim-z-ai-glm-5-1"
+    assert row["id"] == "nim-z-ai-glm-5-2"
     assert row["provider"] == "nvidia-nim"
     assert row["base_url"] == "https://integrate.api.nvidia.com/v1"
     assert row["api_key_env"] == "NVIDIA_API_KEY"
+
+
+def test_configure_ollama_uses_local_defaults(tmp_path):
+    settings = tmp_path / "models.json"
+    assert cli.main(["--settings", str(settings), "configure", "ollama", "--model", "llama3.2"]) == 0
+    [row] = json.loads(settings.read_text())["models"]
+    assert row["provider"] == "generic-chat-completion-api"
+    assert row["base_url"] == "http://127.0.0.1:11434/v1"
+    assert row["api_key"] == "ollama"  # well-known placeholder when none given
+    assert row["model"] == "llama3.2"
+
+
+def test_configure_openai_compatible_requires_base_url(tmp_path):
+    settings = tmp_path / "models.json"
+    with pytest.raises(SystemExit):
+        cli.main(["--settings", str(settings), "configure", "openai-compatible", "--model", "m", "--api-key", "k"])
+
+
+def test_configure_anthropic_writes_row(tmp_path):
+    settings = tmp_path / "models.json"
+    assert cli.main(
+        ["--settings", str(settings), "configure", "anthropic", "--model", "claude-x", "--base-url", "https://a.example", "--api-key", "k"]
+    ) == 0
+    [row] = json.loads(settings.read_text())["models"]
+    assert row["provider"] == "anthropic"
+    assert row["base_url"] == "https://a.example"
+    assert row["api_key"] == "k"
+
+
+def test_install_profile_writes_self_contained_profile(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(cli, "generate", lambda *a, **k: None)
+    monkeypatch.setattr(cli, "ensure_started", lambda *a, **k: None)
+    settings = tmp_path / "models.json"
+    settings.write_text(
+        json.dumps({"models": [{"id": "zai", "model": "glm-5.2", "provider": "zai", "base_url": "http://x/v1", "api_key": "k"}]})
+    )
+    assert cli.main(["--settings", str(settings), "profile", "install", "--name", "review"]) == 0
+    profile = tmp_path / ".codex" / "review.config.toml"
+    assert profile.exists()
+    text = profile.read_text()
+    assert 'model_provider = "codex_shim"' in text
+    assert 'wire_api = "responses"' in text
+    assert "model_catalog_json" in text
+    # base user config is untouched -- profiles layer above it
+    assert not (tmp_path / ".codex" / "config.toml").exists()
+
+
+def test_install_profile_rejects_invalid_name(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(cli, "generate", lambda *a, **k: None)
+    monkeypatch.setattr(cli, "ensure_started", lambda *a, **k: None)
+    settings = tmp_path / "models.json"
+    settings.write_text(json.dumps({"models": [{"id": "zai", "model": "glm-5.2", "provider": "zai", "base_url": "http://x/v1", "api_key": "k"}]}))
+    with pytest.raises(SystemExit):
+        cli.main(["--settings", str(settings), "profile", "install", "--name", "bad name!"])
 
 
 def test_doctor_reports_hidden_reason(monkeypatch, tmp_path, capsys, auth_missing):
     monkeypatch.delenv("ZAI_API_KEY", raising=False)
     settings = tmp_path / "models.json"
     settings.write_text(
-        json.dumps({"models": [{"id": "zai", "model": "glm-5.1", "provider": "zai", "api_key_env": "ZAI_API_KEY"}]})
+        json.dumps({"models": [{"id": "zai", "model": "glm-5.2", "provider": "zai", "api_key_env": "ZAI_API_KEY"}]})
     )
 
     assert cli.doctor_models(settings) == 1

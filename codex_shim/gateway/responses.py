@@ -1,6 +1,7 @@
 """/v1 request orchestration: route resolution, translation, dispatch, compact."""
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Any
 
 from aiohttp import web
@@ -24,6 +25,7 @@ from ..providers import normalize_roles as _normalize_roles
 from ..routing import (
     RouteResolution,
     apply_helper_model_policy,
+    build_failover_plan,
     is_helper_model_slug,
     resolve_model_route,
     resolve_workspace,
@@ -46,7 +48,7 @@ from ..translate import (
     validate_chat_tools,
     validate_responses_input,
 )
-from ..wire import StreamSink, WsStreamResponse
+from ..wire import PreFirstByteFailure, StreamSink, WsStreamResponse
 
 if TYPE_CHECKING:
     from ..server import ShimServer
@@ -263,6 +265,7 @@ class ResponsesOrchestrator:
     ) -> StreamSink:
         stream_target = ws_stream if ws_stream is not None else None
         dispatch_stats: dict[str, Any] = {}
+        dispatch_started_at = time.monotonic()
         body = prepared.body
         setattr(request, "_codex_shim_inference", inference)
         requested_tool_count = 0
@@ -284,16 +287,24 @@ class ResponsesOrchestrator:
                 return _invalid_request_error_response(exc)
             if force_non_stream:
                 forwarded["stream"] = False
-            result = await self._server.provider_dispatcher.dispatch(
-                request,
-                route,
-                forwarded,
-                as_responses=True,
-                policy=policy,
-                stats=dispatch_stats,
-                prepared=prepared,
-                stream_response=stream_target,
-            )
+            try:
+                result = await self._server.provider_dispatcher.dispatch(
+                    request,
+                    route,
+                    forwarded,
+                    as_responses=True,
+                    policy=policy,
+                    stats=dispatch_stats,
+                    prepared=prepared,
+                    stream_response=stream_target,
+                )
+            except PreFirstByteFailure as exc:
+                # Pre-first-byte: nothing flushed to the client yet, so the
+                # failover block below can still try another provider.
+                result = web.json_response(
+                    {"error": {"type": "upstream_error", "message": str(exc)}},
+                    status=int(exc.status or 502),
+                )
         elif route.is_anthropic:
             forwarded = responses_to_anthropic(
                 body,
@@ -317,35 +328,11 @@ class ResponsesOrchestrator:
                 prepared=prepared,
                 stream_response=stream_target,
             )
-        elif route.is_cursor_agent:
-            dispatch_body = dict(body)
-            if force_non_stream:
-                dispatch_body["stream"] = False
-            result = await self._server.provider_dispatcher.dispatch(
-                request,
-                route,
-                dispatch_body,
-                as_responses=True,
-                policy=policy,
-                stats=dispatch_stats,
-                prepared=prepared,
-                stream_response=stream_target,
-            )
-        elif route.is_cursor_acp:
-            dispatch_body = dict(body)
-            if force_non_stream:
-                dispatch_body["stream"] = False
-            result = await self._server.provider_dispatcher.dispatch(
-                request,
-                route,
-                dispatch_body,
-                as_responses=True,
-                policy=policy,
-                stats=dispatch_stats,
-                prepared=prepared,
-                stream_response=stream_target,
-            )
-        elif route.is_cursor_cli:
+        elif route.is_cursor_agent or route.is_cursor_acp or route.is_cursor_cli:
+            # All cursor transports take the Responses body untranslated; the
+            # provider dispatcher and per-transport cursor handlers own the
+            # Responses -> cursor translation internally, so body-building is
+            # identical across the three transports.
             dispatch_body = dict(body)
             if force_non_stream:
                 dispatch_body["stream"] = False
@@ -372,28 +359,58 @@ class ResponsesOrchestrator:
         if (
             policy is not None
             and getattr(policy, "fallback_enabled", False)
-            and fallback_route is not None
             and status >= 400
             and status in fallback_statuses
-            and not bool(body.get("stream"))
-        ):
-            fallback_used = True
-            fallback_reason = f"upstream_status_{status}"
-            dispatch_body = dict(body)
-            dispatch_body["model"] = fallback_route.model
-            result = await self._server.provider_dispatcher.dispatch(
-                request,
-                fallback_route,
-                dispatch_body,
-                as_responses=True,
-                policy=policy,
-                stats=dispatch_stats,
-                prepared=prepared,
-                stream_response=stream_target,
+            and not getattr(result, "_codex_shim_no_failover", False)
+            and (
+                not bool(body.get("stream"))
+                or (policy is not None and getattr(policy, "pre_first_byte_stream_failover", False))
             )
-            status = getattr(result, "status", 200)
+        ):
+            plan = build_failover_plan(
+                self._server.settings,
+                route,
+                prepared.body,
+                health=self._server.provider_health,
+            )
+            for hop in plan.hops:
+                fallback_used = True
+                if fallback_reason is None:
+                    fallback_reason = f"upstream_status_{status}"
+                dispatch_body = dict(body)
+                dispatch_body["model"] = hop.route.model
+                try:
+                    result = await self._server.provider_dispatcher.dispatch(
+                        request,
+                        hop.route,
+                        dispatch_body,
+                        as_responses=True,
+                        policy=policy,
+                        stats=dispatch_stats,
+                        prepared=prepared,
+                        stream_response=stream_target,
+                    )
+                    status = getattr(result, "status", 200)
+                except PreFirstByteFailure as exc:
+                    status = int(exc.status or 502)
+                    result = web.json_response(
+                        {"error": {"type": "upstream_error", "message": str(exc)}},
+                        status=status,
+                    )
+                fallback_route = hop.route
+                if status < 400:
+                    break
         outcome = "ok" if status < 400 else "error"
         failure_category = None if status < 400 else "upstream_error"
+        # Feed the per-provider circuit breaker (single writer). The dispatcher
+        # and router read should_skip() to stop sending traffic to a provider
+        # whose recent failure rate crossed threshold.
+        self._server.provider_health.record(
+            provider=fallback_route.provider if fallback_used and fallback_route is not None else route.provider,
+            status=status,
+            provider_ms=int((time.monotonic() - dispatch_started_at) * 1000),
+            outcome=outcome,
+        )
         executed_tool_count = getattr(result, "_codex_shim_executed_tool_count", None)
         self._server.governance.emit(
             path=str(request.path),
@@ -422,6 +439,13 @@ class ResponsesOrchestrator:
             resolved = resolve_workspace(request, prepared.body, route)
             if resolved is not None:
                 obs_attrs["resolved_workspace"] = str(resolved)
+            else:
+                # Matches the metadata signal in shim_response_metadata: a
+                # delegate route with no resolvable workspace runs in the shim
+                # daemon's cwd. Emit it loudly so it is not lost as a silent
+                # wrong-directory execution.
+                obs_attrs["resolved_workspace"] = None
+                obs_attrs["workspace_unresolved"] = True
         self._server.observability.emit(
             stage="provider_dispatched",
             path=str(request.path),

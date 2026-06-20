@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -94,6 +96,37 @@ def probe_delegate_route(settings_path: Path, port: int, slug: str | None) -> in
     except json.JSONDecodeError as exc:
         print(f"Settings file is not valid JSON: {exc}", file=sys.stderr)
         return 1
+
+
+def probe_cursor_native_route() -> int:
+    """Readiness check for the experimental Cursor Agent native transport.
+
+    Reports the gating conditions (env opt-in, auth token presence/expiry,
+    cursor-agent binary) WITHOUT making a live network call. Native stays
+    opt-in; this confirms whether it is safe to enable as a default route."""
+    from ..providers.cursor_agent.auth import cursor_access_token_expired, load_cursor_access_token
+
+    live_env = os.environ.get("CODEX_SHIM_CURSOR_AGENT_LIVE", "").strip().lower() in {"1", "true", "yes", "on"}
+    token = load_cursor_access_token()
+    cursor_bin = shutil.which("cursor-agent") or os.environ.get("CURSOR_AGENT_BIN", "")
+
+    findings = [
+        ("CODEX_SHIM_CURSOR_AGENT_LIVE", "set" if live_env else "unset (native OFF; CLI delegate is the default)"),
+    ]
+    if not token:
+        findings.append(("access token", "MISSING (run `codex login` or set CODEX_SHIM_CURSOR_AUTH_TOKEN)"))
+    elif cursor_access_token_expired(token):
+        findings.append(("access token", "EXPIRED (run `codex login` to refresh)"))
+    else:
+        findings.append(("access token", "present"))
+    findings.append(("cursor-agent binary", cursor_bin or "NOT FOUND on PATH"))
+
+    print("Cursor Agent native transport readiness:")
+    for label, value in findings:
+        print(f"  {label}: {value}")
+    ready = live_env and bool(token) and not cursor_access_token_expired(token)
+    print("  => " + ("READY" if ready else "NOT READY (native stays opt-in; CLI delegate path is unchanged)"))
+    return 0
 
 
 def probe_all_route(settings_path: Path, port: int, slug: str | None, *, live: bool) -> int:

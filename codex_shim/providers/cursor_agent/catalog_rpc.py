@@ -4,7 +4,7 @@ import asyncio
 
 from aiohttp import ClientSession, ClientTimeout
 
-from .auth import load_cursor_access_token
+from .auth import cursor_access_token_expired, load_cursor_access_token
 from .connect_framing import parse_connect_frames
 from .headers import endpoint_urls
 from .proto_decode import decode_fields, get_field_string
@@ -42,6 +42,10 @@ async def fetch_usable_model_ids(
     if not token:
         raise CursorAgentTransportError(
             "Live model catalog requires auth. Run `codex login` or set CODEX_SHIM_CURSOR_AUTH_TOKEN."
+        )
+    if cursor_access_token_expired(token):
+        raise CursorAgentTransportError(
+            "Cursor access token has expired; run `codex login` to refresh it before retrying."
         )
 
     urls = endpoint_urls(endpoint)

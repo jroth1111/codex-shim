@@ -87,3 +87,23 @@ def jsonish(value: Any) -> str:
 def sanitize_string(value: str) -> str:
     value = value.replace("\x00", "")
     return "".join(char for char in value if char in "\n\r\t" or ord(char) >= 0x20)
+
+
+# Codex's ``model_verbosity`` is a Responses-API knob that is inert for chat /
+# Anthropic upstreams (they have no native verbosity field). The shim honors it
+# by prepending a one-line preamble to the system message so BYOK routes still
+# respond to a picker-configured verbosity. Native-Responses passthrough
+# (ChatGPT Tier A) forwards the field untouched in the body.
+_VERBOSITY_PREAMBLES: dict[str, str] = {
+    "low": "Keep responses concise and brief; avoid unnecessary explanation.",
+    "medium": "Balance brevity with completeness.",
+    "high": "Be thorough and detailed in explanations.",
+}
+
+
+def verbosity_preamble(body: dict[str, Any]) -> str | None:
+    """Map a ``model_verbosity`` value to a system-message preamble, or None."""
+    raw = body.get("model_verbosity")
+    if raw is None:
+        return None
+    return _VERBOSITY_PREAMBLES.get(str(raw).strip().lower())

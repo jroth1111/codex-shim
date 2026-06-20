@@ -52,6 +52,18 @@
         "-h/--help"
       ],
       "subcommands": {
+        "anthropic": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        },
         "cursor": {
           "options": [
             "--command",
@@ -62,7 +74,43 @@
             "-h/--help"
           ]
         },
+        "lmstudio": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        },
         "nim": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        },
+        "ollama": {
+          "options": [
+            "--api-key",
+            "--api-key-env",
+            "--api-key-file",
+            "--base-url",
+            "--chat-completions-url",
+            "--display-name",
+            "--model",
+            "-h/--help"
+          ]
+        },
+        "openai-compatible": {
           "options": [
             "--api-key",
             "--api-key-env",
@@ -86,6 +134,30 @@
             "--model",
             "-h/--help"
           ]
+        }
+      }
+    },
+    "cursor": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "sessions": {
+          "options": [
+            "-h/--help"
+          ],
+          "subcommands": {
+            "clear": {
+              "options": [
+                "-h/--help"
+              ]
+            },
+            "list": {
+              "options": [
+                "-h/--help"
+              ]
+            }
+          }
         }
       }
     },
@@ -117,6 +189,14 @@
         "patch": {
           "options": [
             "-h/--help"
+          ]
+        },
+        "provider": {
+          "options": [
+            "-h/--help"
+          ],
+          "positionals": [
+            "provider_slug"
           ]
         },
         "routing": {
@@ -256,6 +336,11 @@
             "-h/--help"
           ]
         },
+        "cursor-native": {
+          "options": [
+            "-h/--help"
+          ]
+        },
         "delegate": {
           "options": [
             "--slug",
@@ -313,6 +398,19 @@
         "ws-streaming": {
           "options": [
             "--slug",
+            "-h/--help"
+          ]
+        }
+      }
+    },
+    "profile": {
+      "options": [
+        "-h/--help"
+      ],
+      "subcommands": {
+        "install": {
+          "options": [
+            "--name",
             "-h/--help"
           ]
         }

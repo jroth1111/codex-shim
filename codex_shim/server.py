@@ -10,7 +10,7 @@ from aiohttp import ClientSession, ClientTimeout, web
 from .clientconfig import CATALOG_PATH, write_catalog
 from .gateway import GatewayHandlers, ResponsesOrchestrator, build_app
 from .governance import GovernanceAuditSink
-from .observability import ObservabilitySink
+from .observability import ObservabilitySink, ProviderHealthStore
 from .persistence import JsonOperationalStore
 from .providers import (
     CursorAgentTransport,
@@ -62,12 +62,14 @@ class ShimServer:
         self.session_service = SessionService(self.response_store, self._content_to_debug_text)
         self.tool_policy = ToolPolicy()
         self.cursor_agent_transport = CursorAgentTransport()
+        self.provider_health = ProviderHealthStore()
         self.provider_dispatcher = ProviderDispatcher(
             openai_handler=self._provider_openai_dispatch,
             anthropic_handler=self._provider_anthropic_dispatch,
             cursor_acp_handler=self._provider_cursor_acp_dispatch,
             cursor_cli_handler=self._provider_cursor_cli_dispatch,
             cursor_agent_handler=self._provider_cursor_agent_dispatch,
+            health=self.provider_health,
         )
         runtime_root = default_store_path().parent
         self.governance = GovernanceAuditSink(runtime_root / "governance_events.jsonl")

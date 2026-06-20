@@ -1,5 +1,13 @@
 from . import auto_router
 from .auto_router_service import AutoRouterService
+from .failover import (
+    FailoverConfig,
+    FailoverHop,
+    FailoverPlan,
+    build_failover_plan,
+    failover_enabled,
+    load_failover_config,
+)
 from .discovery import (
     available_model_slugs,
     by_slug_or_model,
@@ -36,8 +44,14 @@ from .workspace import (
 
 __all__ = [
     "AutoRouterService",
+    "FailoverConfig",
+    "FailoverHop",
+    "FailoverPlan",
     "SubscriptionCatalogSnapshot",
     "auto_router",
+    "build_failover_plan",
+    "failover_enabled",
+    "load_failover_config",
     "known_subscription_slugs",
     "apply_helper_model_policy",
     "available_model_slugs",

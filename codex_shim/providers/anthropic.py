@@ -34,6 +34,7 @@ from .common import (
     shim_response_metadata,
 )
 from .http import anthropic_headers, join_url
+from .outcome import upstream_error_detail_from_response
 
 
 async def post_anthropic(
@@ -64,7 +65,13 @@ async def post_anthropic(
                     request_body=prepared.body if prepared is not None else body,
                     provider_ms=elapsed_ms(provider_started_at),
                 )
-                return await error_response(upstream)
+                error_resp = await error_response(upstream)
+                setattr(
+                    error_resp,
+                    "_codex_shim_upstream_error",
+                    upstream_error_detail_from_response(upstream),
+                )
+                return error_resp
             if body.get("stream"):
                 # _stream_anthropic owns the response and releases it in its finally block.
                 return await stream_anthropic(

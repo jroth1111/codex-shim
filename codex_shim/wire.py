@@ -17,6 +17,23 @@ class ClientDisconnected(Exception):
     """Raised when the downstream Codex client closes the SSE connection."""
 
 
+class PreFirstByteFailure(Exception):
+    """Raised by a streaming provider handler when the upstream failed BEFORE any
+    byte was flushed to the client (connect failure, immediate >=400, or
+    first-byte timeout). Because nothing has been sent yet, the gateway can still
+    retry or fall back to another provider instead of failing the whole stream.
+
+    Once a handler has called ``open_stream_sink`` / ``state.start`` it is
+    committed and MUST NOT raise this — it emits an SSE error and ends instead.
+    """
+
+    def __init__(self, *, status: int = 502, detail: Any = None, reason: str = "upstream_error") -> None:
+        super().__init__(f"pre-first-byte failure ({reason}, status={status})")
+        self.status = status
+        self.detail = detail
+        self.reason = reason
+
+
 class WsStreamResponse:
     """Minimal StreamResponse stand-in that forwards SSE payloads over WebSocket."""
 

@@ -148,6 +148,31 @@ def doctor_routing(settings_path: Path) -> int:
     return 0
 
 
+def doctor_provider(settings_path: Path, slug: str) -> int:
+    """Focused report for one configured model: config, capabilities, and the
+    shim-vs-direct routing recommendation. (Live smoke is `codex-shim test <slug>`.)"""
+    from ..capabilities import execution_mode
+
+    models = cli_ns._load_models(settings_path)
+    match = next((m for m in models if m.slug == slug or m.model == slug), None)
+    if match is None:
+        print(f"No configured model matching {slug!r}.")
+        return 1
+    mode = execution_mode(match)
+    images_supported = (not match.no_image_support) and bool(getattr(match.capabilities, "supports_images", True))
+    visibility = "visible" if match.visible else f"HIDDEN ({match.unavailable_reason or 'unavailable'})"
+    print(f"Provider report: {match.slug}")
+    print(f"  display_name  : {match.display_name}")
+    print(f"  model         : {match.model}")
+    print(f"  provider      : {match.provider} (transport: {match.transport}, execution: {mode})")
+    print(f"  visibility    : {visibility}")
+    print(f"  context_limit : {match.max_context_limit or '(provider default)'}")
+    print(f"  images        : {'supported' if images_supported else 'unsupported'}")
+    print(f"  routing       : {_routing_recommendation(match)}")
+    print(f"  live smoke    : codex-shim test {match.slug}")
+    return 0
+
+
 @dataclass(frozen=True)
 class DoctorCheck:
     section: str

@@ -1816,7 +1816,7 @@ async def test_hidden_unconfigured_models_do_not_route_or_list(tmp_path, auth_mi
         json.dumps(
             {
                 "models": [
-                    {"id": "hidden-zai", "model": "glm-5.1", "display_name": "Hidden Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
+                    {"id": "hidden-zai", "model": "glm-5.2", "display_name": "Hidden Z.AI", "provider": "zai", "api_key_env": "ZAI_API_KEY"},
                     {"id": "visible-openai", "model": "visible-openai", "display_name": "Visible", "provider": "openai", "base_url": "http://example.invalid/v1"},
                 ]
             }
@@ -1868,8 +1868,8 @@ async def test_zai_provider_posts_to_v4_chat_completions_without_v1_injection(tm
                 "models": [
                     {
                         "id": "zai",
-                        "model": "glm-5.1",
-                        "display_name": "Z.AI GLM-5.1",
+                        "model": "glm-5.2",
+                        "display_name": "Z.AI GLM-5.2",
                         "provider": "zai",
                         "base_url": str(upstream_client.make_url("/api/paas/v4")),
                         "api_key": "secret",
@@ -1886,7 +1886,7 @@ async def test_zai_provider_posts_to_v4_chat_completions_without_v1_injection(tm
         payload = await resp.json()
         assert payload["output"][0]["content"][0]["text"] == "zai hello"
         assert captured["path"] == "/api/paas/v4/chat/completions"
-        assert captured["body"]["model"] == "glm-5.1"
+        assert captured["body"]["model"] == "glm-5.2"
         assert captured["headers"]["Authorization"] == "Bearer secret"
     finally:
         await shim_client.close()
@@ -1913,7 +1913,7 @@ async def test_nvidia_nim_provider_uses_openai_v1_chat_completions(tmp_path, aut
                 "models": [
                     {
                         "id": "nim",
-                        "model": "z-ai/glm-5.1",
+                        "model": "z-ai/glm-5.2",
                         "display_name": "NIM GLM",
                         "provider": "nvidia-nim",
                         "base_url": str(upstream_client.make_url("/v1")),
@@ -1929,7 +1929,7 @@ async def test_nvidia_nim_provider_uses_openai_v1_chat_completions(tmp_path, aut
         resp = await shim_client.post("/v1/responses", json={"model": "nim", "input": "hi"})
         assert resp.status == 200
         assert captured["path"] == "/v1/chat/completions"
-        assert captured["body"]["model"] == "z-ai/glm-5.1"
+        assert captured["body"]["model"] == "z-ai/glm-5.2"
     finally:
         await shim_client.close()
         await upstream_client.close()

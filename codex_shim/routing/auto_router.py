@@ -34,6 +34,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
+from ..translate.tokens import estimate_input_tokens
+
 DEFAULT_ROUTER_SLUG = "codex-auto"
 DEFAULT_ROUTER_DISPLAY_NAME = "Auto (smart routing)"
 DEFAULT_THRESHOLD = 0.7
@@ -74,6 +76,12 @@ class RouterCandidate:
     cost: float = 1.0
     card: str = ""
     supports_images: bool = False
+    # Routing inputs beyond capability: a context-fit ceiling (tokens), a latency
+    # class for short-turn tie-breaks, and whether the route delegates its own
+    # agent loop (different execution contract than mapped BYOK).
+    max_context_limit: int | None = None
+    latency_class: str = "normal"
+    is_delegate: bool = False
 
 
 @dataclass(frozen=True)
@@ -99,6 +107,14 @@ def _as_float(value: Any, default: float) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+    return result if result > 0 else None
 
 
 def load_router_config(settings_path: Path | str) -> Optional[RouterConfig]:
@@ -133,6 +149,11 @@ def load_router_config(settings_path: Path | str) -> Optional[RouterConfig]:
                 cost=_as_float(entry.get("cost"), 1.0),
                 card=str(entry.get("card") or "").strip(),
                 supports_images=bool(entry.get("supports_images", False)),
+                max_context_limit=_as_int(entry.get("max_context_limit") or entry.get("context_window")),
+                latency_class=(
+                    str(entry.get("latency_class") or entry.get("latency") or "normal").strip().lower() or "normal"
+                ),
+                is_delegate=bool(entry.get("is_delegate", entry.get("delegate", False))),
             )
         )
 
@@ -317,6 +338,8 @@ def task_signal(body: dict[str, Any]) -> dict[str, Any]:
         "has_images": has_images(body),
         "tool_count": len(tools) if isinstance(tools, list) else 0,
         "input_items": input_items,
+        "has_tools": bool(isinstance(tools, list) and tools),
+        "est_input_tokens": estimate_input_tokens(body),
     }
 
 
@@ -351,6 +374,12 @@ def build_system_prompt(candidates: list[RouterCandidate]) -> str:
         card = c.card or "General-purpose model. No capability card provided."
         lines.append("- slug: %s" % c.slug)
         lines.append("  images: %s" % ("yes" if c.supports_images else "no"))
+        if c.max_context_limit:
+            lines.append("  context_window: %d tokens" % c.max_context_limit)
+        if c.latency_class and c.latency_class != "normal":
+            lines.append("  latency: %s" % c.latency_class)
+        if c.is_delegate:
+            lines.append("  authority: delegated (owns its own agent loop; different execution contract)")
         lines.append("  capability: %s" % card)
     schema = {"scores": {c.slug: 0.0 for c in candidates}, "reasoning": "one short sentence"}
     lines += [
@@ -409,34 +438,66 @@ def parse_scores(text: str, candidate_slugs: list[str]) -> dict[str, float]:
     return {}
 
 
-def pick_candidate(
+def rank_candidates(
     scores: dict[str, float],
     candidates: list[RouterCandidate],
     threshold: float,
     has_image_task: bool,
-) -> tuple[Optional[str], float, str]:
-    """Cheapest candidate whose score clears the bar; image-incapable models are
-    hard-zeroed when the task has images; if none clear the bar, take the best."""
+    est_input_tokens: int = 0,
+) -> list[tuple[RouterCandidate, float]]:
+    """Full ranked candidate list: servable candidates only (image/context
+    hard-zeros dropped), cheapest-among-good-enough first, then best-effort by
+    score descending. ``pick_candidate`` is the head of this list."""
     scored: list[tuple[RouterCandidate, float]] = []
     for c in candidates:
         score = scores.get(c.slug, 0.0)
         if has_image_task and not c.supports_images:
             score = 0.0
+        if (
+            est_input_tokens > 0
+            and c.max_context_limit
+            and est_input_tokens > int(c.max_context_limit * 0.9)
+        ):
+            score = 0.0
+        if score <= 0:
+            continue
         scored.append((c, score))
-    viable = [(c, s) for (c, s) in scored if s >= threshold]
-    if viable:
-        winner = min(viable, key=lambda cs: (float(cs[0].cost or 0), -cs[1]))
-        return winner[0].slug, winner[1], "score>=%.2f, cheapest" % threshold
-    best = max(scored, key=lambda cs: cs[1], default=None)
-    if best and best[1] > 0:
-        return best[0].slug, best[1], "below bar; highest score"
-    return None, 0.0, "no usable score"
+    viable = sorted(
+        [cs for cs in scored if cs[1] >= threshold],
+        key=lambda cs: (float(cs[0].cost or 0), -cs[1]),
+    )
+    rest = sorted(
+        [cs for cs in scored if cs[1] < threshold],
+        key=lambda cs: (-cs[1], float(cs[0].cost or 0)),
+    )
+    return viable + rest
+
+
+def pick_candidate(
+    scores: dict[str, float],
+    candidates: list[RouterCandidate],
+    threshold: float,
+    has_image_task: bool,
+    est_input_tokens: int = 0,
+) -> tuple[Optional[str], float, str]:
+    """Cheapest candidate whose score clears the bar; image-incapable models are
+    hard-zeroed when the task has images; models whose context window cannot fit
+    the estimated input (with a 10% headroom) are hard-zeroed; if none clear the
+    bar, take the best."""
+    ranked = rank_candidates(scores, candidates, threshold, has_image_task, est_input_tokens)
+    if not ranked:
+        return None, 0.0, "no usable score"
+    candidate, score = ranked[0]
+    if score >= threshold:
+        return candidate.slug, score, "score>=%.2f, cheapest" % threshold
+    return candidate.slug, score, "below bar; highest score"
 
 
 def fallback_slug(
     config: RouterConfig,
     candidates: list[RouterCandidate],
     has_image_task: bool = False,
+    est_input_tokens: int = 0,
 ) -> Optional[str]:
     """Deterministic, classifier-free choice.
 
@@ -453,10 +514,16 @@ def fallback_slug(
     supports images, return None so the caller can surface the failure
     explicitly rather than silently routing into an upstream that will
     reject the body.
+
+    When ``est_input_tokens`` > 0, candidates whose ``max_context_limit``
+    cannot fit the input (with a 10% headroom) are dropped from the pool —
+    routing a 300k-token task to a 128k model would just 400 upstream.
     """
     pool = (
         [c for c in candidates if c.supports_images] if has_image_task else list(candidates)
     )
+    if est_input_tokens > 0:
+        pool = [c for c in pool if not c.max_context_limit or est_input_tokens <= int(c.max_context_limit * 0.9)]
     if not pool:
         return None
     if config.default and any(c.slug == config.default for c in pool):
@@ -505,7 +572,9 @@ async def resolve_auto(
                 return cached, {"reason": "cache", "scores": {}}
 
         if classify is None:
-            pick = fallback_slug(config, candidates, has_image_task=signal["has_images"])
+            pick = fallback_slug(
+                config, candidates, has_image_task=signal["has_images"], est_input_tokens=signal["est_input_tokens"]
+            )
             _log("[router] no classifier -> deterministic %s" % pick)
             return pick, {"reason": "no classifier", "scores": {}}
 
@@ -514,14 +583,26 @@ async def resolve_auto(
         try:
             raw = await classify(system_prompt, user_content)
         except Exception as exc:  # noqa: BLE001 - any classifier failure is non-fatal
-            pick = fallback_slug(config, candidates, has_image_task=signal["has_images"])
+            pick = fallback_slug(
+                config, candidates, has_image_task=signal["has_images"], est_input_tokens=signal["est_input_tokens"]
+            )
             _log("[router] classifier failed (%s); falling back to %s" % (exc, pick))
             return pick, {"reason": "classifier error", "scores": {}}
 
         scores = parse_scores(raw, [c.slug for c in candidates])
-        pick, score, why = pick_candidate(scores, candidates, config.threshold, signal["has_images"])
+        pick, score, why = pick_candidate(
+            scores, candidates, config.threshold, signal["has_images"], signal["est_input_tokens"]
+        )
+        ranked_slugs = [
+            c.slug
+            for c, _ in rank_candidates(
+                scores, candidates, config.threshold, signal["has_images"], signal["est_input_tokens"]
+            )
+        ]
         if not pick:
-            pick = fallback_slug(config, candidates, has_image_task=signal["has_images"])
+            pick = fallback_slug(
+                config, candidates, has_image_task=signal["has_images"], est_input_tokens=signal["est_input_tokens"]
+            )
             why = "empty scores; fallback"
             score = 0.0
         if config.cache and pick:
@@ -532,7 +613,7 @@ async def resolve_auto(
             "[router] -> %s (score=%.2f; %s) scores=%s"
             % (pick, score, why, json.dumps({c.slug: round(scores.get(c.slug, 0.0), 2) for c in candidates}))
         )
-        return pick, {"reason": why, "score": score, "scores": scores}
+        return pick, {"reason": why, "score": score, "scores": scores, "ranked": ranked_slugs}
     except Exception as exc:  # noqa: BLE001 - routing must never break a request
         _log("[router] unexpected error: %s" % exc)
         return None, {"reason": "error", "scores": {}}

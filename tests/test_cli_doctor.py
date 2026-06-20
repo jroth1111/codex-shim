@@ -126,7 +126,7 @@ def test_doctor_models_subcommand_still_reports_visibility(monkeypatch, tmp_path
         tmp_path / "models.json",
         [
             {
-                "model": "glm-5.1",
+                "model": "glm-5.2",
                 "display_name": "GLM",
                 "provider": "zai",
                 "base_url": "https://example.invalid/v1",

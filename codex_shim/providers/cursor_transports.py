@@ -1,7 +1,10 @@
 """Cursor transport entry points: ACP subprocess, CLI delegate, native gRPC agent."""
 from __future__ import annotations
 
+import asyncio
+import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +47,42 @@ from .cursor import (
     run_cursor_cli,
 )
 from .cursor_agent import CursorAgentTransportError
+
+
+_CURSOR_SEMAPHORE: asyncio.Semaphore | None = None
+
+
+def _cursor_concurrency_semaphore() -> asyncio.Semaphore:
+    """Lazily-built shared semaphore bounding concurrent Cursor turns."""
+    global _CURSOR_SEMAPHORE
+    if _CURSOR_SEMAPHORE is None:
+        raw = os.environ.get("CODEX_SHIM_CURSOR_MAX_CONCURRENT", "4").strip()
+        try:
+            limit = max(1, int(raw))
+        except ValueError:
+            limit = 4
+        _CURSOR_SEMAPHORE = asyncio.Semaphore(limit)
+    return _CURSOR_SEMAPHORE
+
+
+@asynccontextmanager
+async def cursor_concurrency():
+    """Bound concurrent Cursor turns (subprocess + native) so a parallel or
+    batch driver cannot fork-bomb the workspace. Desktop is mostly serial, so the
+    default is generous; tune via ``CODEX_SHIM_CURSOR_MAX_CONCURRENT``. Acquired
+    at the dispatcher entry (the true outermost boundary) so handler-internal
+    delegation does not re-acquire (asyncio.Semaphore is not reentrant)."""
+    async with _cursor_concurrency_semaphore():
+        yield
+
+
+def is_cursor_start_failure(exc: Exception) -> bool:
+    """A start failure (command missing / immediate launch error) ran no
+    subprocess and had no side effects, so it is safe to retry or fail over to
+    another provider. Mid-turn failures (timeout, non-zero exit AFTER output)
+    are NOT safe to replay. CursorCliError marks launch failures with the
+    ``Failed to start Cursor Agent command`` prefix (see cursor/cli.py)."""
+    return str(exc).lstrip().startswith("Failed to start Cursor Agent command")
 
 
 def cursor_workspace(
@@ -520,7 +559,14 @@ async def post_cursor_cli(
             provider_ms=elapsed_ms(provider_started_at),
             workspace=workspace_log_value(workspace),
         )
-        return cursor_agent_error_response(exc, failure)
+        err_resp = cursor_agent_error_response(exc, failure)
+        if not is_cursor_start_failure(exc):
+            # Mid-turn failure: the cursor agent already ran and may have had
+            # side effects. Failover would replay the whole turn on another
+            # provider unsafely, so tell the gateway not to retry. Start
+            # failures (command missing) carry no marker and may fail over.
+            setattr(err_resp, "_codex_shim_no_failover", True)
+        return err_resp
     provider_ms = elapsed_ms(provider_started_at)
     if as_responses:
         response_payload = attach_response_metadata(

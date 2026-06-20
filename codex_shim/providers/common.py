@@ -113,6 +113,14 @@ def shim_response_metadata(
     }
     if workspace is not None:
         metadata["shim_route"]["workspace"] = str(workspace)
+    elif is_delegate_route(route):
+        # A delegate (cursor) route runs a subprocess in this workspace; an
+        # unresolved workspace means the cursor agent inherits the shim
+        # daemon's cwd (almost always the wrong project). Surface it loudly
+        # rather than silently omitting the field, so the failure is visible
+        # in metadata/telemetry instead of only as wrong-directory side effects.
+        metadata["shim_route"]["workspace"] = None
+        metadata["shim_route"]["workspace_unresolved"] = True
     if prepared is not None and prepared.chained_from_previous:
         metadata["shim_history"] = {"expanded_previous_response_id": True}
     if native_envelope is not None:

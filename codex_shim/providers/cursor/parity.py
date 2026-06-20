@@ -163,6 +163,19 @@ class CursorThreadSessionStore:
         )
         self._conn.commit()
 
+    def list_all(self) -> list[tuple[str, str, float]]:
+        """All mappings as (thread_id, cursor_session_id, updated_at), newest first."""
+        rows = self._conn.execute(
+            "SELECT thread_id, cursor_session_id, updated_at FROM cursor_thread_sessions ORDER BY updated_at DESC"
+        ).fetchall()
+        return [(str(r[0]), str(r[1]), float(r[2])) for r in rows]
+
+    def clear(self) -> int:
+        """Drop every mapping (used to recover from stale thread_id reuse). Returns the deleted count."""
+        cur = self._conn.execute("DELETE FROM cursor_thread_sessions")
+        self._conn.commit()
+        return int(cur.rowcount or 0)
+
     def close(self) -> None:
         self._conn.close()
 

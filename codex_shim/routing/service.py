@@ -7,6 +7,7 @@ from aiohttp import web
 
 from ..settings import ModelSettings, ShimModel
 from .discovery import desktop_models
+from .failover import failover_enabled
 from .image_gate import needs_image_generation
 from .inference_context import InferenceContext, parse_inference_context
 from .model_catalog import ModelCatalogSnapshot
@@ -36,6 +37,18 @@ class RoutingPolicy:
     fallback_enabled: bool = False
     retry_on_stream: bool = False
     fallback_only_statuses: tuple[int, ...] = DEFAULT_RETRYABLE_STATUSES
+    # Backoff between retryable attempts (exponential, capped, jittered). The
+    # dispatcher floors the delay on a parsed upstream Retry-After when
+    # respect_retry_after is set, so 429/503 responses do not get re-hit within
+    # milliseconds and burn the rate budget for nothing.
+    backoff_base_ms: int = 500
+    backoff_cap_ms: int = 30_000
+    respect_retry_after: bool = True
+    # When True, a streaming turn that fails BEFORE any byte is flushed to the
+    # client raises PreFirstByteFailure so the gateway can fall back to another
+    # provider instead of failing the whole stream. Default off (byte-identical
+    # to legacy behavior) because it changes the streaming handler contract.
+    pre_first_byte_stream_failover: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,7 +126,7 @@ def resolve_model_route(
         raise web.HTTPNotFound(text=f"Unknown model slug/model: {requested}")
 
     fallback_route = _fallback_route(settings, route, body)
-    fallback_enabled = str(body.get("allow_fallback", "false")).lower() in {"1", "true", "yes", "on"}
+    fallback_enabled = failover_enabled(body, settings.path)
     policy = RoutingPolicy(
         max_retries=_max_retries_for_provider(route.provider),
         fallback_enabled=fallback_enabled,

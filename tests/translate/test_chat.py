@@ -67,7 +67,7 @@ def test_responses_to_chat_deepseek_safe_mode_disables_thinking():
 def test_responses_to_chat_provider_policy_pass_drop_and_keep_all():
     body = {"model": "slug", "thinking": True, "input": "hi"}
 
-    zai = responses_to_chat(body, "glm-5.1", "zai")
+    zai = responses_to_chat(body, "glm-5.2", "zai")
     moonshot = responses_to_chat(body, "moonshot-v1-32k", "moonshot")
     kimi = responses_to_chat(body, "kimi-k2", "moonshot")
 

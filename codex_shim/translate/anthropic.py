@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .common import anthropic_stop, copy_if_present, jsonish, strip_think
+from .common import anthropic_stop, copy_if_present, jsonish, strip_think, verbosity_preamble
 from .content import chat_content_to_anthropic_blocks, chat_content_to_anthropic_content, content_to_text
 from .input import responses_input_to_messages
 from .thinking import (
@@ -21,9 +21,13 @@ def responses_to_anthropic(
     chained_from_previous: bool = False,
 ) -> dict[str, Any]:
     system_parts: list[str] = []
-    instructions = body.get("instructions")
-    if instructions and not chained_from_previous:
-        system_parts.append(content_to_text(instructions))
+    if not chained_from_previous:
+        preamble = verbosity_preamble(body)
+        if preamble:
+            system_parts.append(preamble)
+        instructions = body.get("instructions")
+        if instructions:
+            system_parts.append(content_to_text(instructions))
 
     messages: list[dict[str, Any]] = []
 

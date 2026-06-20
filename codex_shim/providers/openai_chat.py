@@ -17,6 +17,7 @@ from ..translate import (
 )
 from ..wire import (
     ClientDisconnected,
+    PreFirstByteFailure,
     StreamSink,
     WsStreamResponse,
     open_stream_sink,
@@ -32,6 +33,7 @@ from .common import (
     shim_response_metadata,
 )
 from .http import join_url, openai_headers
+from .outcome import upstream_error_detail_from_response
 
 
 async def post_openai_chat(
@@ -63,7 +65,15 @@ async def post_openai_chat(
                     request_body=prepared.body if prepared is not None else body,
                     provider_ms=elapsed_ms(provider_started_at),
                 )
-                return await error_response(upstream, slug=route.slug)
+                detail = upstream_error_detail_from_response(upstream)
+                if body.get("stream") and getattr(request, "_codex_shim_pre_first_byte_failover", False):
+                    # Streaming + opted in: open_stream_sink has NOT run yet, so
+                    # no byte has reached the client -- the gateway can still
+                    # fall back to another provider instead of failing the stream.
+                    raise PreFirstByteFailure(status=upstream.status, detail=detail, reason="upstream_error")
+                error_resp = await error_response(upstream, slug=route.slug)
+                setattr(error_resp, "_codex_shim_upstream_error", detail)
+                return error_resp
             if body.get("stream"):
                 # _stream_openai_chat owns the response and releases it in its finally block.
                 return await stream_openai_chat(

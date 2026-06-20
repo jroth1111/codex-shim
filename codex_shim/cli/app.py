@@ -71,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     doctor_sub.add_parser("subscription", help="Report ChatGPT subscription model catalog cache and slugs.")
     doctor_sub.add_parser("contract", help="Check generated Desktop protocol contract drift.")
     doctor_sub.add_parser("routing", help="Recommend shim vs upstream direct provider per configured slug.")
+    doctor_provider_parser = doctor_sub.add_parser("provider", help="Focused report for one configured model (config, capabilities, routing).")
+    doctor_provider_parser.add_argument("provider_slug", help="Model slug or upstream model id.")
     test_parser = sub.add_parser("test", help="Run a non-streaming smoke test through the selected model route.")
     test_parser.add_argument("target", help="Model slug, provider, upstream model, or display name.")
     probe_parser = sub.add_parser("probe", help="Validate shim behavior against running daemon.")
@@ -90,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Probe Cursor delegate routes emit message-only output with execution_mode=delegate.",
     )
     probe_delegate_parser.add_argument("--slug", help="Cursor model slug (default: first visible cursor route).")
+    probe_sub.add_parser(
+        "cursor-native",
+        help="Readiness check for the experimental Cursor Agent native transport (no live network).",
+    )
     probe_sub.add_parser("fidelity", help="Offline hosted-tool and compaction translation checks.")
     probe_all_parser = probe_sub.add_parser("all", help="Run offline fidelity plus live probes when daemon/auth allow.")
     probe_all_parser.add_argument("--slug", help="BYOK model slug for live BYOK probes.")
@@ -133,9 +139,9 @@ def main(argv: list[str] | None = None) -> int:
     cursor_parser.add_argument("--model", default="default[]")
     cursor_parser.add_argument("--mode", default="agent")
     cursor_parser.add_argument("--display-name", default="Cursor Agent Auto")
-    zai_parser = configure_sub.add_parser("zai", help="Configure Z.AI GLM-5.1.")
+    zai_parser = configure_sub.add_parser("zai", help="Configure Z.AI GLM-5.2.")
     zai_parser.add_argument("--coding-plan", action="store_true")
-    zai_parser.add_argument("--model", default="glm-5.1")
+    zai_parser.add_argument("--model", default="glm-5.2")
     zai_parser.add_argument("--display-name")
     zai_parser.add_argument("--base-url")
     zai_parser.add_argument("--chat-completions-url")
@@ -150,6 +156,20 @@ def main(argv: list[str] | None = None) -> int:
     nim_parser.add_argument("--api-key")
     nim_parser.add_argument("--api-key-env", default="NVIDIA_API_KEY")
     nim_parser.add_argument("--api-key-file")
+    for name, help_text in (
+        ("openai-compatible", "Configure an OpenAI-shaped chat completions provider (OpenRouter, Together, Groq, ...)."),
+        ("anthropic", "Configure an Anthropic Messages provider."),
+        ("ollama", "Configure a local Ollama server (OpenAI-shaped, default port 11434)."),
+        ("lmstudio", "Configure a local LM Studio server (OpenAI-shaped, default port 1234)."),
+    ):
+        chat_parser = configure_sub.add_parser(name, help=help_text)
+        chat_parser.add_argument("--model", required=True)
+        chat_parser.add_argument("--display-name")
+        chat_parser.add_argument("--base-url")
+        chat_parser.add_argument("--chat-completions-url")
+        chat_parser.add_argument("--api-key")
+        chat_parser.add_argument("--api-key-env")
+        chat_parser.add_argument("--api-key-file")
     vibeproxy_parser = sub.add_parser("import-vibeproxy", help="Import model rows from a VibeProxy /v1/models endpoint.")
     vibeproxy_parser.add_argument("base_url", nargs="?", default="http://127.0.0.1:8318")
     vibeproxy_parser.add_argument("--provider-base-url")
@@ -167,11 +187,25 @@ def main(argv: list[str] | None = None) -> int:
     import_parser = config_sub.add_parser("import")
     import_parser.add_argument("source", type=Path)
 
+    profile_parser = sub.add_parser("profile", help="Write a Codex profile (~/.codex/<name>.config.toml) for `codex --profile <name>`.")
+    profile_sub = profile_parser.add_subparsers(dest="profile_command", required=True)
+    profile_install = profile_sub.add_parser("install", help="Write a self-contained shim profile.")
+    profile_install.add_argument("--name", required=True)
+
     model_parser = sub.add_parser("model", help="List or set the active shim model in Codex config.")
     model_sub = model_parser.add_subparsers(dest="model_command", required=True)
     model_sub.add_parser("list")
     use_parser = model_sub.add_parser("use")
     use_parser.add_argument("model_slug")
+
+    cursor_parser = sub.add_parser("cursor", help="Cursor route operability (thread/session mappings).")
+    cursor_sub = cursor_parser.add_subparsers(dest="cursor_command", required=True)
+    sessions_parser = cursor_sub.add_parser(
+        "sessions", help="Inspect or clear stored Cursor thread -> session mappings (stale-reuse recovery)."
+    )
+    sessions_sub = sessions_parser.add_subparsers(dest="cursor_sessions_command", required=True)
+    sessions_sub.add_parser("list")
+    sessions_sub.add_parser("clear")
 
     codex_parser = sub.add_parser("codex", help="Run Codex CLI with opt-in shim config overrides.")
     codex_parser.add_argument("args", nargs=argparse.REMAINDER)
@@ -251,6 +285,8 @@ def main(argv: list[str] | None = None) -> int:
             return cli_ns.doctor_setup(args.settings, args.port)
         if cmd == "models":
             return cli_ns.doctor_models(args.settings)
+        if cmd == "provider":
+            return cli_ns.doctor_provider(args.settings, args.provider_slug)
         if cmd == "patch":
             return cli_ns.doctor_patch()
         if cmd == "catalog":
@@ -271,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
             return cli_ns.probe_history_route(args.settings, args.port, args.slug)
         if args.probe_command == "fidelity":
             return cli_ns.probe_fidelity_route()
+        if args.probe_command == "cursor-native":
+            return cli_ns.probe_cursor_native_route()
         if args.probe_command == "streaming-history":
             return cli_ns.probe_streaming_history_route(args.settings, args.port, args.slug)
         if args.probe_command == "ws-streaming":
@@ -326,6 +364,26 @@ def main(argv: list[str] | None = None) -> int:
             cli_ns.install_codex_config(args.settings, args.port, args.model_slug)
             print(f"Active Codex shim model: {args.model_slug}")
             return 0
+    if args.command == "cursor" and args.cursor_command == "sessions":
+        from ..providers import CursorThreadSessionStore
+
+        store = CursorThreadSessionStore()
+        try:
+            if args.cursor_sessions_command == "list":
+                rows = store.list_all()
+                if not rows:
+                    print("No Cursor thread -> session mappings stored.")
+                for thread_id, session_id, updated_at in rows:
+                    print(f"{thread_id}\t{session_id}\t{int(updated_at)}")
+                return 0
+            if args.cursor_sessions_command == "clear":
+                count = store.clear()
+                print(f"Cleared {count} Cursor thread -> session mapping(s).")
+                return 0
+        finally:
+            store.close()
+    if args.command == "profile" and args.profile_command == "install":
+        return cli_ns.install_profile(args.settings, args.port, args.name)
     if args.command == "codex":
         cli_ns.generate(args.settings, args.port)
         cli_ns.ensure_started(args.settings, args.port)

@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator
 
 from aiohttp import ClientSession, ClientTimeout
 
-from .auth import load_cursor_access_token
+from .auth import cursor_access_token_expired, load_cursor_access_token
 from .connect_framing import parse_connect_frames
 from .live_common import collect_live_turn, resolve_active_timeout
 from .proto_decode import proto_payload_to_events
@@ -60,6 +60,10 @@ async def stream_http1_live_events(
     if not token:
         raise CursorAgentTransportError(
             "Live Cursor Agent transport requires auth. Run `codex login` or set CODEX_SHIM_CURSOR_AUTH_TOKEN."
+        )
+    if cursor_access_token_expired(token):
+        raise CursorAgentTransportError(
+            "Cursor access token has expired; run `codex login` to refresh it before retrying."
         )
 
     request_id = str(uuid.uuid4())

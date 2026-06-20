@@ -35,6 +35,7 @@ def catalog_entry(model: ShimModel) -> dict:
     supports_reasoning = _supports_reasoning_summaries(model)
     capabilities = getattr(model, "capabilities", None)
     supports_images = not model.no_image_support and (capabilities.supports_images if capabilities is not None else True)
+    model_verbosity = getattr(model, "model_verbosity", None)
     supports_parallel = capabilities.supports_parallel_tool_calls if capabilities is not None else True
     route_caps = route_capabilities(model)
     experimental_tools: list[str] = []
@@ -61,8 +62,8 @@ def catalog_entry(model: ShimModel) -> dict:
         "default_reasoning_summary": "auto" if supports_reasoning else "none",
         "reasoning_summary_format": "experimental" if supports_reasoning else "none",
         "supports_reasoning_summaries": supports_reasoning,
-        "default_verbosity": "low",
-        "support_verbosity": False,
+        "default_verbosity": model_verbosity or "low",
+        "support_verbosity": bool(model_verbosity),
         "apply_patch_tool_type": "freeform",
         "web_search_tool_type": "text_and_image",
         "supports_search_tool": supports_search,
@@ -206,8 +207,12 @@ base_url = "http://127.0.0.1:{port}/v1"
 wire_api = "responses"
 requires_openai_auth = false
 experimental_bearer_token = "dummy"
-request_max_retries = 3
-stream_max_retries = 3
+# Codex Desktop must not double-retry: the shim owns backoff, Retry-After, and
+# circuit-breaking internally (see providers/dispatcher.py + routing/service.py).
+# Advertise zero request retries and a single stream retry (cheap, pre-first-byte
+# transport failure only) so a flapping upstream does not get hit ~8x per turn.
+request_max_retries = 0
+stream_max_retries = 1
 stream_idle_timeout_ms = {stream_idle_timeout_ms}
 supports_websockets = {str(websockets_enabled()).lower()}
 {override_lines}'''
@@ -240,8 +245,8 @@ base_url = "{_toml_escape(base_url.rstrip('/'))}"
 wire_api = "responses"
 requires_openai_auth = false
 experimental_bearer_token = "dummy"
-request_max_retries = 3
-stream_max_retries = 3
+request_max_retries = 0
+stream_max_retries = 1
 stream_idle_timeout_ms = 600000
 supports_websockets = {str(websockets_enabled()).lower()}
 '''
@@ -259,8 +264,8 @@ def codex_config_overrides(catalog_path: Path, default_slug: str, port: int) -> 
         f'model_providers.{PROVIDER_NAME}.wire_api="responses"',
         f'model_providers.{PROVIDER_NAME}.requires_openai_auth=false',
         f'model_providers.{PROVIDER_NAME}.experimental_bearer_token="dummy"',
-        f'model_providers.{PROVIDER_NAME}.request_max_retries=3',
-        f'model_providers.{PROVIDER_NAME}.stream_max_retries=3',
+        f'model_providers.{PROVIDER_NAME}.request_max_retries=0',
+        f'model_providers.{PROVIDER_NAME}.stream_max_retries=1',
         f'model_providers.{PROVIDER_NAME}.stream_idle_timeout_ms=600000',
         f'model_providers.{PROVIDER_NAME}.supports_websockets={str(websockets_enabled()).lower()}',
     ]

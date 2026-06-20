@@ -9,7 +9,7 @@ from ..settings import (
     THINKING_KEEP_ALL,
     THINKING_PASS,
 )
-from .common import copy_if_present
+from .common import copy_if_present, verbosity_preamble
 from .content import content_to_text
 from .input import responses_input_to_messages
 from .messages import (
@@ -32,9 +32,16 @@ def responses_to_chat(
     chained_from_previous: bool = False,
 ) -> dict[str, Any]:
     messages = []
-    instructions = body.get("instructions")
-    if instructions and not chained_from_previous:
-        messages.append({"role": "system", "content": content_to_text(instructions)})
+    if not chained_from_previous:
+        system_segments: list[str] = []
+        preamble = verbosity_preamble(body)
+        if preamble:
+            system_segments.append(preamble)
+        instructions = body.get("instructions")
+        if instructions:
+            system_segments.append(content_to_text(instructions))
+        if system_segments:
+            messages.append({"role": "system", "content": "\n\n".join(system_segments)})
     has_reasoning_content = False
     pending_reasoning: list[str] = []
     for m in responses_input_to_messages(body.get("input")):

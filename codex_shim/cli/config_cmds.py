@@ -140,6 +140,29 @@ def install_codex_config(settings_path: Path, port: int, model_slug: str | None 
     print(f"Installed shim config into {cli_ns.CODEX_CONFIG_PATH}.")
 
 
+def install_profile(settings_path: Path, port: int, name: str) -> int:
+    """Write a self-contained Codex profile at ``~/.codex/<name>.config.toml``.
+
+    The profile bundles the model, provider, and generated catalog pointer so
+    ``codex --profile <name>`` flips the whole stack without mutating the user's
+    base ``~/.codex/config.toml``. Mirrors Codex's profile layering (0.134.0+):
+    base config -> profile -> project -> CLI.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name or ""):
+        raise SystemExit("Profile name must contain only letters, numbers, hyphens, and underscores.")
+    cli_ns.generate(settings_path, port)
+    cli_ns.ensure_started(settings_path, port)
+    models = _load_models(settings_path)
+    profile_path = Path.home() / ".codex" / f"{name}.config.toml"
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    if profile_path.exists():
+        profile_path.with_name(profile_path.name + ".before-profile").write_text(profile_path.read_text())
+    write_config(models, profile_path, cli_ns.CATALOG_PATH, port)
+    print(f"Wrote profile: {profile_path}")
+    print(f"Use it with: codex --profile {name}")
+    return 0
+
+
 def list_models(settings_path: Path) -> int:
     models = _load_models(settings_path)
     rows: list[tuple[str, str, str, str]] = []
@@ -280,9 +303,9 @@ def configure(settings_path: Path, args: argparse.Namespace) -> int:
         return _write_configured_row(settings_path, row)
     if args.configure_provider == "zai":
         provider = "zai-coding-plan" if args.coding_plan else "zai"
-        display_name = args.display_name or ("Z.AI GLM-5.1 Coding Plan" if args.coding_plan else "Z.AI GLM-5.1")
+        display_name = args.display_name or ("Z.AI GLM-5.2 Coding Plan" if args.coding_plan else "Z.AI GLM-5.2")
         row = {
-            "id": "zai-glm-5-1-coding-plan" if args.coding_plan else "zai-glm-5-1",
+            "id": "zai-glm-5-2-coding-plan" if args.coding_plan else "zai-glm-5-2",
             "model": args.model,
             "display_name": display_name,
             "provider": provider,
@@ -307,7 +330,43 @@ def configure(settings_path: Path, args: argparse.Namespace) -> int:
         if args.chat_completions_url:
             row["chat_completions_url"] = args.chat_completions_url
         return _write_configured_row(settings_path, row)
+    if args.configure_provider in _CHAT_PROVIDER_DEFAULTS:
+        return _configure_chat_provider(settings_path, args)
     raise SystemExit(f"Unsupported configure provider: {args.configure_provider}")
+
+
+# (provider_preset, default_base_url, default_api_key). A None base_url means
+# --base-url is required; a default api_key fills in local servers' well-known
+# placeholder tokens.
+_CHAT_PROVIDER_DEFAULTS: dict[str, tuple[str, str | None, str]] = {
+    "openai-compatible": ("generic-chat-completion-api", None, ""),
+    "anthropic": ("anthropic", None, ""),
+    "ollama": ("generic-chat-completion-api", "http://127.0.0.1:11434/v1", "ollama"),
+    "lmstudio": ("generic-chat-completion-api", "http://127.0.0.1:1234/v1", "lm-studio"),
+}
+
+
+def _configure_chat_provider(settings_path: Path, args: argparse.Namespace) -> int:
+    provider, default_base_url, default_api_key = _CHAT_PROVIDER_DEFAULTS[args.configure_provider]
+    base_url = (args.base_url or default_base_url or "").strip().rstrip("/")
+    if not base_url:
+        raise SystemExit(f"--base-url is required for `configure {args.configure_provider}`")
+    row = {
+        "id": _slug_for_configured_row(args.configure_provider, args.model),
+        "model": args.model,
+        "display_name": args.display_name or args.model,
+        "provider": provider,
+        "base_url": base_url,
+        "enabled": True,
+    }
+    _add_auth_fields(row, args)
+    # Local servers (Ollama/LM Studio) use a well-known placeholder key when the
+    # user provides none; real keys still win via _add_auth_fields above.
+    if not (row.get("api_key") or row.get("api_key_env") or row.get("api_key_file")) and default_api_key:
+        row["api_key"] = default_api_key
+    if args.chat_completions_url:
+        row["chat_completions_url"] = args.chat_completions_url
+    return _write_configured_row(settings_path, row)
 
 
 def _add_auth_fields(row: dict, args: argparse.Namespace) -> None:
@@ -407,8 +466,8 @@ name = "Codex Shim"
 base_url = "http://127.0.0.1:{port}/v1"
 wire_api = "responses"
 experimental_bearer_token = "dummy"
-request_max_retries = 3
-stream_max_retries = 3
+request_max_retries = 0
+stream_max_retries = 1
 stream_idle_timeout_ms = 600000
 supports_websockets = {str(websockets_enabled()).lower()}
 {cli_ns.MANAGED_END}

@@ -34,11 +34,11 @@ def _configure_zai_coding_plan(settings_path: Path) -> bool:
         auth_field = {"api_key_file": str(key_path.expanduser())}
     else:
         return False
-    os.environ.setdefault("CODEX_SHIM_LIVE_SLUG_OPENAI", "zai-glm-5-1-coding-plan")
+    os.environ.setdefault("CODEX_SHIM_LIVE_SLUG_OPENAI", "zai-glm-5-2-coding-plan")
     row = {
-        "id": "zai-glm-5-1-coding-plan",
-        "model": "glm-5.1",
-        "display_name": "Z.AI GLM-5.1 Coding Plan",
+        "id": "zai-glm-5-2-coding-plan",
+        "model": "glm-5.2",
+        "display_name": "Z.AI GLM-5.2 Coding Plan",
         "provider": "zai-coding-plan",
         "enabled": True,
         **auth_field,

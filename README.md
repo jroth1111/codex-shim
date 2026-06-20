@@ -365,17 +365,17 @@ Recommended schema:
       "args": ["agent", "--print", "--trust", "--yolo", "--model", "auto"]
     },
     {
-      "id": "zai-glm-5-1",
-      "model": "glm-5.1",
+      "id": "zai-glm-5-2",
+      "model": "glm-5.2",
       "provider": "zai",
-      "display_name": "Z.AI GLM-5.1",
+      "display_name": "Z.AI GLM-5.2",
       "api_key_env": "ZAI_API_KEY"
     },
     {
-      "id": "nim-glm-5-1",
-      "model": "z-ai/glm-5.1",
+      "id": "nim-glm-5-2",
+      "model": "z-ai/glm-5.2",
       "provider": "nvidia-nim",
-      "display_name": "GLM-5.1 (NVIDIA NIM)",
+      "display_name": "GLM-5.2 (NVIDIA NIM)",
       "base_url": "https://integrate.api.nvidia.com/v1",
       "api_key_env": "NVIDIA_API_KEY"
     }
@@ -399,7 +399,7 @@ Config helpers:
 codex-shim configure cursor
 codex-shim configure zai
 codex-shim configure zai --coding-plan
-codex-shim configure nim --model z-ai/glm-5.1
+codex-shim configure nim --model z-ai/glm-5.2
 codex-shim doctor
 codex-shim doctor models
 codex-shim test cursor-agent
@@ -821,7 +821,7 @@ codex-shim probe live-matrix        # CLI: Tier A + BYOK family matrix
 codex-shim probe all --live         # offline fidelity + BYOK probes + full live matrix
 ```
 
-Optional env overrides for BYOK families: `CODEX_SHIM_LIVE_SLUG_OPENAI`, `CODEX_SHIM_LIVE_SLUG_ANTHROPIC`, `CODEX_SHIM_LIVE_SLUG_CURSOR`. Set `ZAI_API_KEY` to auto-configure Z.AI GLM-5.1 Coding Plan for Tier B openai_chat live tests (then `codex-shim restart`). When `cursor` is on `PATH`, live tests auto-configure `cursor-auto` (`cursor-agent` CLI) and run the dedicated suite in `tests/live/test_cursor_agent.py`.
+Optional env overrides for BYOK families: `CODEX_SHIM_LIVE_SLUG_OPENAI`, `CODEX_SHIM_LIVE_SLUG_ANTHROPIC`, `CODEX_SHIM_LIVE_SLUG_CURSOR`. Set `ZAI_API_KEY` to auto-configure Z.AI GLM-5.2 Coding Plan for Tier B openai_chat live tests (then `codex-shim restart`). When `cursor` is on `PATH`, live tests auto-configure `cursor-auto` (`cursor-agent` CLI) and run the dedicated suite in `tests/live/test_cursor_agent.py`.
 
 Tier A prepare env: `CODEX_SHIM_PASSTHROUGH_KEEP_PREVIOUS_RESPONSE_ID=1` forwards `previous_response_id` (default strips it).
 

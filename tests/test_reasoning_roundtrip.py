@@ -230,7 +230,7 @@ def test_zai_provider_can_opt_into_thinking_passthrough():
             "thinking": {"type": "enabled"},
             "stream": True,
         },
-        upstream_model="glm-5.1",
+        upstream_model="glm-5.2",
         provider="zai",
     )
 
