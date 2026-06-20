@@ -482,7 +482,47 @@ Decode captured Connect frames offline:
 ```bash
 PYTHONPATH=. python3 scripts/cursor_connect_decode.py path/to/frames.hexl
 ```
-| `allow_fallback` | On `/v1/responses`, retry an alternate visible model slug when the primary upstream returns a retryable status (non-stream only). |
+| `allow_fallback` | Per-request opt-in to failover on `/v1/responses` (see **Multi-provider failover** below). Settings or env can enable it globally instead. |
+
+### Multi-provider failover and provider health
+
+When a primary upstream returns a retryable status (429/500/502/503/504), the
+shim can fail the turn over to another configured provider instead of erroring.
+Failover is **off by default**; turn it on per request (`allow_fallback`),
+globally via `CODEX_SHIM_FAILOVER_ENABLED=1`, or in `models.json`:
+
+```json
+{
+  "failover": {
+    "enabled": true,
+    "chains": { "gpt-5.5": ["claude-opus-4-7", "glm-5.2"] },
+    "only_statuses": [429, 500, 502, 503, 504],
+    "max_hops": 3,
+    "stream": true
+  }
+}
+```
+
+- **chains** — explicit per-slug ordered fallbacks. Without a chain the shim uses
+  the Auto Router's ranking (when `codex-auto` routed the turn), else a
+  same-provider-preferred discovery walk. Hops are filtered by what the task
+  needs: image support, context-window fit, and a delegate/mapped match (a Cursor
+  delegate route never fails over to a mapped BYOK route or vice versa).
+- **stream** — pre-first-byte failover for streaming turns (the Desktop default).
+  On whenever failover is enabled; disable with `"stream": false` or
+  `CODEX_SHIM_FAILOVER_STREAM=0`. It re-routes only before any byte reaches the
+  client, so a partially-streamed response is never replayed. Each hop fails fast
+  (no per-hop retry/backoff stacking).
+
+A per-provider **circuit breaker** rides alongside: every turn's outcome is
+recorded against its own provider (the primary's failure is recorded even when a
+hop later succeeds), and a provider whose recent failure rate crosses a threshold
+— or that strings together consecutive hard failures — is skipped until a
+cooldown probe shows recovery. Rate-limit (429) responses count toward opening
+it. Retryable errors back off exponentially (jittered, capped) and honor a
+returned `Retry-After`. Cursor subprocess turns are bounded by
+`CODEX_SHIM_CURSOR_MAX_CONCURRENT` (default 4); a Cursor *start* failure (command
+missing) may fail over, but a mid-turn failure is never replayed.
 
 ### Cursor Agent CLI
 
