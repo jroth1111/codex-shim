@@ -104,7 +104,7 @@ def probe_cursor_native_route() -> int:
     Reports the gating conditions (env opt-in, auth token presence/expiry,
     cursor-agent binary) WITHOUT making a live network call. Native stays
     opt-in; this confirms whether it is safe to enable as a default route."""
-    from ..providers.cursor_agent.auth import cursor_access_token_expired, load_cursor_access_token
+    from ..providers import cursor_access_token_expired, load_cursor_access_token
 
     live_env = os.environ.get("CODEX_SHIM_CURSOR_AGENT_LIVE", "").strip().lower() in {"1", "true", "yes", "on"}
     token = load_cursor_access_token()

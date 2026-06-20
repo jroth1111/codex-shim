@@ -32,6 +32,7 @@ from .cursor import (
     run_cursor_cli,
 )
 from .cursor_agent import CursorAgentTransport
+from .cursor_agent.auth import cursor_access_token_expired, load_cursor_access_token
 from .cursor_agent.catalog_rpc import fetch_usable_model_ids_sync
 from .cursor_transports import (
     post_cursor_acp,
@@ -73,6 +74,8 @@ __all__ = [
     "CursorAgentTransport",
     "auth_command_for_route",
     "build_cursor_cli_turn_options",
+    "cursor_access_token_expired",
+    "load_cursor_access_token",
     "cursor",
     "cursor_catalog_entry",
     "cursor_passthrough_available",

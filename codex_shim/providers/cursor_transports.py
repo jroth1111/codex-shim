@@ -48,7 +48,6 @@ from .cursor import (
 )
 from .cursor_agent import CursorAgentTransportError
 
-
 _CURSOR_SEMAPHORE: asyncio.Semaphore | None = None
 
 
