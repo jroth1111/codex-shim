@@ -52,6 +52,39 @@ def test_half_open_probe_failure_reopens():
     assert store.get("openai", now=50.0).state == "open"
 
 
+def test_breaker_opens_on_consecutive_failures_below_min_samples():
+    # Low-volume (Desktop-serial) case: the window never reaches min_samples, but
+    # a run of consecutive hard failures must still open the breaker.
+    store = ProviderHealthStore(min_samples=100, consecutive_failure_threshold=3)
+    store.record(provider="openai", status=500, outcome="error", now=1.0)
+    store.record(provider="openai", status=500, outcome="error", now=2.0)
+    assert store.get("openai", now=2.0).state == "closed"  # 2 < 3, still closed
+    store.record(provider="openai", status=500, outcome="error", now=3.0)
+    assert store.get("openai", now=3.0).state == "open"  # 3rd consecutive trips it
+
+
+def test_consecutive_counter_resets_on_success():
+    store = ProviderHealthStore(min_samples=100, consecutive_failure_threshold=3)
+    store.record(provider="openai", status=500, outcome="error", now=1.0)
+    store.record(provider="openai", status=500, outcome="error", now=2.0)
+    store.record(provider="openai", status=200, outcome="ok", now=3.0)  # resets the run
+    store.record(provider="openai", status=500, outcome="error", now=4.0)
+    store.record(provider="openai", status=500, outcome="error", now=5.0)
+    assert store.get("openai", now=5.0).state == "closed"  # only 2 in a row after reset
+
+
+def test_breaker_counts_429_as_failure():
+    # 429 (rate limit) is a primary failover trigger, so it must also be able to
+    # trip the breaker -- otherwise we keep selecting a rate-limited provider as
+    # primary and fail over every single turn.
+    store = ProviderHealthStore(min_samples=3, failure_threshold=0.5, cooldown_s=30.0)
+    for t in range(3):
+        store.record(provider="openai", status=429, outcome="error", now=float(t))
+    health = store.get("openai", now=3.0)
+    assert health.failure_rate == 1.0  # all three 429s count as failures
+    assert store.should_skip("openai", now=3.0) is True
+
+
 def test_window_prunes_old_samples():
     store = ProviderHealthStore(window_s=10.0, min_samples=2, failure_threshold=0.5)
     store.record(provider="openai", status=500, outcome="error", now=1.0)

@@ -25,10 +25,17 @@ class ProviderHealth:
     opened_at: float | None
 
 
+# Statuses that count as a provider failure for breaker purposes. 429 is
+# included deliberately: a provider that is hard rate-limiting is a primary
+# failover trigger, so it must also be able to trip the breaker — otherwise we
+# keep selecting it as primary and failing over every turn.
+_FAILURE_STATUSES = frozenset({429, 500, 502, 503, 504})
+
+
 def _is_failure(status: int, outcome: str) -> bool:
-    if outcome in {"error", "exhausted_retries"}:
+    if outcome in {"error", "exhausted_retries", "upstream_error"}:
         return True
-    return status >= 500
+    return status in _FAILURE_STATUSES or status >= 500
 
 
 class ProviderHealthStore:
@@ -42,12 +49,17 @@ class ProviderHealthStore:
         failure_threshold: float = 0.5,
         min_samples: int = 8,
         cooldown_s: float = 30.0,
+        consecutive_failure_threshold: int = 4,
     ) -> None:
         self._window_s = window_s
         self._failure_threshold = failure_threshold
         self._min_samples = min_samples
         self._cooldown_s = cooldown_s
-        self._samples: dict[str, deque[tuple[float, int, int]]] = {}
+        self._consecutive_failure_threshold = max(1, consecutive_failure_threshold)
+        # Each sample is (timestamp, status, provider_ms, failed). The failed bit
+        # is computed once via _is_failure so the windowed open-calc, the rate in
+        # get(), and the consecutive counter all share one failure definition.
+        self._samples: dict[str, deque[tuple[float, int, int, bool]]] = {}
         self._state: dict[str, str] = {}
         self._opened_at: dict[str, float] = {}
         self._consecutive_failures: dict[str, int] = {}
@@ -70,14 +82,14 @@ class ProviderHealthStore:
         now: float | None = None,
     ) -> None:
         current = now if now is not None else time.time()
+        failed = _is_failure(status, outcome)
         samples = self._samples.setdefault(provider, deque())
-        samples.append((current, int(status), int(provider_ms)))
+        samples.append((current, int(status), int(provider_ms), failed))
         cutoff = current - self._window_s
         while samples and samples[0][0] < cutoff:
             samples.popleft()
         self._refresh(provider, current)
 
-        failed = _is_failure(status, outcome)
         self._consecutive_failures[provider] = (
             self._consecutive_failures.get(provider, 0) + 1 if failed else 0
         )
@@ -89,8 +101,17 @@ class ProviderHealthStore:
             if failed:
                 self._opened_at[provider] = current
             return
+        # Consecutive-failure fast path: open immediately once a provider strings
+        # together enough hard failures, regardless of window volume. Codex
+        # Desktop is mostly serial, so the windowed rate below may never reach
+        # min_samples within window_s — without this the breaker is inert for the
+        # common case.
+        if failed and self._consecutive_failures[provider] >= self._consecutive_failure_threshold:
+            self._state[provider] = "open"
+            self._opened_at[provider] = current
+            return
         if state == "closed" and len(samples) >= self._min_samples:
-            failures = sum(1 for _, st, _ in samples if st >= 500)
+            failures = sum(1 for sample in samples if sample[3])
             if failures / len(samples) >= self._failure_threshold:
                 self._state[provider] = "open"
                 self._opened_at[provider] = current
@@ -104,16 +125,16 @@ class ProviderHealthStore:
         current = now if now is not None else time.time()
         self._refresh(provider, current)
         samples = self._samples.get(provider, deque())
-        statuses = [st for _, st, _ in samples]
-        failures = sum(1 for st in statuses if st >= 500)
-        rate = failures / len(statuses) if statuses else 0.0
-        latencies = sorted(ms for _, _, ms in samples if ms > 0)
+        total = len(samples)
+        failures = sum(1 for sample in samples if sample[3])
+        rate = failures / total if total else 0.0
+        latencies = sorted(ms for _, _, ms, _ in samples if ms > 0)
         p95 = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))] if latencies else None
         return ProviderHealth(
             provider=provider,
             state=self._state.get(provider, "closed"),
             failure_rate=rate,
-            sample_count=len(statuses),
+            sample_count=total,
             p95_latency_ms=p95,
             consecutive_failures=self._consecutive_failures.get(provider, 0),
             opened_at=self._opened_at.get(provider),
