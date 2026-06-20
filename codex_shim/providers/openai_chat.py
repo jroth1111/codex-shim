@@ -66,10 +66,16 @@ async def post_openai_chat(
                     provider_ms=elapsed_ms(provider_started_at),
                 )
                 detail = upstream_error_detail_from_response(upstream)
-                if body.get("stream") and getattr(request, "_codex_shim_pre_first_byte_failover", False):
-                    # Streaming + opted in: open_stream_sink has NOT run yet, so
-                    # no byte has reached the client -- the gateway can still
-                    # fall back to another provider instead of failing the stream.
+                if (
+                    body.get("stream")
+                    and getattr(request, "_codex_shim_pre_first_byte_failover", False)
+                    and (upstream.status == 429 or upstream.status >= 500)
+                ):
+                    # Streaming + opted in + a failover-eligible status: open_stream_sink
+                    # has NOT run yet, so no byte has reached the client -- the gateway
+                    # can still fall back to another provider instead of failing the
+                    # stream. 4xx client errors fall through to the normal error path
+                    # (they are not retryable, so their stream-error shape is unchanged).
                     raise PreFirstByteFailure(status=upstream.status, detail=detail, reason="upstream_error")
                 error_resp = await error_response(upstream, slug=route.slug)
                 setattr(error_resp, "_codex_shim_upstream_error", detail)

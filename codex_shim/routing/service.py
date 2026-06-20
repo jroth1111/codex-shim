@@ -7,7 +7,7 @@ from aiohttp import web
 
 from ..settings import ModelSettings, ShimModel
 from .discovery import desktop_models
-from .failover import failover_enabled
+from .failover import failover_enabled, load_failover_config, stream_failover_enabled
 from .image_gate import needs_image_generation
 from .inference_context import InferenceContext, parse_inference_context
 from .model_catalog import ModelCatalogSnapshot
@@ -126,10 +126,16 @@ def resolve_model_route(
         raise web.HTTPNotFound(text=f"Unknown model slug/model: {requested}")
 
     fallback_route = _fallback_route(settings, route, body)
-    fallback_enabled = failover_enabled(body, settings.path)
+    failover_config = load_failover_config(settings.path)
+    fallback_enabled = failover_enabled(body, config=failover_config)
     policy = RoutingPolicy(
         max_retries=_max_retries_for_provider(route.provider),
         fallback_enabled=fallback_enabled,
+        # Without this, streaming turns (the Codex Desktop default) can never
+        # fail over — the gateway requires it for stream:true. Default it on
+        # whenever failover is enabled so failover is real on the path Desktop
+        # actually uses, not just the rare non-streaming request.
+        pre_first_byte_stream_failover=fallback_enabled and stream_failover_enabled(failover_config),
     )
     inference = parse_inference_context(
         body,

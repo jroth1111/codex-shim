@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from aiohttp import web
@@ -24,8 +25,10 @@ from ..providers import governance_inference_kwargs as _governance_inference_kwa
 from ..providers import normalize_roles as _normalize_roles
 from ..routing import (
     RouteResolution,
+    RoutingPolicy,
     apply_helper_model_policy,
     build_failover_plan,
+    by_slug_or_model,
     is_helper_model_slug,
     resolve_model_route,
     resolve_workspace,
@@ -54,11 +57,31 @@ if TYPE_CHECKING:
     from ..server import ShimServer
 
 
+def _failover_hop_policy(policy: RoutingPolicy | None) -> RoutingPolicy | None:
+    """Fail-fast policy for failover hops: no per-hop retries (the dispatcher's
+    retry+backoff loop would otherwise stack latency across hops). Pre-first-byte
+    stream failover is preserved so a streaming hop can still roll forward."""
+    if policy is None:
+        return None
+    return replace(policy, max_retries=0)
+
+
 class ResponsesOrchestrator:
     """Validate -> route -> translate -> dispatch glue behind the /v1 handlers."""
 
     def __init__(self, server: "ShimServer") -> None:
         self._server = server
+
+    def _router_ranked_routes(self, request: web.Request) -> list[ShimModel] | None:
+        """Resolve the Auto Router's ranked candidate slugs — stashed on the
+        request when ``codex-auto`` routed this turn — into routes, so failover
+        reuses the classifier's ranking instead of an arbitrary discovery walk."""
+        ranked_slugs = getattr(request, "_codex_shim_router_ranked", None)
+        if not ranked_slugs:
+            return None
+        resolved = [by_slug_or_model(self._server.settings, slug) for slug in ranked_slugs]
+        routes = [route for route in resolved if route is not None]
+        return routes or None
 
     def _emit_inference_observability(
         self,
@@ -111,7 +134,7 @@ class ResponsesOrchestrator:
 
     async def chat_completions(self, request: web.Request) -> StreamSink:
         body = await request.json()
-        body = await self._server.auto_router.maybe_apply_auto_router(body)
+        body = await self._server.auto_router.maybe_apply_auto_router(body, request=request)
         route = self._route(body, request)
         if route.is_chatgpt:
             raise web.HTTPBadGateway(text="ChatGPT passthrough supports /v1/responses, not /v1/chat/completions")
@@ -144,7 +167,7 @@ class ResponsesOrchestrator:
         ws_stream: WsStreamResponse | None = None,
     ) -> StreamSink:
         _log_incoming_request("/v1/responses", body)
-        body = await self._server.auto_router.maybe_apply_auto_router(body)
+        body = await self._server.auto_router.maybe_apply_auto_router(body, request=request)
         model = str(body.get("model") or "")
         if is_cursor_passthrough_slug(model):
             return await cursor_passthrough_handler(self._server, request, body, response_model_override=model)
@@ -318,16 +341,24 @@ class ResponsesOrchestrator:
                 return _invalid_request_error_response(exc)
             if force_non_stream:
                 forwarded["stream"] = False
-            result = await self._server.provider_dispatcher.dispatch(
-                request,
-                route,
-                forwarded,
-                as_responses=True,
-                policy=policy,
-                stats=dispatch_stats,
-                prepared=prepared,
-                stream_response=stream_target,
-            )
+            try:
+                result = await self._server.provider_dispatcher.dispatch(
+                    request,
+                    route,
+                    forwarded,
+                    as_responses=True,
+                    policy=policy,
+                    stats=dispatch_stats,
+                    prepared=prepared,
+                    stream_response=stream_target,
+                )
+            except PreFirstByteFailure as exc:
+                # Pre-first-byte: nothing flushed to the client yet, so the
+                # failover block below can still try another provider.
+                result = web.json_response(
+                    {"error": {"type": "upstream_error", "message": str(exc)}},
+                    status=int(exc.status or 502),
+                )
         elif route.is_cursor_agent or route.is_cursor_acp or route.is_cursor_cli:
             # All cursor transports take the Responses body untranslated; the
             # provider dispatcher and per-transport cursor handlers own the
@@ -349,6 +380,20 @@ class ResponsesOrchestrator:
         else:
             raise web.HTTPBadGateway(text=f"Unsupported model provider: {route.provider}")
         status = getattr(result, "status", 200)
+        # Feed the per-provider circuit breaker (single writer). The dispatcher
+        # and router read should_skip() to stop sending traffic to a provider
+        # whose recent failure rate crossed threshold. Record the PRIMARY here,
+        # BEFORE any failover, so the breaker learns about a degrading primary
+        # even when a later hop masks the turn with a success — recording once at
+        # the end would attribute the whole turn to the final provider and hide
+        # the primary's failures, defeating the breaker exactly when failover
+        # works.
+        self._server.provider_health.record(
+            provider=route.provider,
+            status=status,
+            provider_ms=int((time.monotonic() - dispatch_started_at) * 1000),
+            outcome="ok" if status < 400 else "error",
+        )
         fallback_used = False
         fallback_reason: str | None = None
         fallback_statuses = (
@@ -372,20 +417,27 @@ class ResponsesOrchestrator:
                 route,
                 prepared.body,
                 health=self._server.provider_health,
+                router_ranked=self._router_ranked_routes(request),
             )
+            # Each hop fails fast: with alternatives in hand, per-hop retry +
+            # backoff would stack many seconds before the user sees a byte.
+            # Pre-first-byte failover stays on so a streaming hop that fails
+            # before committing rolls to the next hop instead of erroring out.
+            hop_policy = _failover_hop_policy(policy)
             for hop in plan.hops:
                 fallback_used = True
                 if fallback_reason is None:
                     fallback_reason = f"upstream_status_{status}"
                 dispatch_body = dict(body)
                 dispatch_body["model"] = hop.route.model
+                hop_started_at = time.monotonic()
                 try:
                     result = await self._server.provider_dispatcher.dispatch(
                         request,
                         hop.route,
                         dispatch_body,
                         as_responses=True,
-                        policy=policy,
+                        policy=hop_policy,
                         stats=dispatch_stats,
                         prepared=prepared,
                         stream_response=stream_target,
@@ -397,20 +449,20 @@ class ResponsesOrchestrator:
                         {"error": {"type": "upstream_error", "message": str(exc)}},
                         status=status,
                     )
+                # Record each hop against its OWN provider with its own timing,
+                # so a healthy hop's breaker is not polluted by the primary's
+                # latency and a failing hop accrues its own failure samples.
+                self._server.provider_health.record(
+                    provider=hop.route.provider,
+                    status=status,
+                    provider_ms=int((time.monotonic() - hop_started_at) * 1000),
+                    outcome="ok" if status < 400 else "error",
+                )
                 fallback_route = hop.route
                 if status < 400:
                     break
         outcome = "ok" if status < 400 else "error"
         failure_category = None if status < 400 else "upstream_error"
-        # Feed the per-provider circuit breaker (single writer). The dispatcher
-        # and router read should_skip() to stop sending traffic to a provider
-        # whose recent failure rate crossed threshold.
-        self._server.provider_health.record(
-            provider=fallback_route.provider if fallback_used and fallback_route is not None else route.provider,
-            status=status,
-            provider_ms=int((time.monotonic() - dispatch_started_at) * 1000),
-            outcome=outcome,
-        )
         executed_tool_count = getattr(result, "_codex_shim_executed_tool_count", None)
         self._server.governance.emit(
             path=str(request.path),

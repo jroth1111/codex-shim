@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 import sys
 
-import pytest
-
 from codex_shim.observability.health import ProviderHealthStore
 from codex_shim.providers.cursor_transports import is_cursor_start_failure
-from codex_shim.routing import build_failover_plan, failover_enabled, load_failover_config
+from codex_shim.routing import build_failover_plan, failover_enabled
 from codex_shim.routing.discovery import by_slug_or_model
+from codex_shim.routing.service import resolve_model_route
 from codex_shim.settings import ModelSettings
 
 
@@ -110,6 +109,67 @@ def test_failover_chain_does_not_mix_delegate_and_mapped(tmp_path, monkeypatch):
     plan = build_failover_plan(settings, route, {}, health=None)
     slugs = [h.route.slug for h in plan.hops]
     assert "openai-b" not in slugs  # mapped excluded from a delegate primary
+
+
+def test_router_ranked_feeds_failover_order(tmp_path, monkeypatch):
+    # When the Auto Router ranked candidates for this turn, failover must reuse
+    # that order instead of the arbitrary discovery walk.
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_ENABLED", raising=False)
+    monkeypatch.setenv("CODEX_SHIM_DISABLE_CHATGPT", "1")
+    path = _settings(tmp_path, [_openai("a"), _openai("b"), _openai("c")])
+    settings = ModelSettings(path)
+    route = by_slug_or_model(settings, "a")
+    ranked = [by_slug_or_model(settings, "c"), by_slug_or_model(settings, "b")]
+    plan = build_failover_plan(settings, route, {}, health=None, router_ranked=ranked)
+    assert [h.route.slug for h in plan.hops] == ["c", "b"]
+    assert all(h.reason == "router_ranked" for h in plan.hops)
+
+
+def test_failover_hop_policy_fails_fast_but_keeps_pre_first_byte():
+    from codex_shim.gateway.responses import _failover_hop_policy
+    from codex_shim.routing.service import RoutingPolicy
+
+    base = RoutingPolicy(max_retries=3, pre_first_byte_stream_failover=True)
+    hop = _failover_hop_policy(base)
+    assert hop is not None
+    assert hop.max_retries == 0  # no per-hop retry/backoff stacking
+    assert hop.pre_first_byte_stream_failover is True  # streaming hops still roll forward
+    assert _failover_hop_policy(None) is None
+
+
+def test_route_policy_enables_stream_failover_when_failover_on(tmp_path, monkeypatch):
+    # The critical wiring: failover enabled -> the policy turns on pre-first-byte
+    # stream failover, so streaming Desktop turns can actually fail over (the
+    # gateway requires this flag for stream:true).
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_ENABLED", raising=False)
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_STREAM", raising=False)
+    monkeypatch.setenv("CODEX_SHIM_DISABLE_CHATGPT", "1")
+    path = _settings(tmp_path, [_openai("a"), _openai("b")], failover={"enabled": True})
+    settings = ModelSettings(path)
+    res = resolve_model_route(settings, {"model": "a", "stream": True})
+    assert res.policy.fallback_enabled is True
+    assert res.policy.pre_first_byte_stream_failover is True
+
+
+def test_route_policy_stream_failover_opt_out(tmp_path, monkeypatch):
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_ENABLED", raising=False)
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_STREAM", raising=False)
+    monkeypatch.setenv("CODEX_SHIM_DISABLE_CHATGPT", "1")
+    path = _settings(tmp_path, [_openai("a"), _openai("b")], failover={"enabled": True, "stream": False})
+    settings = ModelSettings(path)
+    res = resolve_model_route(settings, {"model": "a", "stream": True})
+    assert res.policy.fallback_enabled is True
+    assert res.policy.pre_first_byte_stream_failover is False  # explicit opt-out honored
+
+
+def test_route_policy_no_failover_no_stream_failover(tmp_path, monkeypatch):
+    monkeypatch.delenv("CODEX_SHIM_FAILOVER_ENABLED", raising=False)
+    monkeypatch.setenv("CODEX_SHIM_DISABLE_CHATGPT", "1")
+    path = _settings(tmp_path, [_openai("a"), _openai("b")])  # no failover block
+    settings = ModelSettings(path)
+    res = resolve_model_route(settings, {"model": "a", "stream": True})
+    assert res.policy.fallback_enabled is False
+    assert res.policy.pre_first_byte_stream_failover is False
 
 
 def test_is_cursor_start_failure_classifies_launch_errors():

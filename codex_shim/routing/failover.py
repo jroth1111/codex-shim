@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ..settings import ModelSettings, ShimModel
-from ..translate.tokens import estimate_input_tokens
+from ..translate import estimate_input_tokens
 from .discovery import by_slug_or_model, desktop_models
 from .image_gate import needs_image_generation
 
@@ -35,6 +35,11 @@ class FailoverConfig:
     chains: dict[str, list[str]] = field(default_factory=dict)
     only_statuses: tuple[int, ...] = DEFAULT_FAILOVER_STATUSES
     max_hops: int = DEFAULT_MAX_HOPS
+    # Pre-first-byte failover for streaming turns (the Codex Desktop default
+    # shape). On by default whenever failover is enabled, because it only
+    # re-routes BEFORE any byte reaches the client — disable with
+    # ``failover.stream: false`` or ``CODEX_SHIM_FAILOVER_STREAM=0``.
+    stream: bool = True
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,7 @@ def load_failover_config(settings_path: Path | str) -> FailoverConfig | None:
         chains=chains,
         only_statuses=only_statuses,
         max_hops=max_hops,
+        stream=bool(raw.get("stream", True)),
     )
 
 
@@ -102,6 +108,18 @@ def failover_enabled(body: dict[str, Any], settings_path: Path | str | None = No
     if config is not None and config.enabled:
         return True
     return str(body.get("allow_fallback", "false")).strip().lower() in _ENV_TRUTHY
+
+
+def stream_failover_enabled(config: FailoverConfig | None) -> bool:
+    """Whether pre-first-byte failover applies to streaming turns. Defaults on
+    (it only re-routes before any byte is flushed); ``CODEX_SHIM_FAILOVER_STREAM``
+    or ``failover.stream`` can force it on/off explicitly."""
+    env = os.environ.get("CODEX_SHIM_FAILOVER_STREAM", "").strip().lower()
+    if env in _ENV_TRUTHY:
+        return True
+    if env in {"0", "false", "no", "off"}:
+        return False
+    return config.stream if config is not None else True
 
 
 def _supports_images(candidate: ShimModel) -> bool:
