@@ -21,6 +21,7 @@ from .streaming import (
     anthropic_stream_to_chat_chunk,
 )
 from .thinking import SHIM_ENCRYPTED_CONTENT_PREFIX
+from .tokens import estimate_input_tokens
 from .tool_validate import ToolValidationError, validate_anthropic_tools, validate_chat_tools
 from .tools import (
     HOSTED_CALL_FALLBACK_NAMES,
@@ -69,6 +70,7 @@ __all__ = [
     "chat_completion_to_response",
     "chat_to_anthropic",
     "chat_to_responses_request",
+    "estimate_input_tokens",
     "function_call_to_native_item",
     "initial_native_tool_action",
     "normalize_hosted_call_item",

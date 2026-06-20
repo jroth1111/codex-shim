@@ -19,7 +19,11 @@ def _walk_text(obj: Any) -> tuple[int, int]:
         chars += len(obj)
     elif isinstance(obj, dict):
         if str(obj.get("type") or "") in {"input_image", "image_url"} or "image_url" in obj:
-            images += 1
+            # An image part bills as a flat per-image cost, not its payload. Do
+            # NOT recurse: a base64 `data:` URL is megabytes of characters that
+            # would otherwise be counted as ~payload/4 phantom text tokens and
+            # wrongly fail a context-window fit-check whenever images are present.
+            return 0, 1
         for value in obj.values():
             c, i = _walk_text(value)
             chars += c

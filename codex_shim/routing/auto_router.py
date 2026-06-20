@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
-from ..translate.tokens import estimate_input_tokens
+from ..translate import estimate_input_tokens
 
 DEFAULT_ROUTER_SLUG = "codex-auto"
 DEFAULT_ROUTER_DISPLAY_NAME = "Auto (smart routing)"

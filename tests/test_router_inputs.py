@@ -39,6 +39,27 @@ def test_estimate_input_tokens_counts_text_and_images():
     assert estimate_input_tokens("not a dict") == 0
 
 
+def test_estimate_input_tokens_does_not_count_image_base64_as_text():
+    # A megabyte-scale base64 data URL must NOT be counted as ~payload/4 text
+    # tokens -- only the flat per-image cost. Otherwise an image-bearing turn
+    # would wrongly fail a context-window fit-check and exclude good candidates.
+    big_data_url = "data:image/png;base64," + ("A" * 2_000_000)
+    body = {
+        "input": [
+            {"role": "user", "content": [
+                {"type": "input_text", "text": "describe this"},
+                {"type": "input_image", "image_url": big_data_url},
+            ]}
+        ]
+    }
+    est = estimate_input_tokens(body, per_image_tokens=768)
+    # "user" (4) + "describe this" (13) = 17 chars -> 4 tokens, + 768 per image.
+    # The 2M-char base64 payload contributes nothing. Generous ceiling guards
+    # against the regression where the payload leaks back into the char count.
+    assert est < 1000
+    assert est >= 768  # the flat per-image cost is still applied
+
+
 def test_task_signal_reports_tokens_and_tools():
     # The walker counts every string value, including the "user" role (4 chars),
     # so 800 content chars + 4 = 804 -> 201 tokens.
